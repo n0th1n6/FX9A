@@ -1,0 +1,42 @@
+{
+    "FX9A": {
+        "inherits": ["MCU_STM32F103xC"],
+        "overrides": {
+            "clock-source": "USE_PLL_HSE_XTAL"
+        },
+        "macros_add": [
+            "HSE_VALUE=16000000",
+            // STM32F103 high-density parts share one IRQ for DMA2 channels 4/5.
+            // Mbed CE's generic DMA helper expects the channel 5 alias as well.
+            "DMA2_Channel5_IRQn=DMA2_Channel4_5_IRQn"
+        ],
+        "memory_banks": {
+            "IROM1": {
+                "access": {
+                    "execute": true,
+                    "peripheral": false,
+                    "read": true,
+                    "secure": false,
+                    "write": false
+                },
+                "default": true,
+                "size": 0x40000,
+                "start": 0x08000000,
+                "startup": true
+            },
+            "IRAM1": {
+                "access": {
+                    "execute": false,
+                    "peripheral": false,
+                    "read": true,
+                    "secure": false,
+                    "write": true
+                },
+                "default": true,
+                "size": 0xC000,
+                "start": 0x20000000,
+                "startup": false
+            }
+        }
+    }
+}
