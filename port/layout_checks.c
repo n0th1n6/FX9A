@@ -18,6 +18,9 @@ _Static_assert(offsetof(MEM_AttrDef, mode) == 5,
                "unexpected memory mode offset");
 
 _Static_assert(sizeof(MENU_AttrDef) == 44, "unexpected menu EEPROM size");
+_Static_assert(offsetof(MENU_AttrDef, rxUsbOffset) == 5, "unexpected RX USB offset");
+_Static_assert(offsetof(MENU_AttrDef, rxLsbOffset) == 7, "unexpected RX LSB offset");
+_Static_assert(offsetof(MENU_AttrDef, rxAlignmentMagic) == 9, "unexpected RX signature offset");
 _Static_assert(offsetof(MENU_AttrDef, freqOfbuzzer) == 16,
                "unexpected buzzer frequency offset");
 _Static_assert(offsetof(MENU_AttrDef, rbfo) == 20,

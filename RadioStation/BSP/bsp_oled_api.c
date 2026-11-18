@@ -1656,34 +1656,39 @@ void oled_arrows_set_1608(uint8_t position)
 
 void oled_menu_arrows_set(uint8_t position)
 {
-  // 清除 前一个位置的 > 号
-  if(arrows_pos <= 4)
+  if (position >= RX_USB_MENU)
   {
+    Show_String0705(3, 20, position == RX_USB_MENU ? ">" : " ");
+    Show_String0705(3, 36, position == RX_LSB_MENU ? ">" : " ");
+    arrows_pos = position;
+    return;
+  }
+  if (arrows_pos <= 4)
     Show_String0705(3, arrows_pos * 8 + 12, " ");
-  }
-  else if(position <= 8)
-  {
+  else if (arrows_pos <= 8)
     Show_String0705(30, (arrows_pos-5) * 8 + 12, " ");
-  }
-  else if(position < SIZE_OF_MENU)
-  {
+  else if (arrows_pos < RX_USB_MENU)
     ascii_1608(14+(arrows_pos-9)*2, 40, ASCII_1608[' '-0x20]);
-  }
   arrows_pos = position;
-  
-  // 显示 新位置的 > 号
-  if(position <= 4)
-  {
-    Show_String0705(3, arrows_pos * 8 + 12, ">");
-  }
-  else if(position <= 8)
-  {
-    Show_String0705(30, (arrows_pos-5) * 8 + 12, ">");
-  }
-  else if(position < SIZE_OF_MENU)
-  {
-    ascii_1608(14+(arrows_pos-9)*2, 40, ASCII_1608['^'-0x20]);
-  }
+  if (position <= 4)
+    Show_String0705(3, position * 8 + 12, ">");
+  else if (position <= 8)
+    Show_String0705(30, (position-5) * 8 + 12, ">");
+  else if (position < RX_USB_MENU)
+    ascii_1608(14+(position-9)*2, 40, ASCII_1608['^'-0x20]);
+}
+
+static void Show_RX_Alignment(uint8_t y, uint8_t usb, int16_t offset)
+{
+  uint8_t text[] = "RX USB: +0000 Hz";
+  uint16_t magnitude = offset < 0 ? -offset : offset;
+  if (!usb) { text[3] = 'L'; text[4] = 'S'; }
+  text[8] = offset < 0 ? '-' : '+';
+  text[9] = magnitude / 1000 % 10 + '0';
+  text[10] = magnitude / 100 % 10 + '0';
+  text[11] = magnitude / 10 % 10 + '0';
+  text[12] = magnitude % 10 + '0';
+  Show_String0705(5, y, text);
 }
 
 void oled_menu_set(uint8_t position)
@@ -1691,6 +1696,18 @@ void oled_menu_set(uint8_t position)
   uint8_t pos_x = 5;
   uint8_t pos_y = 12;
   uint8_t all = 0 ;
+
+  if (position >= RX_USB_MENU)
+  {
+    if (menu_pos < RX_USB_MENU)
+      oled_set_screen(0x00);
+    Show_String0705(5, 4, "RX ALIGNMENT");
+    Show_RX_Alignment(20, 1, MENU.rxUsbOffset);
+    Show_RX_Alignment(36, 0, MENU.rxLsbOffset);
+    Show_String0705(5, 52, "10Hz / TS:100Hz");
+    menu_pos = position;
+    return;
+  }
   
   // 当菜单从第二屏 翻到 第一屏的时候，清屏及刷新第一屏数据
   if(position <= 8 && menu_pos >= 9)    //BG6RDF menu_pos是上次的位置
@@ -1796,12 +1813,13 @@ void oled_menu_set(uint8_t position)
   pos_x = 4;
   pos_y = 24;
   // 当菜单从第一屏 翻到 第二屏的时候，清屏及刷新第二屏数据
-  if((position >= 9 && menu_pos <= 8))
+  if(position >= 9 && position < RX_USB_MENU &&
+      (menu_pos <= 8 || menu_pos >= RX_USB_MENU))
   {
     oled_set_screen(0x00);
     Show_CALL_SET(pos_x, pos_y, &MENU.callSign[0], position - 9, 1);
   }
-  else if(position >= 9)
+  else if(position >= 9 && position < RX_USB_MENU)
   {
     Show_CALL_SET(pos_x, pos_y, &MENU.callSign[0], position - 9, 0);
   }

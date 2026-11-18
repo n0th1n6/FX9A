@@ -22,15 +22,6 @@ set_source_files_properties(
         DMA1_Channel4_IRQHandler=mbed_DMA1_Channel4_IRQHandler
 )
 
-# IAR's pragma immediately before IntDelay() disables optimization for that
-# debounce function. GCC ignores the pragma, so supply the equivalent function
-# attribute through a source-specific forced include.
-set_source_files_properties(
-    ${CMAKE_CURRENT_SOURCE_DIR}/RadioStation/BSP/bsp_key.c
-    PROPERTIES COMPILE_OPTIONS
-        "-include;${CMAKE_CURRENT_SOURCE_DIR}/port/iar_compat.h;-Wno-unknown-pragmas"
-)
-
 set(FX9A_BSP_SOURCES
     RadioStation/BSP/bsp_24lc16.c
     RadioStation/BSP/bsp_ad9834.c
@@ -73,6 +64,12 @@ add_executable(fx9a
     ${FX9A_BSP_SOURCES}
     ${FX9A_STDPERIPH_SOURCES}
 )
+option(FX9A_ENCODER_TRACE "Capture encoder contacts in RAM for ST-Link diagnosis" OFF)
+if(FX9A_ENCODER_TRACE)
+    set_property(SOURCE RadioStation/BSP/bsp_key.c APPEND PROPERTY
+        COMPILE_DEFINITIONS FX9A_ENCODER_TRACE=1)
+endif()
+
 target_include_directories(fx9a PRIVATE
     port
     RadioStation/BSP

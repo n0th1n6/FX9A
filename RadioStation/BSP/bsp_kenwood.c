@@ -512,25 +512,14 @@ void Kenwood_VFOBAnswer()
 
 bool Kenwood_VFOSet(int32_t freq)
 {
-  uint8_t i;
-  
-  if ( RF_IsTx() || AIMgr.item & MENUSETItem || AIMgr.item & MEMSETItem)
-  {
+  if (RF_IsTx() || AIMgr.item & MENUSETItem || AIMgr.item & MEMSETItem)
     return false;
-  }
-  
-  for(i=0; i<SIZE_OF_BAUD; i++)
-  {
-    if ((freq <= BAUD[ i ][2]) && (freq >= BAUD[ i ][0]))
-    {
-      FREQ.numOfbaud = i;
-      FREQ.val = freq;
-      DRMgr.item |= FREQItem;
-      return true;
-    }
-  }
 
-  return false;
+  if (freq < 0 || !Frequency_Set((uint32_t)freq))
+    return false;
+
+  DRMgr.item |= FREQItem;
+  return true;
 }
 
 void Kenwood_AFGainSet(uint8_t vol)

@@ -1,4 +1,5 @@
 #include "bsp_key.h"
+#include "bsp_encoder.h"
 #include "bsp_timer.h"
 #include "bsp_adc.h"
 #include "bsp_oled_api.h"
@@ -46,6 +47,20 @@
 #define PADDLE_PORT GPIOE
 
 static KEY_AttrDef key;
+static EncoderState channel_encoder;
+static EncoderState volume_encoder;
+static uint8_t key_scan_divider;
+#ifdef FX9A_ENCODER_TRACE
+/* Diagnostic only: 50 us raw contacts, normal 250 us control decoding.
+ * Stop when full so ST-Link can read a consistent completed trace. */
+volatile uint32_t encoder_trace[2048][2];
+volatile uint32_t encoder_trace_count;
+volatile uint32_t encoder_trace_enabled = 1;
+static uint32_t encoder_trace_tick;
+static uint8_t encoder_trace_previous = 0xff;
+#endif
+static void encoders_init(void);
+void key_timer_callback(void);
 bool key_availlble = false;
 uint8_t KVal = 0;
 uint8_t K9_A = 0;
@@ -69,58 +84,39 @@ bool PttPressed;  // PTT控制键是否被按下
 bool PttFinish;   // PTT按下操作是否被执行
 void KEY_EXTI_Config()
 {
-  EXTI_InitTypeDef EXTI_InitStructure;
-  //清空中断标志
-  EXTI_ClearITPendingBit(EXTI_Line2);
-  EXTI_ClearITPendingBit(EXTI_Line10);
-  EXTI_ClearITPendingBit(EXTI_Line11);
-  
-  //选择中断管脚
+  EXTI_InitTypeDef config;
+  EXTI_ClearITPendingBit(EXTI_Line2 | EXTI_Line10 | EXTI_Line11);
   GPIO_EXTILineConfig(GPIO_PortSourceGPIOD, GPIO_PinSource2);
-  GPIO_EXTILineConfig(GPIO_PortSourceGPIOD, GPIO_PinSource10);
-  GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource11);
-  
-  EXTI_InitStructure.EXTI_Line = EXTI_Line2; //选择中断线路
-  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt; //设置为中断请求，非事件请求
-  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling; //设置中断触发方式为上下降沿触发
-  EXTI_InitStructure.EXTI_LineCmd = ENABLE;                                          //外部中断使能
-  EXTI_Init(&EXTI_InitStructure);
-  
-  EXTI_InitStructure.EXTI_Line = EXTI_Line10; //选择中断线路
-  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt; //设置为中断请求，非事件请求
-  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling; //设置中断触发方式为上下降沿触发
-  EXTI_InitStructure.EXTI_LineCmd = ENABLE;                                          //外部中断使能
-  EXTI_Init(&EXTI_InitStructure);
-  
-  EXTI_InitStructure.EXTI_Line = EXTI_Line11; //选择中断线路
-  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt; //设置为中断请求，非事件请求
-  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling; //设置中断触发方式为上下降沿触发
-  EXTI_InitStructure.EXTI_LineCmd = ENABLE;                                          //外部中断使能
-  EXTI_Init(&EXTI_InitStructure);
+  config.EXTI_Line = EXTI_Line2;
+  config.EXTI_Mode = EXTI_Mode_Interrupt;
+  config.EXTI_Trigger = EXTI_Trigger_Falling;
+  config.EXTI_LineCmd = ENABLE;
+  EXTI_Init(&config);
+
+  /* CH and VOL now sample both phases from the periodic timer. */
+  config.EXTI_Line = EXTI_Line10 | EXTI_Line11;
+  config.EXTI_LineCmd = DISABLE;
+  EXTI_Init(&config);
 }
 
 void GPIO_NVIC_Config()
 {
-  NVIC_InitTypeDef NVIC_InitStructure;  
-  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); 
-  
-  NVIC_InitStructure.NVIC_IRQChannel = EXTI2_IRQn; 
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0; 
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;  
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;  
+  NVIC_InitTypeDef NVIC_InitStructure;
+  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+  NVIC_InitStructure.NVIC_IRQChannel = EXTI2_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
-  
-  NVIC_InitStructure.NVIC_IRQChannel = EXTI15_10_IRQn; 
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0; 
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;  
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;  
-  NVIC_Init(&NVIC_InitStructure);
-  
 }
 void key_init()
 {
   GPIO_InitTypeDef GPIO_InitStructure;
-  TMR_Init(TIM2, 200, 2000, key_calback);        //预分频数为TIMXCLK/(50*2000)，每秒产生50个中断
+#ifdef FX9A_ENCODER_TRACE
+  TMR_Init(TIM2, 20000, 100, key_timer_callback); // 50 us diagnostic contacts
+#else
+  TMR_Init(TIM2, 4000, 1000, key_timer_callback); // 250 us encoder sampling
+#endif
   TMR_IRQEnable(TIM2);
   
   GPIO_InitStructure.GPIO_Pin =  K1;
@@ -153,6 +149,7 @@ void key_init()
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_Init(PADDLE_PORT, &GPIO_InitStructure);
+  encoders_init();
   KEY_EXTI_Config();
   GPIO_NVIC_Config();
   
@@ -484,80 +481,61 @@ void EXTI2_IRQHandler(void)
       EXTI_ClearITPendingBit(EXTI_Line2);
       return;
     }
-    
+
     if (GPIO_ReadInputDataBit(KEY_23456R1A1BK2A2B_PORT, R1B) == 0) // A-下降沿 B-高电平 为正
     {
       // VFO和MEM模式下，调频旋钮都可用，但在MEM模式下 不记忆
       //if (AIMgr.item > 0)
-      {     
-        if (FREQ.val >= BAUD[ FREQ.numOfbaud ][2])
+      {
+        if(AIMgr.item & MENUSETItem)
         {
-          FREQ.val = BAUD[ FREQ.numOfbaud ][2];
-          if (FREQ.item & TSItem)
-          {
-            FREQ.val /= 100;
-            FREQ.val *= 100;
-          }        
+          MENU_SetUp(MENU.numOfmenu);
         }
-        else
+        else if ((FREQ.item & RITItem) && !(AIMgr.item))
         {
-          if(AIMgr.item & MENUSETItem)
+          if (VFO.RIT >= UPPER_OF_RIT)
           {
-            MENU_SetUp(MENU.numOfmenu);
-          }
-          else if ((FREQ.item & RITItem) && !(AIMgr.item))
-          {
-            if (VFO.RIT >= UPPER_OF_RIT)
-            {
-              VFO.RIT = UPPER_OF_RIT;
-            }
-            else
-            {              
-              if (FREQ.item & TSItem)
-              {
-                if ((VFO.RIT + 100) < UPPER_OF_RIT)
-                {
-                  VFO.RIT += 100;
-                }
-              }
-              else
-              {
-                VFO.RIT ++;
-              }
-            }
-          }
-          else if ((FREQ.item & XITItem) && !(AIMgr.item))      //XIT BG6RDF
-          {
-            if (VFO.XIT >= UPPER_OF_XIT)
-            {
-              VFO.XIT = UPPER_OF_XIT;
-            }
-            else
-            {              
-              if (FREQ.item & TSItem)
-              {
-                if ((VFO.XIT + 100) < UPPER_OF_XIT)
-                {
-                  VFO.XIT += 100;
-                }
-              }
-              else
-              {
-                VFO.XIT ++;
-              }
-            }
+            VFO.RIT = UPPER_OF_RIT;
           }
           else
           {
             if (FREQ.item & TSItem)
             {
-              FREQ.val += 100;
+              if ((VFO.RIT + 100) < UPPER_OF_RIT)
+              {
+                VFO.RIT += 100;
+              }
             }
             else
             {
-              FREQ.val ++;
+              VFO.RIT ++;
             }
           }
+        }
+        else if ((FREQ.item & XITItem) && !(AIMgr.item))      //XIT BG6RDF
+        {
+          if (VFO.XIT >= UPPER_OF_XIT)
+          {
+            VFO.XIT = UPPER_OF_XIT;
+          }
+          else
+          {
+            if (FREQ.item & TSItem)
+            {
+              if ((VFO.XIT + 100) < UPPER_OF_XIT)
+              {
+                VFO.XIT += 100;
+              }
+            }
+            else
+            {
+              VFO.XIT ++;
+            }
+          }
+        }
+        else
+        {
+          Frequency_Tune((FREQ.item & TSItem) ? 100 : 1);
         }
         if (AIMgr.item & MENUSETItem)
         {
@@ -577,79 +555,57 @@ void EXTI2_IRQHandler(void)
     {
       //if (AIMgr.item > 0)
       {
-        if (FREQ.val <= BAUD[ FREQ.numOfbaud ][0])
+        if(AIMgr.item & MENUSETItem)
         {
-          FREQ.val = BAUD[ FREQ.numOfbaud ][0];
-          if (FREQ.item & TSItem)
-          {
-            FREQ.val /= 100;
-            FREQ.val *= 100;
-          }
+          MENU_SetDown(MENU.numOfmenu);
         }
-        else
+        else if ((FREQ.item & RITItem) && !(AIMgr.item))  // RIT选中时，且在非设置状态下 起作用
         {
-          if(AIMgr.item & MENUSETItem)
+          if (VFO.RIT <= LOWER_OF_RIT)
           {
-            MENU_SetDown(MENU.numOfmenu);
-          }
-          else if ((FREQ.item & RITItem) && !(AIMgr.item))  // RIT选中时，且在非设置状态下 起作用
-          {
-            if (VFO.RIT <= LOWER_OF_RIT)
-            {
-              VFO.RIT = LOWER_OF_RIT;
-            }
-            else
-            {
-              if (FREQ.item & TSItem)
-              {
-                if((VFO.RIT - 100) >= LOWER_OF_RIT)
-                {
-                  VFO.RIT -= 100;
-                }
-              }
-              else
-              {
-                VFO.RIT --;
-              }
-            }
-          }
-          else if ((FREQ.item & XITItem) && !(AIMgr.item)) //XIT BG6RDF
-          {
-             if (VFO.XIT <= LOWER_OF_XIT)
-            {
-              VFO.XIT = LOWER_OF_XIT;
-            }
-            else
-            {
-              if (FREQ.item & TSItem)
-              {
-                if((VFO.XIT - 100) >= LOWER_OF_XIT)
-                {
-                  VFO.XIT -= 100;
-                }
-              }
-              else
-              {
-                VFO.XIT --;
-              }
-            }
+            VFO.RIT = LOWER_OF_RIT;
           }
           else
           {
             if (FREQ.item & TSItem)
             {
-              if( FREQ.val >= 100)
+              if((VFO.RIT - 100) >= LOWER_OF_RIT)
               {
-                FREQ.val -= 100;
+                VFO.RIT -= 100;
               }
             }
             else
             {
-              FREQ.val --;
+              VFO.RIT --;
             }
           }
         }
-        
+        else if ((FREQ.item & XITItem) && !(AIMgr.item)) //XIT BG6RDF
+        {
+          if (VFO.XIT <= LOWER_OF_XIT)
+          {
+            VFO.XIT = LOWER_OF_XIT;
+          }
+          else
+          {
+            if (FREQ.item & TSItem)
+            {
+              if((VFO.XIT - 100) >= LOWER_OF_XIT)
+              {
+                VFO.XIT -= 100;
+              }
+            }
+            else
+            {
+              VFO.XIT --;
+            }
+          }
+        }
+        else
+        {
+          Frequency_Tune((FREQ.item & TSItem) ? -100 : -1);
+        }
+
         if (AIMgr.item & MENUSETItem)
         {
           DRMgr.item |= MENUSETItem;
@@ -668,243 +624,259 @@ void EXTI2_IRQHandler(void)
   }
 }
 
-//#pragma directive only affects the function that follows immediately after the directive
-#pragma optimize=none
-void IntDelay()
+/* Keep the previous physical direction: CH used B as its interrupt phase,
+ * while VOL used A. Reading each port once captures a coherent phase pair. */
+static uint8_t channel_phases(uint16_t port)
 {
-  for(int i=0; i<20000; i++);
+  return ((port & K1B) ? 2 : 0) | ((port & K1A) ? 1 : 0);
 }
 
-// 小编码器无防抖
-// K2A - line 10
-// K1B - line_11
-uint8_t k1ForwardFlag = false;
-uint8_t k1BackwardFlag= false;
-uint8_t k2ForwardFlag = false;
-uint8_t k2BackwardFlag= false;
-void EXTI15_10_IRQHandler(void)
-{ 
-  if (EXTI_GetITStatus(EXTI_Line10) == SET)             //K2A
+static uint8_t volume_phases(uint16_t port)
+{
+  return ((port & K2A) ? 2 : 0) | ((port & K2B) ? 1 : 0);
+}
+
+static void encoders_init(void)
+{
+  encoder_init(&channel_encoder,
+               channel_phases(GPIO_ReadInputData(KEY_K1A1B_PORT)));
+  encoder_init(&volume_encoder,
+               volume_phases(GPIO_ReadInputData(KEY_23456R1A1BK2A2B_PORT)));
+  key_scan_divider = 0;
+}
+
+static void volume_encoder_step(int8_t step)
+{
+  if ((AIMgr.item & MENUSETItem) || RF_IsTx())
+    return;
+  if (step > 0)
   {
-    if ((AIMgr.item & MENUSETItem) || RF_IsTx())
+    if (AIMgr.item == WPMSETItem)
     {
+      if (WPM.val >= 60)
+      {
+        WPM.val = 60;
+      }
+      else
+      {
+        WPM.val ++;
+      }
+      DRMgr.item |= WPMSETItem;
     }
-    else if(GPIO_ReadInputDataBit(KEY_23456R1A1BK2A2B_PORT, K2A) == 0)                          //下降沿
+    else if (AIMgr.item & MEMSETItem)         //信道模式下，K2用于选择波段
     {
-      if (GPIO_ReadInputDataBit(KEY_23456R1A1BK2A2B_PORT, K2B) == 0)
-        k2ForwardFlag=true;
-      else 
-        k2BackwardFlag=true;
-      IntDelay();
+      if (FREQ.numOfbaud >= SIZE_OF_BAUD-1)
+      {
+        FREQ.numOfbaud = 0;
+      }
+      else
+      {
+        FREQ.numOfbaud ++;
+      }
+      FREQ.val=BAUD[FREQ.numOfbaud][1];
+      DRMgr.item |= MEMSETItem;
     }
-    else if (k2ForwardFlag && GPIO_ReadInputDataBit(KEY_23456R1A1BK2A2B_PORT, K2B) == 1)        //上升沿，正转
+    else
     {
-      k2ForwardFlag=false;
-      if (AIMgr.item == WPMSETItem)
+      if(VOL.val >= 60)
       {
-        if (WPM.val >= 60)
-        {
-          WPM.val = 60;
-        }
-        else
-        {
-          WPM.val ++;
-        }
-        DRMgr.item |= WPMSETItem;
+        VOL.val = 60;
+      }else{
+        VOL.val ++;
       }
-      else if (AIMgr.item & MEMSETItem)         //信道模式下，K2用于选择波段
-      {
-        if (FREQ.numOfbaud >= SIZE_OF_BAUD-1)
-        {
-          FREQ.numOfbaud = 0;
-        }
-        else
-        {
-          FREQ.numOfbaud ++; 
-        }
-        FREQ.val=BAUD[FREQ.numOfbaud][1];
-        DRMgr.item |= MEMSETItem;
-      }
-      else 
-      {
-        if(VOL.val >= 60)
-        {
-          VOL.val = 60;
-        }else{
-          VOL.val ++;
-        }
-        DRMgr.item |= VOLItem;
-      }
+      DRMgr.item |= VOLItem;
     }
-    else if (k2BackwardFlag && GPIO_ReadInputDataBit(KEY_23456R1A1BK2A2B_PORT, K2B) == 0)        //上升沿，反转
-    {
-      k2BackwardFlag=false;
-      if (AIMgr.item == WPMSETItem)
-      {
-        if (WPM.val <= 4)
-        {
-          WPM.val = 4;
-        }
-        else
-        {
-          WPM.val --;
-        }
-        DRMgr.item |= WPMSETItem;
-      }
-      else if (AIMgr.item & MEMSETItem)         //信道模式下，K2用于选择波段
-      {
-        if (FREQ.numOfbaud == 0)
-        {
-          FREQ.numOfbaud = SIZE_OF_BAUD-1;
-        }
-        else
-        {
-          FREQ.numOfbaud --; 
-        }
-        FREQ.val=BAUD[FREQ.numOfbaud][1];
-        DRMgr.item |= MEMSETItem;
-      }
-      else 
-      {
-        if(VOL.val <= 0)
-        {
-          VOL.val = 0;
-        }else{
-          VOL.val --;
-        }
-        DRMgr.item |= VOLItem;
-      }
-    }
-    EXTI_ClearITPendingBit(EXTI_Line10);
   }
-  
-  if (EXTI_GetITStatus(EXTI_Line11) == SET)             //K1B
+  else
   {
-    if (RF_IsTx())
+    if (AIMgr.item == WPMSETItem)
     {
-      
-    }
-    else if (!(AIMgr.item & MENUSETItem) && !(FREQ.item & MEMItem) && !(FREQ.item & VFOItem))
-    {
-    }
-    else if(GPIO_ReadInputDataBit(KEY_K1A1B_PORT, K1B) == 0)                          //下降沿
-    {
-      if (GPIO_ReadInputDataBit(KEY_K1A1B_PORT, K1A) == 0)
-         k1ForwardFlag=true;
-      else 
-         k1BackwardFlag=true;
-      IntDelay();
-    }
-    else if (k1ForwardFlag && GPIO_ReadInputDataBit(KEY_K1A1B_PORT, K1A) == 1)        //上升沿，正转
-    {
-      k1ForwardFlag=false;
-      if(AIMgr.item == MENUSETItem)
+      if (WPM.val <= 4)
       {
-        if (MENU.numOfmenu >= SIZE_OF_MENU-1)
-        {
-          MENU.numOfmenu = SIZE_OF_MENU-1;
-        }
-        else
-        {
-          MENU.numOfmenu ++; 
-        }
-        DRMgr.item |= MENUSETItem; 
+        WPM.val = 4;
       }
-      else if (AIMgr.item == MEMSETItem || FREQ.item & MEMItem)
+      else
       {
-        if (FREQ.numOfmem >= SIZE_OF_MEM-1)
-        {
-          FREQ.numOfmem = SIZE_OF_MEM-1;
-        }
-        else
-        {
-          FREQ.numOfmem ++; 
-        }
-        //FREQ.val =MEM[FREQ.numOfmem].freq;
-        MEM_Get();
-        if(AIMgr.item == MEMSETItem)
-        {
-          DRMgr.item |= MEMSETItem; 
-          DRMgr.item |= RADIOItem;
-        }
-        else
-        {
-          DRMgr.item |= FREQItem;
-          DRMgr.item |= RADIOItem;
-        }
-        DRMgr.item |= FILItem;
+        WPM.val --;
       }
-      else if (FREQ.item & VFOItem)
+      DRMgr.item |= WPMSETItem;
+    }
+    else if (AIMgr.item & MEMSETItem)         //信道模式下，K2用于选择波段
+    {
+      if (FREQ.numOfbaud == 0)
       {
-        if (FREQ.numOfbaud >= SIZE_OF_BAUD-1)
-        {
-          FREQ.numOfbaud = 0;
-        }
-        else
-        {
-          FREQ.numOfbaud ++; 
-        }
-        VFO_Get();
+        FREQ.numOfbaud = SIZE_OF_BAUD-1;
+      }
+      else
+      {
+        FREQ.numOfbaud --;
+      }
+      FREQ.val=BAUD[FREQ.numOfbaud][1];
+      DRMgr.item |= MEMSETItem;
+    }
+    else
+    {
+      if(VOL.val <= 0)
+      {
+        VOL.val = 0;
+      }else{
+        VOL.val --;
+      }
+      DRMgr.item |= VOLItem;
+    }
+  }
+}
+
+static void channel_encoder_step(int8_t step)
+{
+  if (RF_IsTx() || (!(AIMgr.item & MENUSETItem) &&
+      !(FREQ.item & MEMItem) && !(FREQ.item & VFOItem)))
+    return;
+  if (step > 0)
+  {
+    if(AIMgr.item == MENUSETItem)
+    {
+      if (MENU.numOfmenu >= SIZE_OF_MENU-1)
+      {
+        MENU.numOfmenu = SIZE_OF_MENU-1;
+      }
+      else
+      {
+        MENU.numOfmenu ++;
+      }
+      DRMgr.item |= MENUSETItem;
+    }
+    else if (AIMgr.item == MEMSETItem || FREQ.item & MEMItem)
+    {
+      if (FREQ.numOfmem >= SIZE_OF_MEM-1)
+      {
+        FREQ.numOfmem = SIZE_OF_MEM-1;
+      }
+      else
+      {
+        FREQ.numOfmem ++;
+      }
+      //FREQ.val =MEM[FREQ.numOfmem].freq;
+      MEM_Get();
+      if(AIMgr.item == MEMSETItem)
+      {
+        DRMgr.item |= MEMSETItem;
+        DRMgr.item |= RADIOItem;
+      }
+      else
+      {
         DRMgr.item |= FREQItem;
-        DRMgr.item |= RADIOItem; 
-        DRMgr.item |= FILItem;
+        DRMgr.item |= RADIOItem;
       }
+      DRMgr.item |= FILItem;
     }
-    else if (k1BackwardFlag && GPIO_ReadInputDataBit(KEY_K1A1B_PORT, K1A) == 0)        //上升沿，反转
+    else if (FREQ.item & VFOItem)
     {
-      k1BackwardFlag=false;
-      if(AIMgr.item == MENUSETItem)
+      if (FREQ.numOfbaud >= SIZE_OF_BAUD-1)
       {
-        if (MENU.numOfmenu <= 0)
-        {
-          MENU.numOfmenu = 0;
-        }
-        else
-        {
-          MENU.numOfmenu --; 
-        }
-        DRMgr.item |= MENUSETItem; 
+        FREQ.numOfbaud = 0;
       }
-      else if (AIMgr.item == MEMSETItem || FREQ.item & MEMItem)
+      else
       {
-        if (FREQ.numOfmem <= 0)
-        {
-          FREQ.numOfmem = 0;
-        }
-        else
-        {
-          FREQ.numOfmem --; 
-        }
-        //FREQ.val = MEM[FREQ.numOfmem].freq;
-        MEM_Get();
-        if(AIMgr.item == MEMSETItem)
-        {
-          DRMgr.item |= MEMSETItem;  
-          DRMgr.item |= RADIOItem;
-        }
-        else
-        {
-          DRMgr.item |= FREQItem;
-          DRMgr.item |= RADIOItem;
-        }
-        DRMgr.item |= FILItem;
+        FREQ.numOfbaud ++;
       }
-      else if (FREQ.item & VFOItem)
-      {
-        if (FREQ.numOfbaud == 0)
-        {
-          FREQ.numOfbaud = SIZE_OF_BAUD-1;
-        }
-        else
-        {
-          FREQ.numOfbaud --; 
-        }
-        VFO_Get();
-        DRMgr.item |= FREQItem;
-        DRMgr.item |= RADIOItem; 
-        DRMgr.item |= FILItem;
-      }
+      VFO_Get();
+      DRMgr.item |= FREQItem;
+      DRMgr.item |= RADIOItem;
+      DRMgr.item |= FILItem;
     }
-    EXTI_ClearITPendingBit(EXTI_Line11);
+  }
+  else
+  {
+    if(AIMgr.item == MENUSETItem)
+    {
+      if (MENU.numOfmenu <= 0)
+      {
+        MENU.numOfmenu = 0;
+      }
+      else
+      {
+        MENU.numOfmenu --;
+      }
+      DRMgr.item |= MENUSETItem;
+    }
+    else if (AIMgr.item == MEMSETItem || FREQ.item & MEMItem)
+    {
+      if (FREQ.numOfmem <= 0)
+      {
+        FREQ.numOfmem = 0;
+      }
+      else
+      {
+        FREQ.numOfmem --;
+      }
+      //FREQ.val = MEM[FREQ.numOfmem].freq;
+      MEM_Get();
+      if(AIMgr.item == MEMSETItem)
+      {
+        DRMgr.item |= MEMSETItem;
+        DRMgr.item |= RADIOItem;
+      }
+      else
+      {
+        DRMgr.item |= FREQItem;
+        DRMgr.item |= RADIOItem;
+      }
+      DRMgr.item |= FILItem;
+    }
+    else if (FREQ.item & VFOItem)
+    {
+      if (FREQ.numOfbaud == 0)
+      {
+        FREQ.numOfbaud = SIZE_OF_BAUD-1;
+      }
+      else
+      {
+        FREQ.numOfbaud --;
+      }
+      VFO_Get();
+      DRMgr.item |= FREQItem;
+      DRMgr.item |= RADIOItem;
+      DRMgr.item |= FILItem;
+    }
+  }
+}
+
+void key_timer_callback(void)
+{
+  uint8_t ch_phases = channel_phases(GPIO_ReadInputData(KEY_K1A1B_PORT));
+  uint8_t vol_phases = volume_phases(GPIO_ReadInputData(KEY_23456R1A1BK2A2B_PORT));
+#ifdef FX9A_ENCODER_TRACE
+  uint8_t raw = ch_phases | (vol_phases << 2);
+  ++encoder_trace_tick;
+  if (encoder_trace_enabled && raw != encoder_trace_previous)
+  {
+    uint32_t index = encoder_trace_count;
+    if (index < 2048)
+    {
+      encoder_trace[index][0] = encoder_trace_tick;
+      encoder_trace[index][1] = raw;
+      encoder_trace_count = index + 1;
+    }
+    else
+      encoder_trace_enabled = 0;
+  }
+  encoder_trace_previous = raw;
+  if (encoder_trace_tick % 5)
+    return;
+#endif
+  int8_t channel = encoder_update(&channel_encoder, ch_phases);
+  int8_t volume = encoder_update(&volume_encoder, vol_phases);
+  /* Always consume transitions, including while controls are inhibited. */
+  if (channel)
+    channel_encoder_step(channel);
+  if (volume)
+    volume_encoder_step(volume);
+
+  /* Preserve the existing 5 ms button, PTT and paddle scan cadence. */
+  if (++key_scan_divider == 20)
+  {
+    key_scan_divider = 0;
+    key_calback();
   }
 }

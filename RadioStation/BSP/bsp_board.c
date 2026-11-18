@@ -1,4 +1,5 @@
 #include "bsp_board.h"
+#include "bsp_frequency.h"
 #include "bsp_oled_api.h"
 #include "bsp_key.h"
 #include "bsp_adc.h"
@@ -181,10 +182,48 @@ MENU_AttrDef tMem;
 uint8_t buf[6];
 VFO_SaveDef TVFO;
 
+/* Old EEPROM images have no alignment signature. Defaults preserve the
+ * original SSB frequencies; never reinterpret unrelated reserved bytes. */
+void RX_AlignmentInit(void)
+{
+  if (MENU.rxAlignmentMagic != RX_ALIGNMENT_MAGIC ||
+      MENU.rxUsbOffset < -RX_ALIGNMENT_LIMIT || MENU.rxUsbOffset > RX_ALIGNMENT_LIMIT ||
+      MENU.rxLsbOffset < -RX_ALIGNMENT_LIMIT || MENU.rxLsbOffset > RX_ALIGNMENT_LIMIT)
+  {
+    MENU.rxUsbOffset = 0;
+    MENU.rxLsbOffset = 0;
+    MENU.rxAlignmentMagic = RX_ALIGNMENT_MAGIC;
+  }
+}
+
+static int16_t RX_AlignmentOffset(void)
+{
+  if (!RF_IsRx())
+    return 0;
+  if (RADIO.mode == USB)
+    return MENU.rxUsbOffset;
+  if (RADIO.mode == LSB)
+    return MENU.rxLsbOffset;
+  return 0;
+}
+
+static void RX_AlignmentAdjust(uint8_t pos, int16_t step)
+{
+  int16_t value = pos == RX_USB_MENU ? MENU.rxUsbOffset : MENU.rxLsbOffset;
+  value += step;
+  if (value > RX_ALIGNMENT_LIMIT) value = RX_ALIGNMENT_LIMIT;
+  if (value < -RX_ALIGNMENT_LIMIT) value = -RX_ALIGNMENT_LIMIT;
+  if (pos == RX_USB_MENU) MENU.rxUsbOffset = value;
+  else MENU.rxLsbOffset = value;
+}
+
 void ResetToDefault()
 {
   e2p_save_write(0x5a);
     
+    MENU.rxUsbOffset = 0;
+    MENU.rxLsbOffset = 0;
+    MENU.rxAlignmentMagic = RX_ALIGNMENT_MAGIC;
     MENU.delay = 8;
     MENU.freqOfbuzzer = 600;
     MENU.dutyOfbuzzer = 2;
@@ -242,6 +281,7 @@ void software_init()
   {
     ResetToDefault();
   }
+  RX_AlignmentInit();
   CWFilter.func = FIL.func;
 
   
@@ -283,7 +323,8 @@ void board_init()
   tp_init();            //一些GPIO引脚的设置
   QuietModeOn();        //静音
   
-  WaitForPowerOn();     //等待电源按钮按下一段时间
+  /* Match the original radio image: assert PC5 power hold without a
+   * second button-wait loop while the supply is still momentary. */
   
   vol_init();           //设置音量控制引脚
   
@@ -517,7 +558,12 @@ void MENU_SetUp(uint8_t pos)
     if (MENU.cwnloOffset>MAX_CWN_LO_OFFSET)
       MENU.cwnloOffset=MAX_CWN_LO_OFFSET;
     break;
+  case RX_USB_MENU:
+  case RX_LSB_MENU:
+    RX_AlignmentAdjust(pos, (FREQ.item & TSItem) ? 100 : 10);
+    break;
   default:
+    if (pos < 9 || pos >= RX_USB_MENU) break;
     if(MENU.callSign[pos - 9] == MORSE_CODE_COUNT)
     {
       MENU.numOfcall = 0;
@@ -640,7 +686,12 @@ void MENU_SetDown(uint8_t pos)
     if (MENU.cwnloOffset<(-MAX_CWN_LO_OFFSET))
       MENU.cwnloOffset=-MAX_CWN_LO_OFFSET;
     break;
+  case RX_USB_MENU:
+  case RX_LSB_MENU:
+    RX_AlignmentAdjust(pos, (FREQ.item & TSItem) ? -100 : -10);
+    break;
   default:
+    if (pos < 9 || pos >= RX_USB_MENU) break;
     if(MENU.callSign[pos - 9] == MORSE_CODE_COUNT)      // pos中包含了前面的菜单
     {
       MENU.numOfcall = MORSE_CODE_COUNT - 1;
@@ -696,6 +747,10 @@ void MENU_Ts(uint8_t pos)
     MENU.ref *= 100;
     break;
   
+  case RX_USB_MENU:
+  case RX_LSB_MENU:
+    /* TS changes the step size; do not round or alter the saved offset. */
+    break;
   default:
     FREQ.item &= ~TSItem;
     oled_ts("   ");
@@ -735,6 +790,8 @@ uint32_t Get_DDSLO(uint32_t freq)
     }
   }
   
+  /* Shift the passband without shifting the displayed RF tuning. */
+  tmp += RX_AlignmentOffset();
   return tmp;
 }
 
@@ -744,12 +801,12 @@ uint32_t Get_DDSBFO()
   if( RADIO.mode == USB)
   {
     //tmp = MENU.usbbfo; 
-    tmp = 9001500;
+    tmp = 9001500 + RX_AlignmentOffset();
   }
   else if(RADIO.mode == LSB)
   {
     //tmp = MENU.lsbbfo;
-    tmp = 8998500;
+    tmp = 8998500 + RX_AlignmentOffset();
   }
   else
   {
@@ -1238,6 +1295,7 @@ void board_refresh_manager()
         oled_mem_set(FREQ.numOfmem, FREQ.val, MemSetAll);
         MemSetAll = 0;
         MEM_Save();
+        baud_chn_ctrl(FREQ.numOfbaud);
         lo_update(Get_DDSLO(FREQ.val), MENU.ref);       //更新本振和BFO，这样在设置频道时接收可以同步
         bfo_update(Get_DDSBFO(), MENU.ref);
         if (DRMgr.item == 0)
@@ -1762,6 +1820,28 @@ void board_task()
   UART_Task();
 }
 
+/* Keep frequency, filter selection, and VFO persistence in agreement without
+ * recalling another band's saved frequency when tuning across a boundary. */
+bool Frequency_Set(uint32_t frequency)
+{
+  if (frequency < BAUD[0][0] || frequency > BAUD[SIZE_OF_BAUD-1][2])
+    return false;
+
+  uint8_t band = frequency_band(frequency, BAUD, SIZE_OF_BAUD);
+  if (band != FREQ.numOfbaud && (FREQ.item & VFOItem) &&
+      !(AIMgr.item & MEMSETItem))
+    VFO_Save();
+  FREQ.val = frequency;
+  FREQ.numOfbaud = band;
+  return true;
+}
+
+void Frequency_Tune(int32_t step)
+{
+  Frequency_Set(frequency_step(FREQ.val, step,
+                              BAUD[0][0], BAUD[SIZE_OF_BAUD-1][2]));
+}
+
 // 在W/V切换、VFOA/B切换、波段切换及菜单退出情况下，被调用
 void VFO_Get()
 {
@@ -1776,6 +1856,7 @@ void VFO_Get()
     FREQ.val = VFO.VFOA[FREQ.numOfbaud].freq;
     RADIO.mode = VFO.VFOA[FREQ.numOfbaud].mode;
   }
+  FREQ.numOfbaud = frequency_band(FREQ.val, BAUD, SIZE_OF_BAUD);
 }
 
 // 在频率和模式更新的情况下，被调用
@@ -1798,7 +1879,7 @@ void VFO_Save()
 void MEM_Get()
 {
   FREQ.val = MEM[FREQ.numOfmem].freq;
-  FREQ.numOfbaud = MEM[FREQ.numOfmem].baud;
+  FREQ.numOfbaud = frequency_band(FREQ.val, BAUD, SIZE_OF_BAUD);
   RADIO.mode = MEM[FREQ.numOfmem].mode;
 }
 

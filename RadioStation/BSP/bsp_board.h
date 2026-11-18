@@ -13,7 +13,11 @@
 
 #define SIZE_OF_BAUD 10
 #define SIZE_OF_MEM 100
-#define SIZE_OF_MENU 19         //BG6RDF 这个歌值是菜单数量+呼号字符数数量
+#define RX_USB_MENU 19
+#define RX_LSB_MENU 20
+#define RX_ALIGNMENT_LIMIT 1000
+#define RX_ALIGNMENT_MAGIC 0x31584252u
+#define SIZE_OF_MENU 21         //BG6RDF 这个歌值是菜单数量+呼号字符数数量
 
 #define UPPER_OF_RIT 9990       //取值范围参照Kenwood控制指令     BG6RDF
 #define LOWER_OF_RIT -9990
@@ -150,7 +154,10 @@ typedef struct{
   uint8_t delay;  // 0.1~1.5S 
   uint8_t cwMode; // 0:AUTO  1:MANUAL
   uint8_t vswr; //
-  uint8_t reserved[8];
+  /* Reuse the original reserved bytes; EEPROM record remains 44 bytes. */
+  int16_t rxUsbOffset;
+  int16_t rxLsbOffset;
+  uint32_t rxAlignmentMagic;
   uint8_t null;
   uint8_t numOfcall;
   uint8_t dutyOfbuzzer; // 0-29         侧音音量
@@ -217,6 +224,9 @@ extern uint8_t rf_grid_old;
 
 void board_init();
 void board_task();
+
+bool Frequency_Set(uint32_t frequency);
+void Frequency_Tune(int32_t step);
 
 void VFO_Get();
 void VFO_Save();

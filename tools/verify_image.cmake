@@ -32,8 +32,8 @@ require_symbol("(^|\n)[0-9a-f]+ T USART1_IRQHandler(\n|$)"
                "legacy CAT interface does not own USART1")
 require_symbol("(^|\n)[0-9a-f]+ T DMA1_Channel4_IRQHandler(\n|$)"
                "legacy CAT interface does not own DMA1 Channel 4")
-require_symbol("(^|\n)[0-9a-f]+ T IntDelay(\n|$)"
-               "rotary encoder debounce delay was optimized away")
+require_symbol("(^|\n)[0-9a-f]+ T key_timer_callback(\n|$)"
+               "timer-driven CH/VOL decoder is missing")
 
 execute_process(
     COMMAND "${OBJDUMP_TOOL}" -d --disassemble=delay_us "${ELF_FILE}"
