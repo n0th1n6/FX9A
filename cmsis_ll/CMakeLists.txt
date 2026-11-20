@@ -61,7 +61,7 @@ if(FX9A_BUILD_FULL)
 
     set(FX9A_STDPERIPH_SOURCES
         misc.c stm32f10x_adc.c stm32f10x_dma.c stm32f10x_exti.c
-        stm32f10x_rcc.c stm32f10x_tim.c
+        stm32f10x_tim.c
         stm32f10x_usart.c
     )
     list(TRANSFORM FX9A_STDPERIPH_SOURCES PREPEND
@@ -71,6 +71,7 @@ if(FX9A_BUILD_FULL)
         platform/startup_stm32f103_hd.s
         platform/clock.c
         drivers/fx9a_gpio_ll.c
+        drivers/fx9a_rcc_ll.c
         ${FX9A_ROOT}/port/mbed_main.c
         ${FX9A_ROOT}/port/bsp_delay.c
         ${FX9A_ROOT}/port/legacy_clock.c
