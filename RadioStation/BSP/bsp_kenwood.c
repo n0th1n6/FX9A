@@ -118,11 +118,10 @@ void Kenwood_BuildTransceiverStatus()
   buf[len ++] = ' ';
   buf[len ++] = ' ';
   
-  // P3 RIT/XIT frequency (5) BG6RDF
-  if (FREQ.item & RITItem)
-    DecToString(&buf[len], 5, (int32_t)VFO.RIT);
-  if (FREQ.item & XITItem)
-    DecToString(&buf[len], 5, (int32_t)VFO.XIT);
+  // P3 RIT/XIT frequency: always initialize all five digits.
+  int32_t shift = (FREQ.item & XITItem) ? VFO.XIT :
+                  (FREQ.item & RITItem) ? VFO.RIT : 0;
+  DecToString(&buf[len], 5, shift);
   len += 5;
   
   // P4 RIT 0:OFF / 1:ON
@@ -531,11 +530,7 @@ void Kenwood_AFGainSet(uint8_t vol)
   }
   // 软件界面0-100：发送数据0-255
   // 音量0-60
-  uint16_t tmp = vol * 100 / 255;
-  if(tmp >= 60)
-  {
-    tmp = 60;
-  }
+  uint16_t tmp = ((uint32_t)vol * 60u + 127u) / 255u;
   VOL.val = tmp;
   DRMgr.item |= VOLItem;
 }
@@ -548,7 +543,7 @@ void Kenwood_AFGainAnswer()
   buf[ len++ ] = 'A';
   buf[ len++ ] = 'G';
   buf[ len++ ] = '0';
-  uint16_t tmp = VOL.val * 255 / 100;
+  uint16_t tmp = ((uint32_t)(VOL.val > 60 ? 60 : VOL.val) * 255u + 30u) / 60u;
   DecToString(&buf[len], 3, (int32_t)tmp);
   len += 3;    
   buf[ len++ ] = ';';
