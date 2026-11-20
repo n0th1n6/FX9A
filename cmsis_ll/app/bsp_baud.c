@@ -2,17 +2,17 @@
 #include "ll_pins.h"
 
 //NE5090波段控制端，PB15/54/A0  PD8/55/A1  PD9/56/A2
-#define A0 GPIO_Pin_15
-#define A1 GPIO_Pin_8
-#define A2 GPIO_Pin_9
+#define A0 GPIO_BSRR_BS15
+#define A1 GPIO_BSRR_BS8
+#define A2 GPIO_BSRR_BS9
 #define NE5090_A0_PORT GPIOB
 #define NE5090_A12_PORT GPIOD
 
 //HC4028波段控制端，PC7/64-10(A)  PC8/65-13(B)   PC9/66-12(C)   PA8/67-11(D)
-#define A GPIO_Pin_7
-#define B GPIO_Pin_8
-#define C GPIO_Pin_9
-#define D GPIO_Pin_8
+#define A GPIO_BSRR_BS7
+#define B GPIO_BSRR_BS8
+#define C GPIO_BSRR_BS9
+#define D GPIO_BSRR_BS8
 #define HC4028_ABC_PORT GPIOC
 #define HC4028_D_PORT GPIOA
 
