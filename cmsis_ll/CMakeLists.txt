@@ -75,6 +75,7 @@ if(FX9A_BUILD_FULL)
         drivers/fx9a_irq_ll.c
         drivers/fx9a_tim_ll.c
         drivers/fx9a_dma_ll.c
+        drivers/fx9a_adc_ll.c
         ${FX9A_ROOT}/port/mbed_main.c
         ${FX9A_ROOT}/port/bsp_delay.c
         ${FX9A_ROOT}/port/legacy_clock.c
