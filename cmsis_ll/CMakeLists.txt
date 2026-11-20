@@ -60,8 +60,6 @@ if(FX9A_BUILD_FULL)
         "${FX9A_ROOT}/RadioStation/BSP/")
 
     set(FX9A_STDPERIPH_SOURCES
-        stm32f10x_adc.c
-        stm32f10x_tim.c
         stm32f10x_usart.c
     )
     list(TRANSFORM FX9A_STDPERIPH_SOURCES PREPEND
