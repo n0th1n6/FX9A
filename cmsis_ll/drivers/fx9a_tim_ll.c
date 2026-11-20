@@ -56,7 +56,8 @@ void TIM_OC4Init(TIM_TypeDef *timer, TIM_OCInitTypeDef *cfg)
     timer->CCR4 = cfg->TIM_Pulse;
     uint32_t ccer = timer->CCER;
     ccer &= ~((1u << 12) | (1u << 13));
-    ccer |= (uint32_t)cfg->TIM_OutputState & (1u << 12);
+    /* Legacy OutputState_Enable is bit 0; CC4E lives in bit 12. */
+    ccer |= ((uint32_t)cfg->TIM_OutputState & 1u) << 12;
     ccer |= ((uint32_t)cfg->TIM_OCPolarity << 12) & (1u << 13);
     timer->CCER = ccer;
 }
