@@ -2,7 +2,7 @@
  * ADC1 scans PC0..PC3 (channels 10..13) with DMA1 CH1 circular sampling.
  * The existing board's ADC_Value order and conversion behavior are retained.
  */
-#include "stm32f10x_adc.h"
+#include "fx9a_legacy_types.h"
 #include "stm32f1xx_ll_adc.h"
 
 void ADC_DeInit(ADC_TypeDef *adc)
