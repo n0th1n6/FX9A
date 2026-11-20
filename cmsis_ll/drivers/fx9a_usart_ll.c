@@ -3,6 +3,7 @@
  * Other USARTs are supported by clock lookup, not used by this board.
  */
 #include "stm32f10x_usart.h"
+#include "stm32f1xx_ll_usart.h"
 #include "stm32f10x_rcc.h"
 
 void USART_DeInit(USART_TypeDef *u)
@@ -71,8 +72,8 @@ void USART_DMACmd(USART_TypeDef *u, uint16_t mask, FunctionalState enabled)
 }
 void USART_Cmd(USART_TypeDef *u, FunctionalState enabled)
 {
-    if (enabled == ENABLE) u->CR1 |= 1u << 13;
-    else u->CR1 &= ~(1u << 13);
+    if (enabled == ENABLE) LL_USART_Enable(u);
+    else LL_USART_Disable(u);
 }
 ITStatus USART_GetITStatus(USART_TypeDef *u, uint16_t it)
 {
