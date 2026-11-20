@@ -94,7 +94,6 @@ if(FX9A_BUILD_FULL)
         ${FX9A_ST_INCLUDES}
         ${FX9A_ROOT}/port
         ${FX9A_ROOT}/RadioStation/BSP
-        ${FX9A_ROOT}/RadioStation/StdPeriph_Driver
     )
     target_compile_definitions(fx9a_full.elf PRIVATE ${FX9A_ST_DEFINES})
     target_compile_options(fx9a_full.elf PRIVATE
