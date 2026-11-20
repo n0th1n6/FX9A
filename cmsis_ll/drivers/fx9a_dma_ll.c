@@ -2,6 +2,7 @@
  * Channel 1: ADC sample ring, Channel 4: USART1 TX.
  */
 #include "stm32f10x_dma.h"
+#include "stm32f1xx_ll_dma.h"
 
 static uint32_t fx9a_channel_index(DMA_Channel_TypeDef *channel)
 {
@@ -37,8 +38,10 @@ void DMA_Init(DMA_Channel_TypeDef *channel, DMA_InitTypeDef *cfg)
 }
 void DMA_Cmd(DMA_Channel_TypeDef *channel, FunctionalState enabled)
 {
-    if (enabled == ENABLE) channel->CCR |= 1u;
-    else channel->CCR &= ~1u;
+    if (enabled == ENABLE)
+        LL_DMA_EnableChannel(DMA1, fx9a_channel_index(channel) + 1u);
+    else
+        LL_DMA_DisableChannel(DMA1, fx9a_channel_index(channel) + 1u);
 }
 void DMA_ITConfig(DMA_Channel_TypeDef *channel, uint32_t interrupt,
                   FunctionalState enabled)
