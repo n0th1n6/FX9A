@@ -2,9 +2,9 @@
 #include "ll_pins.h"
 
 // 接收衰减控制数字电位器  PD10/57/CLK   PD11/58/SDI    PD12/59/CS。 分3档 每档0-60
-#define RATT_CS   GPIO_Pin_12
-#define RATT_SDI  GPIO_Pin_11
-#define RATT_CLK  GPIO_Pin_10
+#define RATT_CS   GPIO_BSRR_BS12
+#define RATT_SDI  GPIO_BSRR_BS11
+#define RATT_CLK  GPIO_BSRR_BS10
 #define RATT_PORT GPIOD
 
 void ratt_init()
