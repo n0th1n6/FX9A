@@ -2,6 +2,95 @@
 
 This file records improvement areas identified during review of the current FX-9A firmware source. The intent is to preserve working radio behavior while improving robustness, hardware compatibility, RF safety, calibration, and maintainability.
 
+## Priority 0 — Migrate to CMSIS-Core + STM32 LL
+
+Make the long-term firmware base independent of Mbed CE and the bundled legacy STM32 Standard Peripheral Library. The target architecture is a lean bare-metal STM32F103 firmware using modern CMSIS-Core/device headers plus STM32 LL, while retaining GCC/CMake and the existing application behavior.
+
+This should **not** be a big-bang rewrite. Migrate and verify one subsystem at a time, keeping the current Mbed CE build as the known-good reference until the replacement path reaches hardware feature parity.
+
+### Target architecture
+
+```text
+FX-9A application
+  ├── radio state / TX-RX control
+  ├── frequency / VFO
+  ├── CW keyer and TUNE state
+  ├── CAT
+  ├── UI / OLED
+  ├── meters / protection
+  └── persistence
+          ↓
+project hardware abstraction
+          ↓
+STM32 LL + CMSIS-Core
+          ↓
+STM32F103
+```
+
+- [ ] Keep the existing GCC + CMake build workflow.
+- [ ] Replace Mbed CE startup/runtime dependencies with project-owned startup, vector table, linker configuration, reset/init path, and system clock setup.
+- [ ] Use current CMSIS-Core / STM32F1 device headers rather than the old bundled CMSIS copy where practical.
+- [ ] Replace the 2009 STM32 Standard Peripheral Library usage with STM32 LL or small project-local register-level helpers.
+- [ ] Avoid STM32 HAL unless a specific peripheral clearly benefits from it; prefer LL/direct access for deterministic radio control.
+- [ ] Preserve the STM32F103 72 MHz clock behavior and the existing 16 MHz board crystal configuration.
+- [ ] Preserve interrupt ownership and timing contracts currently checked by `tools/verify_image.cmake`.
+- [ ] Preserve the existing EEPROM binary layout unless an explicitly versioned migration is introduced.
+- [ ] Preserve radio behavior first; optimize/clean up only after each migrated subsystem is covered by tests or hardware checks.
+
+### Migration rule: fix each subsystem while porting it
+
+Do not simply translate old StdPeriph/Mbed calls into LL calls. When a subsystem is migrated, also implement the relevant fixes already listed below so old defects are not carried into the new hardware layer.
+
+Suggested subsystem order:
+
+1. **Startup / clock / linker / vector table**
+   - establish a fully Mbed-independent bootable image;
+   - preserve the current flash base, stack, interrupt vectors, and calibrated timing assumptions.
+2. **GPIO / basic board control**
+   - power hold, H/L power control, mute, microphone, CW filter/BFO control, TX enable;
+   - introduce explicit board-revision definitions where hardware mappings differ.
+3. **Timers / scheduler / encoder sampling**
+   - preserve the existing 250 us CH/VOL sampling and 5 ms key/PTT scan behavior;
+   - keep encoder trace support;
+   - provide the timing base needed for fast SWR protection and TUNE mode.
+4. **USART + DMA / CAT**
+   - migrate the serial hardware;
+   - at the same time fix RX buffer overflow handling, malformed commands, CAT response initialization, and AF-gain scaling;
+   - add CAT regression tests before considering the subsystem complete.
+5. **I2C / 24LC16 EEPROM**
+   - migrate the bit-banged or low-level bus implementation;
+   - at the same time fix error propagation, STOP/recovery behavior, validation, and future version/CRC support.
+6. **DDS control**
+   - migrate AD9834 / AD9951 GPIO timing;
+   - replace avoidable floating-point tuning-word calculations with explicit integer math;
+   - review the dormant AD9834 phase function.
+7. **ADC / meters / protection**
+   - migrate ADC/DMA handling;
+   - separate fast SWR protection from slow display refresh;
+   - prepare table-driven meter calibration.
+8. **Band/filter switching**
+   - move GPIO mapping into board-revision tables;
+   - support original and later FX-9A hardware mappings.
+9. **OLED / UI**
+   - migrate display timing and I/O;
+   - add the continuous-tuning ON/OFF option in the long-press BAND settings menu alongside callsign/alignment settings.
+10. **Radio state / TX-RX sequencing**
+    - move timing-critical RF sequencing out of display-refresh code;
+    - prepare/program the correct DDS state before asserting TX.
+11. **CW / automatic-tuner TUNE mode**
+    - implement the dedicated low-power TUNE state using the new timing/protection infrastructure.
+12. **Final Mbed removal**
+    - remove Mbed CE and obsolete compatibility glue only after the LL/CMSIS build passes host tests and hardware smoke tests.
+
+### Migration validation
+
+- [ ] Keep the current Mbed CE image buildable during migration for A/B comparison.
+- [ ] Compare flash/vector layout and important data structure sizes between old and new builds.
+- [ ] Extend host tests as logic is extracted from hardware-facing files.
+- [ ] Add small hardware smoke-test checkpoints after each peripheral group rather than waiting for the whole migration to finish.
+- [ ] Verify in stages with RF power disabled first, then dummy-load RX/TX checks, then controlled on-air testing.
+- [ ] Do not remove the current compatibility documentation until the CMSIS/LL path is proven on the actual radio.
+
 ## Priority 1 — Robustness and safety
 
 ### CAT / UART receive safety
@@ -188,15 +277,19 @@ The current fork already includes several important improvements that should rem
 
 ## Suggested implementation order
 
-1. CAT/UART buffer safety and CAT correctness.
-2. CAT regression tests.
-3. EEPROM error handling and recovery.
-4. Board/filter revision support.
-5. TX/RX sequencing cleanup.
-6. Faster SWR protection.
-7. Automatic-tuner TUNE mode.
-8. Meter calibration.
-9. DDS integer-math cleanup.
-10. Continuous tuning enable/disable setting.
-11. Optional tuning acceleration.
-12. Larger architectural cleanup only after the above is stable.
+The CMSIS-Core + STM32 LL migration is the umbrella workstream. Apply the other TODO fixes when their subsystem is migrated rather than postponing them until after the port.
+
+1. Establish Mbed-independent startup / clock / linker / vector support.
+2. Migrate GPIO and basic board control.
+3. Migrate timers and input scanning while preserving current encoder/key timing.
+4. Migrate USART/DMA and complete the CAT/UART safety + correctness fixes and tests.
+5. Migrate I2C/EEPROM and complete error handling, validation, and recovery improvements.
+6. Migrate DDS control and complete integer-math cleanup.
+7. Migrate ADC/protection and implement faster SWR protection.
+8. Migrate band/filter control and add hardware-revision support.
+9. Migrate OLED/UI and add the continuous-tuning enable/disable setting.
+10. Refactor TX/RX sequencing around the new hardware layer.
+11. Implement the automatic-tuner TUNE state.
+12. Add meter calibration and optional VFO acceleration.
+13. Remove Mbed CE / legacy StdPeriph only after the CMSIS/LL path is proven on hardware.
+14. Continue splitting `bsp_board.c` as the migrated subsystems acquire clear module boundaries.
