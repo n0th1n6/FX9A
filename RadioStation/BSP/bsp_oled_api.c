@@ -1714,13 +1714,17 @@ void oled_menu_set(uint8_t position)
       "PWR 1W", "PWR 5W", "PWR 10W",
       "SWR LOW", "SWR MID", "SWR HIGH"
     };
-    char number[22];
+    char number[] = "ADC: 0000   ";
     uint8_t index = position - METER_CAL_FIRST;
     if (menu_pos < METER_CAL_FIRST)
       oled_set_screen(0x00);
     Show_String0705(5, 4, "METER CALIBRATION");
     Show_String0705(5, 20, names[index]);
-    snprintf(number, sizeof number, "ADC: %04u   ", (unsigned)MeterCal_Value(index));
+    uint16_t value = MeterCal_Value(index);
+    number[5] = '0' + (value / 1000u) % 10u;
+    number[6] = '0' + (value / 100u) % 10u;
+    number[7] = '0' + (value / 10u) % 10u;
+    number[8] = '0' + value % 10u;
     Show_String0705(5, 36, number);
     Show_String0705(5, 52, "VFO / TS:STEP");
     menu_pos = position;
