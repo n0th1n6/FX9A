@@ -24,7 +24,7 @@ int main(void)
     map_device_space();
 
     /* 16 MHz HSE / 2 * 9 = 72 MHz, AHB /1, APB1 /2, APB2 /1. */
-    RCC->CFGR = (2u << 2) | (4u << 8) | (1u << 16) |
+    RCC->CFGR = (2u << 2) | (4u << 8) | (2u << 14) | (1u << 16) |
                 (1u << 17) | (7u << 18);
     RCC_ClocksTypeDef clocks = {0};
     RCC_GetClocksFreq(&clocks);
@@ -32,6 +32,7 @@ int main(void)
     assert(clocks.HCLK_Frequency == 72000000u);
     assert(clocks.PCLK1_Frequency == 36000000u);
     assert(clocks.PCLK2_Frequency == 72000000u);
+    assert(clocks.ADCCLK_Frequency == 12000000u);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
     assert(RCC->APB2ENR & RCC_APB2Periph_GPIOC);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, DISABLE);
@@ -46,6 +47,8 @@ int main(void)
     assert(((GPIOC->CRL >> 20) & 0xfu) == 0x2u);
     GPIO_SetBits(GPIOC, GPIO_Pin_5);
     assert(GPIOC->BSRR == GPIO_Pin_5);
+    GPIO_SetBits(GPIOC, GPIO_Pin_5 | GPIO_Pin_6);
+    assert(GPIOC->BSRR == (GPIO_Pin_5 | GPIO_Pin_6));
     GPIO_ResetBits(GPIOC, GPIO_Pin_5);
     assert(GPIOC->BRR == GPIO_Pin_5);
     GPIOC->IDR = GPIO_Pin_5;
