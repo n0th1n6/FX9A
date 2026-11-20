@@ -53,6 +53,23 @@ jobs:
           python3 tools/test_encoders.py
           python3 tools/test_frequency.py
           python3 tools/test_rx_alignment.py
+      - name: Host simulated STM32F1 register tests
+        run: |
+          gcc -std=c11 -O0 -fshort-enums -Wall -Wextra \
+            -DSTM32F103xE -DHSE_VALUE=16000000 -DHSI_VALUE=8000000 \
+            -Icmsis_ll/compat \
+            -Icmsis_ll/vendor/cmsis-device-f1/Include \
+            -Icmsis_ll/vendor/cmsis-core/CMSIS/Core/Include \
+            -Icmsis_ll/vendor/stm32f1xx-hal-driver/Inc \
+            cmsis_ll/tests/driver_smoke.c \
+            cmsis_ll/drivers/fx9a_gpio_ll.c \
+            cmsis_ll/drivers/fx9a_rcc_ll.c \
+            cmsis_ll/drivers/fx9a_tim_ll.c \
+            cmsis_ll/drivers/fx9a_dma_ll.c \
+            cmsis_ll/drivers/fx9a_adc_ll.c \
+            cmsis_ll/drivers/fx9a_usart_ll.c \
+            -o build-cmsis-ll/driver_smoke
+          ./build-cmsis-ll/driver_smoke
       - name: Inspect image sections
         run: |
           arm-none-eabi-size build-cmsis-ll/fx9a_boot.elf build-cmsis-ll/fx9a_full.elf
