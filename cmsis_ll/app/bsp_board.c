@@ -1420,6 +1420,16 @@ void board_refresh_manager()
 
 void key_task()
 {
+  /* Any front-panel key cancels the continuous carrier; never execute that
+   * key's normal radio action in the same iteration. PTT also cancels.
+   */
+  if (Tune_IsActive()) {
+    if (PttPressed || key_ispress(&key)) {
+      key_clear();
+      Tune_Stop();
+    }
+    return;
+  }
   if( RADIO.mode == RADIO_USB || RADIO.mode == LSB )
   {
     if( PttPressed && !PttFinish )
@@ -1522,7 +1532,10 @@ void key_task()
       }
       else if( key.state == keyLong )
       {
-        if(FREQ.item & MEMItem)
+        if ((FREQ.item & VFOItem) && !AIMgr.item) {
+          Tune_Start(); /* Long V/M when in ordinary VFO mode. */
+        }
+        else if(FREQ.item & MEMItem)
         {
           MEM_Get();
           oled_set_screen(0x00);
