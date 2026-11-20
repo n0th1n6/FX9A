@@ -81,7 +81,7 @@ static void tick(bool up) { direction = !up; EXTI2_IRQHandler(); }
 int main(void) {
     const uint32_t minimum = BAUD[0][0], maximum = BAUD[9][2];
     FREQ.item = VFOItem | VFOAItem;
-    RADIO.mode = USB;
+    RADIO.mode = RADIO_USB;
 
     /* Actual encoder path must pass the old 40 m upper edge and all gaps. */
     assert(Frequency_Set(730099)); tick(true);
@@ -93,7 +93,7 @@ int main(void) {
         uint32_t start = BAUD[i][0];
         Frequency_Set(start - 1); tick(true);
         assert(FREQ.val == start && FREQ.numOfbaud == i);
-        assert(RADIO.mode == USB); /* No saved-frequency/mode recall. */
+        assert(RADIO.mode == RADIO_USB); /* No saved-frequency/mode recall. */
         tick(false);
         assert(FREQ.val == start - 1 && FREQ.numOfbaud == i - 1);
         assert(Kenwood_VFOSet((int32_t)start));
