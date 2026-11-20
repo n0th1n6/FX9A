@@ -21,27 +21,27 @@
 //PE12/43/KEY1 是点控制。PE13/44/KEY2是划控制
 //PB0/35脚    PTT开关检测端（此脚使用电阻上拉到3.3V，在SSB模式下，按下话筒开关，开 
 //        关把此脚对地短路，把35脚电平拉低。单片机控制相应的电路发射，此脚只在SSB模式下起作用）
-#define PTT GPIO_Pin_0
-#define DIT GPIO_Pin_12
-#define DAH GPIO_Pin_13
+#define PTT GPIO_BSRR_BS0
+#define DIT GPIO_BSRR_BS12
+#define DAH GPIO_BSRR_BS13
 
-#define K1 GPIO_Pin_4
-#define K2 GPIO_Pin_5
-#define K3 GPIO_Pin_6
-#define K4 GPIO_Pin_4
-#define K5 GPIO_Pin_0
-#define K6 GPIO_Pin_1
-#define K7 GPIO_Pin_12
-#define K8 GPIO_Pin_11
+#define K1 GPIO_BSRR_BS4
+#define K2 GPIO_BSRR_BS5
+#define K3 GPIO_BSRR_BS6
+#define K4 GPIO_BSRR_BS4
+#define K5 GPIO_BSRR_BS0
+#define K6 GPIO_BSRR_BS1
+#define K7 GPIO_BSRR_BS12
+#define K8 GPIO_BSRR_BS11
 
-#define K1A GPIO_Pin_12
-#define K1B GPIO_Pin_11
+#define K1A GPIO_BSRR_BS12
+#define K1B GPIO_BSRR_BS11
 
-#define K2A GPIO_Pin_10
-#define K2B GPIO_Pin_11
+#define K2A GPIO_BSRR_BS10
+#define K2B GPIO_BSRR_BS11
 
-#define R1A GPIO_Pin_2
-#define R1B GPIO_Pin_3
+#define R1A GPIO_BSRR_BS2
+#define R1B GPIO_BSRR_BS3
 
 #define KEY_1_PORT GPIOB
 #define KEY_23456R1A1BK2A2B_PORT GPIOD
