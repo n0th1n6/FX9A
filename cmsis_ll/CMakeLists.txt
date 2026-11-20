@@ -67,8 +67,8 @@ if(FX9A_BUILD_FULL)
     set(FX9A_BSP_SOURCES
         bsp_24lc16.c bsp_ad9834.c bsp_ad9951.c bsp_adc.c bsp_baud.c
         bsp_board.c bsp_dac.c bsp_debug.c bsp_iambic_keyer.c bsp_kenwood.c
-        bsp_key.c bsp_oled.c bsp_oled_api.c bsp_pwm.c bsp_receive_att.c
-        bsp_timer.c bsp_transmit_power.c bsp_usart.c bsp_vol.c i2c.c
+        bsp_key.c bsp_oled.c bsp_oled_api.c bsp_receive_att.c
+        bsp_transmit_power.c bsp_usart.c bsp_vol.c i2c.c
     )
     list(TRANSFORM FX9A_BSP_SOURCES PREPEND
         "${FX9A_ROOT}/RadioStation/BSP/")
@@ -81,7 +81,9 @@ if(FX9A_BUILD_FULL)
         drivers/fx9a_rcc_ll.c
         drivers/fx9a_irq_ll.c
         drivers/fx9a_exti_ll.c
-        drivers/fx9a_tim_ll.c
+        app/bsp_timer.c
+        app/bsp_pwm.c
+        ${FX9A_VENDOR}/stm32f1xx-hal-driver/Src/stm32f1xx_ll_gpio.c
         drivers/fx9a_dma_ll.c
         drivers/fx9a_adc_ll.c
         drivers/fx9a_usart_ll.c
@@ -97,7 +99,7 @@ if(FX9A_BUILD_FULL)
         ${FX9A_ROOT}/port
         ${FX9A_ROOT}/RadioStation/BSP
     )
-    target_compile_definitions(fx9a_full.elf PRIVATE ${FX9A_ST_DEFINES})
+    target_compile_definitions(fx9a_full.elf PRIVATE ${FX9A_ST_DEFINES} USE_FULL_LL_DRIVER)
     target_compile_options(fx9a_full.elf PRIVATE
         $<$<COMPILE_LANGUAGE:C>:-std=c11;-Os;-fshort-enums;-fsigned-char;-Wno-deprecated-declarations;-Wno-int-conversion>
     )
