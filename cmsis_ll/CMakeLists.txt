@@ -65,10 +65,10 @@ add_custom_command(TARGET fx9a_boot.elf POST_BUILD
 option(FX9A_BUILD_FULL "Build the full radio application without Mbed" ON)
 if(FX9A_BUILD_FULL)
     set(FX9A_BSP_SOURCES
-        bsp_24lc16.c   bsp_adc.c 
+        bsp_24lc16.c    
          bsp_dac.c bsp_debug.c  bsp_kenwood.c
           bsp_oled_api.c 
-        bsp_transmit_power.c bsp_usart.c bsp_vol.c 
+        bsp_transmit_power.c  bsp_vol.c 
     )
     list(TRANSFORM FX9A_BSP_SOURCES PREPEND
         "${FX9A_ROOT}/RadioStation/BSP/")
@@ -83,6 +83,8 @@ if(FX9A_BUILD_FULL)
         drivers/fx9a_exti_ll.c
         app/bsp_timer.c
         app/bsp_pwm.c
+        app/bsp_usart.c
+        app/bsp_adc.c
         app/bsp_key.c
         app/bsp_board.c
         app/i2c.c
@@ -94,8 +96,6 @@ if(FX9A_BUILD_FULL)
         app/bsp_ad9834.c
         ${FX9A_VENDOR}/stm32f1xx-hal-driver/Src/stm32f1xx_ll_gpio.c
         drivers/fx9a_dma_ll.c
-        drivers/fx9a_adc_ll.c
-        drivers/fx9a_usart_ll.c
         platform/radio_main.c
         platform/device_contracts.c
         ${FX9A_ROOT}/port/bsp_delay.c
