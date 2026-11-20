@@ -101,17 +101,37 @@ Suggested subsystem order:
 - [ ] Verify in stages with RF power disabled first, then dummy-load RX/TX checks, then controlled on-air testing.
 - [ ] Do not remove the current compatibility documentation until the CMSIS/LL path is proven on the actual radio.
 
+## Development status — software complete, hardware verification outstanding
+
+Feature implementations and pure-logic tests are included in the independent
+`cmsis-ll-port` firmware. The combined GitHub Actions run 44717229573
+passed the build, vector, existing radio regressions, and new feature tests.
+Checks below marked complete mean **implemented in software**, not physically
+measured or approved for RF transmission.
+
+The TUNE limits (raw reflected-ADC thresholds, hold times, and DDS settling),
+SWR trip thresholds, filter wiring maps, calibration points, and TX/RX ordering
+need careful controlled measurement with RF disabled first. The new meter
+calibration slot does not modify the legacy 44-byte menu record. The
+continuous-tuning setting reuses an existing reserved menu byte and defaults ON
+when old EEPROM contents have no explicit OFF signature.
+
+Remaining software improvements include exhaustive CAT compatibility and
+recovery tests, robust EEPROM transaction error propagation/validation, optional
+main VFO encoder acceleration, and gradual source organization. Those items
+remain unchecked below.
+
 ## Priority 1 — Robustness and safety
 
 ### CAT / UART receive safety
 - [x] Add bounds checking for `UartRxBuf[32]`.
 - [x] If an incoming CAT command exceeds the buffer, discard input until the next `;` and reset the parser cleanly.
-- [ ] Add malformed-command handling and optional diagnostic/error counters.
+- [x] Add malformed-command handling and optional diagnostic/error counters.
 
 ### CAT protocol correctness
 - [ ] Initialize all fields in CAT responses before transmission.
-- [ ] Fix `IF` response RIT/XIT field so inactive RIT/XIT returns a defined value such as `00000` rather than uninitialized stack data.
-- [ ] Correct AF gain scaling:
+- [x] Fix `IF` response RIT/XIT field so inactive RIT/XIT returns a defined value such as `00000` rather than uninitialized stack data.
+- [x] Correct AF gain scaling:
   - CAT 0–255 -> internal volume 0–60.
   - Internal volume 0–60 -> CAT 0–255.
 - [ ] Review the rest of the Kenwood command implementation for incomplete or inconsistent responses.
@@ -120,7 +140,7 @@ Suggested subsystem order:
 ### EEPROM / 24LC16 reliability
 - [x] Make multi-page EEPROM writes fail immediately if any page write fails.
 - [x] Preserve the first error rather than allowing a later successful page write to make the overall operation appear successful.
-- [ ] Ensure I2C STOP / bus recovery is performed on NACK/error paths.
+- [x] Ensure I2C STOP / bus recovery is performed on NACK/error paths.
 - [ ] Consider adding a configuration version and CRC/checksum in unused EEPROM space while retaining compatibility with existing FX-9A EEPROM layouts.
 - [ ] Validate saved settings before applying them.
 
@@ -129,52 +149,52 @@ Suggested subsystem order:
 ### TX / RX sequencing
 Current code can assert the physical TX control before the DDS is updated for TX/XIT state.
 
-- [ ] Refactor TX entry so the preferred order is approximately:
+- [x] Refactor TX entry so the preferred order is approximately:
   1. Mute RX/audio path.
   2. Select TX filter/mode state.
   3. Program LO/BFO for the intended TX frequency.
   4. Allow the synthesizers to settle if required.
   5. Assert TX control.
   6. Enable microphone or CW keying path.
-- [ ] Refactor RX return so RF/keying is removed before restoring RX LO/BFO/filter state and unmuting.
-- [ ] Keep OLED/display refresh separate from timing-critical RF switching.
+- [x] Refactor RX return so RF/keying is removed before restoring RX LO/BFO/filter state and unmuting.
+- [x] Keep OLED/display refresh separate from timing-critical RF switching.
 - [ ] Verify carefully with the RF power stages disabled before on-air testing.
 
 ### Faster SWR protection
 The display-oriented SWR update path currently runs much slower than the ADC sampling capability.
 
-- [ ] Separate fast SWR protection from slow OLED meter updates.
-- [ ] Evaluate a protection interval around 5–20 ms instead of roughly 200 ms.
-- [ ] Require a small number of consecutive high-SWR readings to reject single-sample spikes.
-- [ ] Keep the existing slower smoothing/update rate for the displayed meter.
+- [x] Separate fast SWR protection from slow OLED meter updates.
+- [x] Evaluate a protection interval around 5–20 ms instead of roughly 200 ms.
+- [x] Require a small number of consecutive high-SWR readings to reject single-sample spikes.
+- [x] Keep the existing slower smoothing/update rate for the displayed meter.
 - [ ] Test shutdown timing into a controlled mismatch/dummy-load setup.
 
 ### Automatic-tuner TUNE mode
 Add a dedicated low-power TUNE state for driving an external automatic antenna tuner. This should be implemented as its own state machine rather than by reusing normal CW keyer timing.
 
-- [ ] Add explicit tune-state functions such as `Tune_Start()`, `Tune_Task()`, and `Tune_Stop()`.
-- [ ] On TUNE start:
+- [x] Add explicit tune-state functions such as `Tune_Start()`, `Tune_Task()`, and `Tune_Stop()`.
+- [x] On TUNE start:
   1. Save the current TX power setting.
   2. Force the radio to LOW power before any RF is generated.
   3. Prepare the LO/BFO and TX path for the current displayed RF frequency.
   4. Generate a steady low-power CW carrier using the existing CW TX/carrier path rather than sending a literal Morse dit/dah.
-- [ ] Do not temporarily change the user's normal `RADIO.mode` just to tune; keep TUNE as a separate operating state so USB/LSB/CW mode and displayed frequency remain intact.
-- [ ] Keep SWR protection active during TUNE, but use tune-specific persistence:
+- [x] Do not temporarily change the user's normal `RADIO.mode` just to tune; keep TUNE as a separate operating state so USB/LSB/CW mode and displayed frequency remain intact.
+- [x] Keep SWR protection active during TUNE, but use tune-specific persistence:
   - ordinary high SWR may be tolerated briefly because a tuner starts in a mismatched state;
   - extremely high reflected power must still cause an immediate abort;
   - normal TX should retain faster protection.
-- [ ] Use the existing fast ADC/SWR sampling path rather than slowing the global protection system.
-- [ ] Auto-complete tuning when SWR remains below a target threshold for a defined settling period (for example a few hundred milliseconds).
-- [ ] Add a hard maximum tune timeout so carrier generation can never continue indefinitely.
-- [ ] Stop TUNE immediately on user cancel, PTT, power-off, or another conflicting transmit/control action.
-- [ ] On TUNE exit:
+- [x] Use the existing fast ADC/SWR sampling path rather than slowing the global protection system.
+- [x] Auto-complete tuning when SWR remains below a target threshold for a defined settling period (for example a few hundred milliseconds).
+- [x] Add a hard maximum tune timeout so carrier generation can never continue indefinitely.
+- [x] Stop TUNE immediately on user cancel, PTT, power-off, or another conflicting transmit/control action.
+- [x] On TUNE exit:
   1. Remove CW carrier/keying.
   2. Return safely to RX.
   3. Restore the user's previous H/L power setting.
   4. Clear tune-specific timers/status.
-- [ ] Show a clear OLED indication such as `TUNE` and keep the SWR bar live while tuning.
-- [ ] Select a convenient front-panel long press or key combination for start/cancel without disturbing existing commonly used functions.
-- [ ] Reuse the existing dormant Kenwood CAT `CA` (CW TUNE) command if practical, e.g. start/query/cancel support after local TUNE behavior is stable.
+- [x] Show a clear OLED indication such as `TUNE` and keep the SWR bar live while tuning.
+- [x] Select a convenient front-panel long press or key combination for start/cancel without disturbing existing commonly used functions.
+- [x] Reuse the existing dormant Kenwood CAT `CA` (CW TUNE) command if practical, e.g. start/query/cancel support after local TUNE behavior is stable.
 - [ ] Add host-side tests for tune-state transitions, forced LOW power, timeout, SWR success, severe-SWR abort, cancel behavior, and restoration of the previous power setting.
 - [ ] Determine final SWR thresholds and timing experimentally on the real radio with a dummy load / controlled mismatch and the RF power stages operated conservatively.
 
@@ -183,39 +203,39 @@ Add a dedicated low-power TUNE state for driving an external automatic antenna t
 ### FX-9A filter-switching revisions
 `bsp_baud.c` documents both the original filter-switching map and the later 2016-03-09 map, but only one mapping is currently implemented.
 
-- [ ] Convert band/filter GPIO selection to a table-driven implementation.
+- [x] Convert band/filter GPIO selection to a table-driven implementation.
 - [ ] Add at least:
   - `FX9A_BOARD_ORIGINAL`
   - `FX9A_BOARD_2016_03`
-- [ ] Start as a compile-time option.
+- [x] Start as a compile-time option.
 - [ ] Consider a service-menu setting only after both mappings are confirmed on hardware.
 - [ ] Document how to identify the applicable board revision.
-- [ ] Add regression tests for the expected GPIO/filter code per band.
+- [x] Add regression tests for the expected GPIO/filter code per band.
 
 ## Priority 4 — Calibration and measurement
 
 ### S-meter, RF power, and SWR calibration
 Current meter conversion uses fixed ADC thresholds.
 
-- [ ] Replace hardcoded meter thresholds with table-driven calibration.
-- [ ] Add configurable S-meter calibration points, for example S0 / S5 / S9 / S9+20 / S9+40.
-- [ ] Add RF power calibration points, for example 1 W / 5 W / 10 W.
-- [ ] Add SWR/reflected-power calibration as practical.
-- [ ] Store calibration data in unused EEPROM space with versioning/validation.
-- [ ] Provide a service/alignment menu rather than exposing raw ADC constants in normal operation.
-- [ ] Preserve current defaults so existing radios behave the same without calibration.
+- [x] Replace hardcoded meter thresholds with table-driven calibration.
+- [x] Add configurable S-meter calibration points, for example S0 / S5 / S9 / S9+20 / S9+40.
+- [x] Add RF power calibration points, for example 1 W / 5 W / 10 W.
+- [x] Add SWR/reflected-power calibration as practical.
+- [x] Store calibration data in unused EEPROM space with versioning/validation.
+- [x] Provide a service/alignment menu rather than exposing raw ADC constants in normal operation.
+- [x] Preserve current defaults so existing radios behave the same without calibration.
 
 ## Priority 5 — DDS cleanup
 
 ### AD9834 / AD9951 tuning-word math
-- [ ] Replace avoidable floating-point DDS calculations with explicit 64-bit integer arithmetic.
-- [ ] Add rounding where appropriate.
-- [ ] Verify generated tuning words against known frequencies.
+- [x] Replace avoidable floating-point DDS calculations with explicit 64-bit integer arithmetic.
+- [x] Add rounding where appropriate.
+- [x] Verify generated tuning words against known frequencies.
 - [ ] Add host tests for LO/BFO calculation and tuning-word generation.
 
 ### Review dormant phase function
-- [ ] Review `ad9834_tx_phase()`.
-- [ ] Its input appears to be degrees but the current conversion uses `pi` in the divisor; fix or remove it if it is unused.
+- [x] Review `ad9834_tx_phase()`.
+- [x] Its input appears to be degrees but the current conversion uses `pi` in the divisor; fix or remove it if it is unused.
 - [ ] Do not change active RF behavior until hardware use is confirmed.
 
 ## Priority 6 — User-interface improvements
@@ -223,21 +243,21 @@ Current meter conversion uses fixed ADC thresholds.
 ### Continuous tuning enable / disable
 The current fork allows continuous tuning through the gaps between amateur bands. Add a user setting so this behavior can be enabled or disabled without rebuilding the firmware.
 
-- [ ] Add a `CONT TUNE` / `CONTINUOUS TUNING` ON/OFF setting.
-- [ ] Put this option in the existing settings menu entered by **long-pressing the BAND key** — the same menu that currently contains callsign setup and the RX alignment items.
-- [ ] Use the existing CH/menu navigation and main tuning control conventions rather than assigning another normal-operation button.
-- [ ] When **ON**, preserve the current behavior:
+- [x] Add a `CONT TUNE` / `CONTINUOUS TUNING` ON/OFF setting.
+- [x] Put this option in the existing settings menu entered by **long-pressing the BAND key** — the same menu that currently contains callsign setup and the RX alignment items.
+- [x] Use the existing CH/menu navigation and main tuning control conventions rather than assigning another normal-operation button.
+- [x] When **ON**, preserve the current behavior:
   - tune continuously across the full supported range;
   - allow movement through the gaps between amateur bands;
   - keep the appropriate hardware filter selected according to the current continuous-tuning boundary logic;
   - crossing a boundary must not unexpectedly recall another band's saved VFO.
-- [ ] When **OFF**, restore legacy band-limited tuning behavior:
+- [x] When **OFF**, restore legacy band-limited tuning behavior:
   - tuning remains inside the currently selected band's configured limits;
   - changing bands is done through the normal band-selection mechanism;
   - saved per-band VFO behavior remains intact.
-- [ ] Persist the setting in EEPROM while preserving compatibility with existing EEPROM images.
-- [ ] Choose a safe migration/default rule for old EEPROM records; preferably retain the current fork's continuous-tuning behavior unless the user explicitly disables it.
-- [ ] Make CAT frequency-setting behavior follow the same policy where practical, or clearly document if CAT is intentionally allowed to tune outside the front-panel band limits.
+- [x] Persist the setting in EEPROM while preserving compatibility with existing EEPROM images.
+- [x] Choose a safe migration/default rule for old EEPROM records; preferably retain the current fork's continuous-tuning behavior unless the user explicitly disables it.
+- [x] Make CAT frequency-setting behavior follow the same policy where practical, or clearly document if CAT is intentionally allowed to tune outside the front-panel band limits.
 - [ ] Extend `tools/test_frequency.py` to cover both ON and OFF modes, including lower/upper limits, band gaps, VFO recall, RIT/XIT interaction, and CAT frequency commands.
 
 ### Main optical VFO encoder
@@ -248,13 +268,13 @@ The RES20D-50-201-1 main VFO encoder is a 50 PPR optical quadrature encoder and 
   - slow rotation: fine step,
   - medium rotation: larger step,
   - fast rotation: 1 kHz or greater step.
-- [ ] Preserve TS as the explicit coarse-step control.
+- [x] Preserve TS as the explicit coarse-step control.
 - [ ] Make acceleration optional or conservative so the radio remains predictable.
 
 ### Mechanical encoder handling
 - [ ] Continue hardware testing of the newer CH/VOL quadrature decoder.
 - [ ] Verify fast-turn response and feel on the actual radio.
-- [ ] Keep `FX9A_ENCODER_TRACE` available for diagnosis.
+- [x] Keep `FX9A_ENCODER_TRACE` available for diagnosis.
 
 ## Priority 7 — Architecture and maintainability
 
@@ -271,7 +291,7 @@ The current board file combines radio state, UI state, persistence, DDS control,
   - UI/display refresh,
   - CAT command handling.
 - [ ] Preserve EEPROM ABI and known hardware behavior during refactoring.
-- [ ] Keep host regression tests around every extracted subsystem.
+- [x] Keep host regression tests around every extracted subsystem.
 
 ## Existing work to preserve
 
