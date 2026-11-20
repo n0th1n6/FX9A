@@ -1656,6 +1656,11 @@ void oled_arrows_set_1608(uint8_t position)
 
 void oled_menu_arrows_set(uint8_t position)
 {
+  if (position == CONT_TUNE_MENU)
+  {
+    arrows_pos = position;
+    return;
+  }
   if (position >= RX_USB_MENU)
   {
     Show_String0705(3, 20, position == RX_USB_MENU ? ">" : " ");
@@ -1697,9 +1702,19 @@ void oled_menu_set(uint8_t position)
   uint8_t pos_y = 12;
   uint8_t all = 0 ;
 
+  if (position == CONT_TUNE_MENU)
+  {
+    if (menu_pos != CONT_TUNE_MENU)
+      oled_set_screen(0x00);
+    Show_String0705(5, 4, "CONTINUOUS TUNING");
+    Show_String0705(10, 24, ContinuousTuning_Enabled() ? "ON " : "OFF");
+    Show_String0705(5, 52, "VFO: ON / OFF");
+    menu_pos = position;
+    return;
+  }
   if (position >= RX_USB_MENU)
   {
-    if (menu_pos < RX_USB_MENU)
+    if (menu_pos < RX_USB_MENU || menu_pos == CONT_TUNE_MENU)
       oled_set_screen(0x00);
     Show_String0705(5, 4, "RX ALIGNMENT");
     Show_RX_Alignment(20, 1, MENU.rxUsbOffset);
