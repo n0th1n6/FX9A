@@ -53,7 +53,7 @@ uint16_t hswr_timeout= 0;
 FIL_AttrDef CWFilter; 
 uint8_t MemSetMaxIndex;
 
-#define BFO_DEFAULT_VAL 8999570         //new: USB  old: 8998070 LSB
+#define BFO_DEFAULT_VAL 8999570         //new: RADIO_USB  old: 8998070 LSB
 
 uint32_t BAUD[SIZE_OF_BAUD][3] = {
   {179900, 190500, 200099},//160M:      1.799.00MHZ-2.000 .99MHZ
@@ -91,8 +91,8 @@ void vfo_init()
     }
     else
     {
-      VFO.VFOA[i].mode = USB;
-      VFO.VFOB[i].mode = USB;
+      VFO.VFOA[i].mode = RADIO_USB;
+      VFO.VFOB[i].mode = RADIO_USB;
     }
     VFO.VFOA[i].freq = BAUD[i][1];
     VFO.VFOB[i].freq = BAUD[i][1]; 
@@ -132,19 +132,19 @@ void power_key_init()
   // 34脚-PC5  电源控制脚 通电为高电平， 断电为低电平
   LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
   
-  GPIO_InitStructure.Pin = fx9a_ll_pins(GPIO_Pin_5);
+  GPIO_InitStructure.Pin = fx9a_ll_pins(GPIO_BSRR_BS5);
   GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT; GPIO_InitStructure.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
   GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
   LL_GPIO_Init(GPIOC, &GPIO_InitStructure);
   
   // PE15/46 VoiceControl : 启动为高  停止为低
-  GPIO_InitStructure.Pin = fx9a_ll_pins(GPIO_Pin_15);
+  GPIO_InitStructure.Pin = fx9a_ll_pins(GPIO_BSRR_BS15);
   GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT; GPIO_InitStructure.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
   GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
   LL_GPIO_Init(GPIOE, &GPIO_InitStructure);
   
   // PB10/47 H/L : 启动为高  停止为低
-  GPIO_InitStructure.Pin = fx9a_ll_pins(GPIO_Pin_10);
+  GPIO_InitStructure.Pin = fx9a_ll_pins(GPIO_BSRR_BS10);
   GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT; GPIO_InitStructure.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
   GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
   LL_GPIO_Init(GPIOB, &GPIO_InitStructure);
@@ -152,32 +152,32 @@ void power_key_init()
 
 void voice_control_stop()
 {
-  (GPIOE->BSRR = (GPIO_Pin_15));  
+  (GPIOE->BSRR = (GPIO_BSRR_BS15));  
 }
 
 void voice_control_start()
 {
-  (GPIOE->BRR = (GPIO_Pin_15));
+  (GPIOE->BRR = (GPIO_BSRR_BS15));
 }
 
 void power_high_on()
 {
-  (GPIOB->BSRR = (GPIO_Pin_10));  
+  (GPIOB->BSRR = (GPIO_BSRR_BS10));  
 }
 
 void power_high_off()
 {
-  (GPIOB->BRR = (GPIO_Pin_10));
+  (GPIOB->BRR = (GPIO_BSRR_BS10));
 }
 
 void power_on()
 {
-  (GPIOC->BSRR = (GPIO_Pin_5));  
+  (GPIOC->BSRR = (GPIO_BSRR_BS5));  
 }
 
 void power_off()
 {
-  (GPIOC->BRR = (GPIO_Pin_5)); 
+  (GPIOC->BRR = (GPIO_BSRR_BS5)); 
 }
 
 uint8_t save;
@@ -203,7 +203,7 @@ static int16_t RX_AlignmentOffset(void)
 {
   if (!RF_IsRx())
     return 0;
-  if (RADIO.mode == USB)
+  if (RADIO.mode == RADIO_USB)
     return MENU.rxUsbOffset;
   if (RADIO.mode == LSB)
     return MENU.rxLsbOffset;
@@ -253,7 +253,7 @@ void ResetToDefault()
     {
       MEM[i].freq = 705000;
       MEM[i].baud = 3;
-      MEM[i].mode = USB;
+      MEM[i].mode = RADIO_USB;
     }
     
     VOL.val = 2;
@@ -303,7 +303,7 @@ void WaitForPowerOn()
 {
   LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
   //先把电源按钮引脚设置为输入，90脚-PB4
-  GPIO_InitStructure.Pin = fx9a_ll_pins(GPIO_Pin_4);
+  GPIO_InitStructure.Pin = fx9a_ll_pins(GPIO_BSRR_BS4);
   GPIO_InitStructure.Mode = LL_GPIO_MODE_FLOATING;
   GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
   LL_GPIO_Init(GPIOB, &GPIO_InitStructure);
@@ -311,7 +311,7 @@ void WaitForPowerOn()
   uint32_t cnt=0;
   while(1)
   {
-   if (!((GPIOB->IDR & (GPIO_Pin_4)) != 0u))
+   if (!((GPIOB->IDR & (GPIO_BSRR_BS4)) != 0u))
      cnt++;
    else
      cnt=0;
@@ -344,7 +344,7 @@ void board_init()
   
   //如果K4,K6被按下，则恢复到默认值
   uint16_t portValue=(GPIOD->IDR);
-  if (!(portValue & GPIO_Pin_4) &&  !(portValue & GPIO_Pin_1))  //K4, K6也被按下
+  if (!(portValue & GPIO_BSRR_BS4) &&  !(portValue & GPIO_BSRR_BS1))  //K4, K6也被按下
     ResetToDefault();
 
   oled_init();
@@ -409,10 +409,10 @@ void MODE_Refresh(uint8_t all)
   if(Mode != RADIO.mode || all)
   {
     Mode = RADIO.mode;
-    if(Mode == USB)
+    if(Mode == RADIO_USB)
     {
       voice_control_start();
-      oled_lsb_usb("USB ");
+      oled_lsb_usb("RADIO_USB ");
     }
     else if(Mode == LSB)
     {
@@ -439,10 +439,10 @@ void MEM_SetModeRefresh(uint8_t all)
   if(MemSetMode != RADIO.mode || all)
   {
     MemSetMode = RADIO.mode;
-    if(MemSetMode == USB)
+    if(MemSetMode == RADIO_USB)
     {
       voice_control_start();
-      oled_lsb_usb_mem("USB ");
+      oled_lsb_usb_mem("RADIO_USB ");
     }
     else if(MemSetMode == LSB)
     {
@@ -765,7 +765,7 @@ void MENU_Ts(uint8_t pos)
 uint32_t Get_DDSLO(uint32_t freq)
 {
   int32_t tmp;
-  if( RADIO.mode == USB)
+  if( RADIO.mode == RADIO_USB)
   {
     tmp = freq * 10 + 1500; // 主频频率 倍10
   }
@@ -801,7 +801,7 @@ uint32_t Get_DDSLO(uint32_t freq)
 uint32_t Get_DDSBFO()
 {
   uint32_t tmp;
-  if( RADIO.mode == USB)
+  if( RADIO.mode == RADIO_USB)
   {
     //tmp = MENU.usbbfo; 
     tmp = 9001500 + RX_AlignmentOffset();
@@ -1346,7 +1346,7 @@ void board_refresh_manager()
 
 void key_task()
 {
-  if( RADIO.mode == USB || RADIO.mode == LSB )
+  if( RADIO.mode == RADIO_USB || RADIO.mode == LSB )
   {
     if( PttPressed && !PttFinish )
     {
@@ -1466,7 +1466,7 @@ void key_task()
       }
       
       break;
-    case 3:   // MODE键（每按一次在LSB,USB,CW之间转换）长按切换滤波器W/N
+    case 3:   // MODE键（每按一次在LSB,RADIO_USB,CW之间转换）长按切换滤波器W/N
       if ((AIMgr.item & MENUSETItem) || RF_IsTx())
       {
         
@@ -1484,13 +1484,13 @@ void key_task()
             RADIO.mode = CWB;
           }
         }
-        else if (RADIO.mode == USB)
+        else if (RADIO.mode == RADIO_USB)
         {
           RADIO.mode = LSB;         
         }
         else
         {
-          RADIO.mode = USB;
+          RADIO.mode = RADIO_USB;
         }
         
         if( AIMgr.item & MEMSETItem)
