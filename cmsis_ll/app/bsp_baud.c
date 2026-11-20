@@ -1,4 +1,5 @@
 #include "bsp_baud.h"
+#include "filter_map.h"
 #include "ll_pins.h"
 
 //NE5090波段控制端，PB15/54/A0  PD8/55/A1  PD9/56/A2
@@ -47,111 +48,22 @@ void baud_init()
 
 void baud_chn_ctrl(uint8_t numOfbaud)
 {
-  /*
-  *      原版   EN5090引脚修改：160M 第4脚/Q0     80M第5脚/Q1    60M/40M第6脚/Q2    30M第9脚/Q4   20M第7脚/Q3  17M/15M第11脚/Q6   12M/10M第10脚/Q5
-  * 2016.03.09  EN5090引脚修改：160M 第11脚/Q6    80M第10脚/Q5   60M/40M第9脚/Q4    30M第7脚/Q3   20M第6脚/Q2  17M/15M第5脚/Q1    12M/10M第4脚/Q0
-  */
-  switch(numOfbaud)
-  {
-  case 0: // 160M   EN5090:Q6-输出低电平    HC4028:Y0-输出高电平
-    (NE5090_A12_PORT->BSRR = (A2));
-    (NE5090_A12_PORT->BSRR = (A1));
-    (NE5090_A0_PORT->BRR = (A0));
-    
-    (HC4028_D_PORT->BRR = (D));
-    (HC4028_ABC_PORT->BRR = (C));
-    (HC4028_ABC_PORT->BRR = (B)); 
-    (HC4028_ABC_PORT->BRR = (A)); 
-    break;
-  case 1: // 80M      EN5090:Q5-输出低电平    HC4028:Y1-输出高电平
-    (NE5090_A12_PORT->BSRR = (A2));
-    (NE5090_A12_PORT->BRR = (A1));
-    (NE5090_A0_PORT->BSRR = (A0));
-    
-    (HC4028_D_PORT->BRR = (D));
-    (HC4028_ABC_PORT->BRR = (C));
-    (HC4028_ABC_PORT->BRR = (B)); 
-    (HC4028_ABC_PORT->BSRR = (A));
-    break;
-  case 2: // 60M      EN5090:Q4-输出低电平    HC4028:Y8-输出高电平
-    (NE5090_A12_PORT->BSRR = (A2));
-    (NE5090_A12_PORT->BRR = (A1));
-    (NE5090_A0_PORT->BRR = (A0));
-     
-    (HC4028_D_PORT->BSRR = (D));
-    (HC4028_ABC_PORT->BRR = (C));
-    (HC4028_ABC_PORT->BRR = (B)); 
-    (HC4028_ABC_PORT->BRR = (A));
-    break;
-  case 3: // 40M      EN5090:Q4-输出低电平    HC4028:Y2-输出高电平
-    (NE5090_A12_PORT->BSRR = (A2));
-    (NE5090_A12_PORT->BRR = (A1));
-    (NE5090_A0_PORT->BRR = (A0));
-    
-    (HC4028_D_PORT->BRR = (D));
-    (HC4028_ABC_PORT->BRR = (C));
-    (HC4028_ABC_PORT->BSRR = (B)); 
-    (HC4028_ABC_PORT->BRR = (A)); 
-    break;
-  case 4: // 30M    EN5090:Q3-输出低电平    HC4028:Y3-输出高电平
-    (NE5090_A12_PORT->BRR = (A2));
-    (NE5090_A12_PORT->BSRR = (A1));
-    (NE5090_A0_PORT->BSRR = (A0));
-    
-    (HC4028_D_PORT->BRR = (D));
-    (HC4028_ABC_PORT->BRR = (C));
-    (HC4028_ABC_PORT->BSRR = (B)); 
-    (HC4028_ABC_PORT->BSRR = (A));
-    break;
-  case 5: // 20M      EN5090:Q2-输出低电平    HC4028:Y4-输出高电平
-    (NE5090_A12_PORT->BRR = (A2));
-    (NE5090_A12_PORT->BSRR = (A1));
-    (NE5090_A0_PORT->BRR = (A0));
-    
-    (HC4028_D_PORT->BRR = (D));
-    (HC4028_ABC_PORT->BSRR = (C));
-    (HC4028_ABC_PORT->BRR = (B)); 
-    (HC4028_ABC_PORT->BRR = (A));
-    break;
-  case 6: // 17M    EN5090:Q1-输出低电平    HC4028:Y5-输出高电平
-    (NE5090_A12_PORT->BRR = (A2));
-    (NE5090_A12_PORT->BRR = (A1));
-    (NE5090_A0_PORT->BSRR = (A0)); 
-    
-    (HC4028_D_PORT->BRR = (D));
-    (HC4028_ABC_PORT->BSRR = (C));
-    (HC4028_ABC_PORT->BRR = (B)); 
-    (HC4028_ABC_PORT->BSRR = (A));
-    break;
-  case 7: // 15M    EN5090:Q1-输出低电平    HC4028:Y6-输出高电平
-    (NE5090_A12_PORT->BRR = (A2));
-    (NE5090_A12_PORT->BRR = (A1));
-    (NE5090_A0_PORT->BSRR = (A0)); 
-    
-    (HC4028_D_PORT->BRR = (D));
-    (HC4028_ABC_PORT->BSRR = (C));
-    (HC4028_ABC_PORT->BSRR = (B)); 
-    (HC4028_ABC_PORT->BRR = (A));
-    break;
-  case 8: // 12M      EN5090:Q0-输出低电平    HC4028:Y7-输出高电平
-    (NE5090_A12_PORT->BRR = (A2));
-    (NE5090_A12_PORT->BRR = (A1));
-    (NE5090_A0_PORT->BRR = (A0));
-    
-    (HC4028_D_PORT->BRR = (D));
-    (HC4028_ABC_PORT->BSRR = (C));
-    (HC4028_ABC_PORT->BSRR = (B)); 
-    (HC4028_ABC_PORT->BSRR = (A));
-    break;
-  case 9: // 10M      EN5090:Q0-输出低电平    HC4028:Y8-输出高电平
-    (NE5090_A12_PORT->BRR = (A2));
-    (NE5090_A12_PORT->BRR = (A1));
-    (NE5090_A0_PORT->BRR = (A0));
-    
-    (HC4028_D_PORT->BSRR = (D));
-    (HC4028_ABC_PORT->BRR = (C));
-    (HC4028_ABC_PORT->BRR = (B)); 
-    (HC4028_ABC_PORT->BSRR = (A));
-    break;
-  }
+  Fx9aBandFilter mapping = fx9a_filter_for_band(numOfbaud);
+  const uint8_t ne = mapping.ne5090_code;
+  const uint8_t hc = mapping.hc4028_code;
+
+  if (ne & 1u) NE5090_A0_PORT->BSRR = A0;
+  else NE5090_A0_PORT->BRR = A0;
+  NE5090_A12_PORT->BSRR = ((ne & 2u) ? A1 : 0u) |
+                          ((ne & 4u) ? A2 : 0u);
+  NE5090_A12_PORT->BRR = ((ne & 2u) ? 0u : A1) |
+                         ((ne & 4u) ? 0u : A2);
+  HC4028_ABC_PORT->BSRR = ((hc & 1u) ? A : 0u) |
+                          ((hc & 2u) ? B : 0u) |
+                          ((hc & 4u) ? C : 0u);
+  HC4028_ABC_PORT->BRR = ((hc & 1u) ? 0u : A) |
+                         ((hc & 2u) ? 0u : B) |
+                         ((hc & 4u) ? 0u : C);
+  if (hc & 8u) HC4028_D_PORT->BSRR = D;
+  else HC4028_D_PORT->BRR = D;
 }
