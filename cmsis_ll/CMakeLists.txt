@@ -59,11 +59,6 @@ if(FX9A_BUILD_FULL)
     list(TRANSFORM FX9A_BSP_SOURCES PREPEND
         "${FX9A_ROOT}/RadioStation/BSP/")
 
-    set(FX9A_STDPERIPH_SOURCES
-        stm32f10x_usart.c
-    )
-    list(TRANSFORM FX9A_STDPERIPH_SOURCES PREPEND
-        "${FX9A_ROOT}/RadioStation/StdPeriph_Driver/")
 
     add_executable(fx9a_full.elf
         platform/startup_stm32f103_hd.s
@@ -74,12 +69,12 @@ if(FX9A_BUILD_FULL)
         drivers/fx9a_tim_ll.c
         drivers/fx9a_dma_ll.c
         drivers/fx9a_adc_ll.c
+        drivers/fx9a_usart_ll.c
         ${FX9A_ROOT}/port/mbed_main.c
         ${FX9A_ROOT}/port/bsp_delay.c
         ${FX9A_ROOT}/port/legacy_clock.c
         ${FX9A_ROOT}/port/layout_checks.c
         ${FX9A_BSP_SOURCES}
-        ${FX9A_STDPERIPH_SOURCES}
     )
     target_include_directories(fx9a_full.elf PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/compat
