@@ -4,15 +4,15 @@ This file records improvement areas identified during review of the current FX-9
 
 ## Priority 0 — Migrate to CMSIS-Core + STM32 LL
 
-**Software port status (development branch):** The independent full application now
-builds using pinned official CMSIS-Core/STM32F1 LL headers and project-local
-LL/register-level peripheral drivers. No Mbed or 2009 StdPeriph source/header
-is included in the standalone target. Existing radio regression tests and
-host-simulated peripheral register checks pass. **Physical hardware, RF and
-timing verification remain open.** The compatibility API in
-`cmsis_ll/compat/fx9a_legacy_types.h` is project-owned and keeps existing
-application call sites intact; retiring all those caller names is optional
-cleanup after verifying behavior. See `cmsis_ll/README.md`.
+**Software port status (development branch):** The standalone complete radio
+application now compiles against pinned official STM32F1 CMSIS/LL packages
+using native peripheral calls in `cmsis_ll/app/`. Project-owned StdPeriph
+compatibility headers, wrappers and driver objects have been eliminated
+from this build. The radio's upper-sideband enum is named `RADIO_USB`
+while retaining EEPROM value 2. Automated firmware build, host logic
+tests and simulated LL register checks are the software gate; **physical
+board timing, RF safety and EEPROM behavior still require hardware tests.**
+See `cmsis_ll/README.md`.
 
 Make the long-term firmware base independent of Mbed CE and the bundled legacy STM32 Standard Peripheral Library. The target architecture is a lean bare-metal STM32F103 firmware using modern CMSIS-Core/device headers plus STM32 LL, while retaining GCC/CMake and the existing application behavior.
 
