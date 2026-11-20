@@ -228,6 +228,8 @@ extern uint8_t rf_grid_old;
 void board_init();
 void board_task();
 bool ContinuousTuning_Enabled(void);
+void RF_SwrSampleISR(void);
+void RF_SwrService(void);
 
 bool Frequency_Set(uint32_t frequency);
 void Frequency_Tune(int32_t step);
