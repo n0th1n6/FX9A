@@ -13,10 +13,10 @@
 #define INPUT   0
 
 
-// ½Ó24C16´¢´æÆ÷ PE2-1-7-WC   PE3-2-6-SCL   PE4-3-5-SDA
-#define I2C_SDA GPIO_Pin_4	
-#define I2C_SCK GPIO_Pin_3	
-#define E2P_WC  GPIO_Pin_2
+// Â½Ã“24C16Â´Â¢Â´Ã¦Ã†Ã· PE2-1-7-WC   PE3-2-6-SCL   PE4-3-5-SDA
+#define I2C_SDA GPIO_BSRR_BS4	
+#define I2C_SCK GPIO_BSRR_BS3	
+#define E2P_WC  GPIO_BSRR_BS2
 #define I2C_PORT GPIOE
 /*********************************************
 *	Global function
