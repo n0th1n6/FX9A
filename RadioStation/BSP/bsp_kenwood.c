@@ -156,12 +156,12 @@ void Kenwood_BuildTransceiverStatus()
     buf[len ++] = '1';
   }
   
-  // P9 Operating mode 1:LSB 2:USB 3:CW
+  // P9 Operating mode 1:LSB 2:RADIO_USB 3:CW
   if( RADIO.mode == LSB)
   {
     buf[len ++] = '1';
   }
-  else if(RADIO.mode == USB)
+  else if(RADIO.mode == RADIO_USB)
   {
     buf[len ++] = '2';
   }
@@ -233,12 +233,12 @@ void Kenwood_MemoryDataAnswer()
   len += 7;
   buf[len ++] = '0';
   
-  // P5 Operating mode 1:LSB 2:USB 3:CW
+  // P5 Operating mode 1:LSB 2:RADIO_USB 3:CW
   if( RADIO.mode == LSB)
   {
     buf[len ++] = '1';
   }
-  else if(RADIO.mode == USB)
+  else if(RADIO.mode == RADIO_USB)
   {
     buf[len ++] = '2';
   }
@@ -1379,7 +1379,7 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
   else if(pBuf[0] == 'R' && pBuf[1] == 'X') 
   {
     // Sets the receiver function status.
-    if( RADIO.mode == USB || RADIO.mode == LSB )
+    if( RADIO.mode == RADIO_USB || RADIO.mode == LSB )
     {
       RF_ToRx();
     }
@@ -1389,7 +1389,7 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
     // Sets the transmission mode.
     if (pBuf[2] == '0')
     {
-      if( RADIO.mode == USB || RADIO.mode == LSB )
+      if( RADIO.mode == RADIO_USB || RADIO.mode == LSB )
       {
         RF_ToTx();
       }
