@@ -96,6 +96,61 @@ The host register tests cannot model physical clock startup, interrupt timing,
 I2C bus transactions, radio RF outputs or analog measurement accuracy. Passing
 them is necessary but not sufficient for radio safety.
 
+## Experimental radio features added after the LL migration
+
+The following features have been implemented **only on `cmsis-ll-port`**
+and checked with ARM builds and host-model tests. None has been evaluated
+on the physical radio yet.
+
+- **Continuous tuning:** BAND long-press settings, item `CONTINUOUS TUNING`.
+  ON is the default for old EEPROM records and allows cross-band scanning.
+  OFF restricts both front-panel and CAT frequency setting to the selected
+  band's frequency limits. The setting is in a formerly reserved byte of the
+  original 44-byte menu record, so old EEPROM layouts are retained.
+- **Automatic antenna tuner:** Long-press **V/M** in normal VFO mode
+  starts a separate `TUNE` state. Any front-panel key, PTT, normal TX
+  conflict, severe reflected-power detection, successful tune condition or
+  10-second timeout ends it. The dormant Kenwood `CA1;` (start), `CA0;`
+  (cancel) and `CA;` (query) commands now work. TUNE physically requests
+  LOW power, uses CW carrier keying without changing `RADIO.mode`, and
+  restores the user's power setting and RX mode afterward.
+- **Fast SWR monitoring:** TIM2 samples the reflected-power ADC every
+  10 ms independently of OLED refresh. Normal TX requires three consecutive
+  high readings (~30 ms); severe readings trigger immediate RF gate removal.
+  TUNE has a 400 ms settle period and allows longer ordinary mismatch
+  persistence while never disabling the severe-reflection cutoff.
+- **TX/RX state:** LO/BFO programmed synchronously before asserting physical
+  TX control; on RX return the RF gate drops before restoring receive DDS.
+  A provisional 2 ms settling delay is not yet verified with a scope.
+- **Board revisions:** `-DFX9A_BOARD_REVISION=2016_03` (default) or
+  `-DFX9A_BOARD_REVISION=ORIGINAL`. Filter select GPIO maps are table driven
+  and have per-band host tests. Confirm the *physical* board revision first.
+- **DDS:** Integer, rounded 28-bit AD9834 and 32-bit AD9951 FTWs; fixed
+  AD9834 12-bit phase conversion. Host tests check reference values.
+- **CAT/EEPROM:** Invalid CAT frames are rejected before parsing, CAT
+  commands are serviced from the main loop rather than inside a USART ISR,
+  IF response offsets and AG volume scaling are corrected, and EEPROM NACK
+  paths release I2C with STOP; uninitialized EEPROM read defaults fixed.
+  Error recovery and exhaustive CAT compatibility are still open.
+- **Meter calibration:** Optional service screens for five S-meter, three
+  RF-power and three reflected-power points. These live in a separate
+  **30-byte record at EEPROM offset 1104**, with version and CRC16.
+  Invalid/absent calibration retains the old display conversions. Calibrated
+  readings **never** change the raw PA SWR shutdown thresholds. Edited
+  calibration is committed when exiting the BAND settings menu.
+
+**Unverified RF thresholds (provisional raw ADC units):** TUNE success
+is reflected ADC ≤75 for 500 ms after initial settling; severe abort at
+ADC ≥800; 10-second hard stop. The existing protection menu's trip level
+still determines the ordinary mismatch threshold. These values are *not*
+calibrated SWR ratios; radio measurements must establish usable limits before
+enabling RF output.
+
+The features are governed by pure-logic and register simulation tests under
+`cmsis_ll/tests/`. Regression tests do not establish the completed
+feature behavior under real GPIO, power amplifier, analog detector, EEPROM,
+or oscillator conditions.
+
 ## Hardware and release validation still required
 
 - [ ] Confirm exact STM32 model, RAM size, bootloader arrangement and flash map.
