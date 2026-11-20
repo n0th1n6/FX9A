@@ -1,6 +1,6 @@
 #include "bsp_ad9834.h"
 
-// DDS AD9834øÿ÷∆∂À  PE7/38/SDATA  PE8/39/SCLK   PE9/40/FSYNC
+// DDS AD9834ÊéßÂà∂Á´Ø  PE7/38/SDATA  PE8/39/SCLK   PE9/40/FSYNC
 #define AD9834_FSYNC GPIO_Pin_9
 #define AD9834_SCLK GPIO_Pin_8
 #define AD9834_SDATA GPIO_Pin_7
@@ -13,42 +13,42 @@ void ad9834_write(uint16_t data);
 
 void ad9834_init()
 {
-  GPIO_InitTypeDef GPIO_InitStructure;
+  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
   
-  GPIO_InitStructure.GPIO_Pin =  AD9834_FSYNC | AD9834_SCLK | AD9834_SDATA;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(AD9834_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(AD9834_FSYNC | AD9834_SCLK | AD9834_SDATA) << GPIO_PIN_MASK_POS) | (AD9834_FSYNC | AD9834_SCLK | AD9834_SDATA));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(AD9834_PORT, &GPIO_InitStructure);
   
-  GPIO_SetBits(AD9834_PORT, AD9834_FSYNC); 
-  GPIO_SetBits(AD9834_PORT, AD9834_SCLK); 
+  (AD9834_PORT->BSRR = (AD9834_FSYNC)); 
+  (AD9834_PORT->BSRR = (AD9834_SCLK)); 
 
   ad9834_write(0x2100);
-  ad9834_write(0x2308); // “ª¥Œ–‘–¥FREQREG0
+  ad9834_write(0x2308); // ‰∏ÄÊ¨°ÊÄßÂÜôFREQREG0
 }
 
 void ad9834_write(uint16_t data)
 { 
-  GPIO_ResetBits(AD9834_PORT, AD9834_FSYNC);
+  (AD9834_PORT->BRR = (AD9834_FSYNC));
 
   for(uint8_t i=0; i<16; i++)
   {
     if(data & 0x8000)
     {
-      GPIO_SetBits(AD9834_PORT, AD9834_SDATA);  
+      (AD9834_PORT->BSRR = (AD9834_SDATA));  
     }else
     {
-      GPIO_ResetBits(AD9834_PORT, AD9834_SDATA);  
+      (AD9834_PORT->BRR = (AD9834_SDATA));  
     }
     data <<= 1;
     delay_us(5);
-    GPIO_ResetBits(AD9834_PORT, AD9834_SCLK);
+    (AD9834_PORT->BRR = (AD9834_SCLK));
     delay_us(5);
-    GPIO_SetBits(AD9834_PORT, AD9834_SCLK); 
+    (AD9834_PORT->BSRR = (AD9834_SCLK)); 
     delay_us(5);
   }
   
-  GPIO_SetBits(AD9834_PORT, AD9834_FSYNC); 
+  (AD9834_PORT->BSRR = (AD9834_FSYNC)); 
 }
 
 void ad9834_tx_freq(uint32_t freq)
@@ -83,7 +83,7 @@ void bfo_update(uint32_t freq, uint32_t ref)
   }
 }
 
-//∑¢ÀÕœ‡Œª
+//ÂèëÈÄÅÁõ∏‰Ωç
 void ad9834_tx_phase(uint16_t Phase) 
 { 
   Phase %= 360;
