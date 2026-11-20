@@ -140,14 +140,14 @@ int main(void) {
                     FIL.func = narrow ? N : 0;
                     for (unsigned transmit = 0; transmit < 2; ++transmit) {
                         tx = transmit;
-                        int delta = tx ? 0 : mode == USB ? offset : mode == LSB ? -offset : 0;
-                        int lo = mode == USB ? 1500 : mode == LSB ? -1500 :
+                        int delta = tx ? 0 : mode == RADIO_USB ? offset : mode == LSB ? -offset : 0;
+                        int lo = mode == RADIO_USB ? 1500 : mode == LSB ? -1500 :
                             tx ? 0 : narrow ? MENU.cwnloOffset : 800;
-                        unsigned bfo = mode == USB ? 9001500 : mode == LSB ? 8998500 :
+                        unsigned bfo = mode == RADIO_USB ? 9001500 : mode == LSB ? 8998500 :
                             tx ? 0 : narrow ? MENU.rbfo : 9001500;
                         assert(Get_DDSLO(frequencies[i]) == frequencies[i]*10 + lo + delta);
                         assert(Get_DDSBFO() == bfo + delta);
-                        if (mode == USB || mode == LSB)
+                        if (mode == RADIO_USB || mode == LSB)
                             assert(IF + Get_DDSLO(frequencies[i]) - Get_DDSBFO() == frequencies[i]*10);
                     }
                 }
