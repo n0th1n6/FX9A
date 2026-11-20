@@ -121,6 +121,26 @@ Current meter conversion uses fixed ADC thresholds.
 
 ## Priority 6 — User-interface improvements
 
+### Continuous tuning enable / disable
+The current fork allows continuous tuning through the gaps between amateur bands. Add a user setting so this behavior can be enabled or disabled without rebuilding the firmware.
+
+- [ ] Add a `CONT TUNE` / `CONTINUOUS TUNING` ON/OFF setting.
+- [ ] Put this option in the existing settings menu entered by **long-pressing the BAND key** — the same menu that currently contains callsign setup and the RX alignment items.
+- [ ] Use the existing CH/menu navigation and main tuning control conventions rather than assigning another normal-operation button.
+- [ ] When **ON**, preserve the current behavior:
+  - tune continuously across the full supported range;
+  - allow movement through the gaps between amateur bands;
+  - keep the appropriate hardware filter selected according to the current continuous-tuning boundary logic;
+  - crossing a boundary must not unexpectedly recall another band's saved VFO.
+- [ ] When **OFF**, restore legacy band-limited tuning behavior:
+  - tuning remains inside the currently selected band's configured limits;
+  - changing bands is done through the normal band-selection mechanism;
+  - saved per-band VFO behavior remains intact.
+- [ ] Persist the setting in EEPROM while preserving compatibility with existing EEPROM images.
+- [ ] Choose a safe migration/default rule for old EEPROM records; preferably retain the current fork's continuous-tuning behavior unless the user explicitly disables it.
+- [ ] Make CAT frequency-setting behavior follow the same policy where practical, or clearly document if CAT is intentionally allowed to tune outside the front-panel band limits.
+- [ ] Extend `tools/test_frequency.py` to cover both ON and OFF modes, including lower/upper limits, band gaps, VFO recall, RIT/XIT interaction, and CAT frequency commands.
+
 ### Main optical VFO encoder
 The RES20D-50-201-1 main VFO encoder is a 50 PPR optical quadrature encoder and the existing falling-edge direction scheme is simple and appropriate.
 
@@ -177,5 +197,6 @@ The current fork already includes several important improvements that should rem
 7. Automatic-tuner TUNE mode.
 8. Meter calibration.
 9. DDS integer-math cleanup.
-10. Optional tuning acceleration.
-11. Larger architectural cleanup only after the above is stable.
+10. Continuous tuning enable/disable setting.
+11. Optional tuning acceleration.
+12. Larger architectural cleanup only after the above is stable.
