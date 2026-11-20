@@ -903,15 +903,13 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
   }
   else if(pBuf[0] == 'C' && pBuf[1] == 'A')
   {
-    // 未使用
-    if( len > 2)
-    {
-    
-    }
-    else
-    {
-      UartTx("CA0;", 4); // 0: Cancels CW TUNE/ Inactive
-    }
+    /* CA0; cancels TUNE, CA1; starts it, CA; queries it.
+     * Invalid frames do not trigger RF transmission.
+     */
+    if (len == 3 && pBuf[2] == '0') Tune_Stop();
+    else if (len == 3 && pBuf[2] == '1') Tune_Start();
+    if (len == 2 || (len == 3 && (pBuf[2] == '0' || pBuf[2] == '1')))
+      UartTx(Tune_IsActive() ? (uint8_t *)"CA1;" : (uint8_t *)"CA0;", 4);
   }
   else if(pBuf[0] == 'I' && pBuf[1] == 'D')
   {
