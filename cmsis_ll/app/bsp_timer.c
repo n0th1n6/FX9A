@@ -2,6 +2,8 @@
 #include "stm32f1xx_ll_tim.h"
 #include "stm32f1xx_ll_bus.h"
 
+extern volatile uint32_t fx9a_system_clock_hz;
+
 CallBack Tmr0CallBack;
 CallBack Tmr2CallBack;
 CallBack Tmr4CallBack;
@@ -36,7 +38,7 @@ void TMR_Init(TIM_TypeDef *timer, uint32_t hz, uint32_t period, CallBack cBack)
     LL_APB1_GRP1_ReleaseReset(peripheral);
 
     /* TIM2/3/4 run at 72 MHz with APB1 prescaler /2 (timer clock x2). */
-    const uint32_t ticks = SystemCoreClock / (hz * period);
+    const uint32_t ticks = fx9a_system_clock_hz / (hz * period);
     if (ticks == 0u || ticks > 65536u || period > 65536u) return;
     LL_TIM_SetPrescaler(timer, ticks - 1u);
     LL_TIM_SetAutoReload(timer, period - 1u);
