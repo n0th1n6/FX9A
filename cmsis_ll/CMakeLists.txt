@@ -62,6 +62,11 @@ add_custom_command(TARGET fx9a_boot.elf POST_BUILD
 # legacy peripherals while replacing the Mbed startup/runtime. The original
 # root CMake build remains untouched and continues to use Mbed CE.
 option(FX9A_BUILD_FULL "Build the full radio application without Mbed" ON)
+set(FX9A_BOARD_REVISION "2016_03" CACHE STRING "FX-9A RF filter board revision: 2016_03 or ORIGINAL")
+set_property(CACHE FX9A_BOARD_REVISION PROPERTY STRINGS 2016_03 ORIGINAL)
+if(NOT FX9A_BOARD_REVISION STREQUAL "2016_03" AND NOT FX9A_BOARD_REVISION STREQUAL "ORIGINAL")
+    message(FATAL_ERROR "Unsupported FX9A_BOARD_REVISION: ${FX9A_BOARD_REVISION}")
+endif()
 if(FX9A_BUILD_FULL)
     set(FX9A_BSP_SOURCES
         bsp_24lc16.c    
@@ -105,6 +110,9 @@ if(FX9A_BUILD_FULL)
         ${FX9A_ROOT}/RadioStation/BSP
     )
     target_compile_definitions(fx9a_full.elf PRIVATE ${FX9A_ST_DEFINES} USE_FULL_LL_DRIVER)
+    if(FX9A_BOARD_REVISION STREQUAL "ORIGINAL")
+        target_compile_definitions(fx9a_full.elf PRIVATE FX9A_BOARD_ORIGINAL)
+    endif()
     target_compile_options(fx9a_full.elf PRIVATE
         $<$<COMPILE_LANGUAGE:C>:-std=c11;-Os;-fshort-enums;-fsigned-char;-Wno-deprecated-declarations;-Wno-int-conversion>
     )
