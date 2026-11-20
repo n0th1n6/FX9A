@@ -6,6 +6,8 @@
 
 unsigned char UartRxLen = 0;
 unsigned char UartRxBuf[32];
+static bool UartRxDiscard = false;
+volatile uint32_t UartRxOverflowCount = 0;
 
 static UartTxBufDef UTBuffer;
 static bool DMA_IsReady = true;
@@ -36,10 +38,10 @@ void dma_init()
 {
   NVIC_InitTypeDef NVIC_InitStructure;
   DMA_InitTypeDef DMA_InitStructure;
-  //Æô¶¯DMAÊ±ÖÓ  
+  //å¯åŠ¨DMAæ—¶é’Ÿ  
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE); 
   
-  //DMA·¢ËÍÖĞ¶ÏÉèÖÃ  
+  //DMAå‘é€ä¸­æ–­è®¾ç½®  
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
   NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel4_IRQn;  
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;  
@@ -47,52 +49,52 @@ void dma_init()
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;  
   NVIC_Init(&NVIC_InitStructure);  
 
-  //DMA1Í¨µÀ4ÅäÖÃ  
+  //DMA1é€šé“4é…ç½®  
   DMA_DeInit(DMA1_Channel4);  
   
-  //ÍâÉèµØÖ·  
+  //å¤–è®¾åœ°å€  
   DMA_InitStructure.DMA_PeripheralBaseAddr = (u32)(&USART1->DR);
   
-  //ÄÚ´æµØÖ·  
+  //å†…å­˜åœ°å€  
   DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)Uart_Send_Buffer;
 
-  //dma´«Êä·½Ïòµ¥Ïò  
+  //dmaä¼ è¾“æ–¹å‘å•å‘  
   DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;  
   
-  //ÉèÖÃDMAÔÚ´«ÊäÊ±»º³åÇøµÄ³¤¶È  
+  //è®¾ç½®DMAåœ¨ä¼ è¾“æ—¶ç¼“å†²åŒºçš„é•¿åº¦  
   DMA_InitStructure.DMA_BufferSize = 100;  
   
-  //ÉèÖÃDMAµÄÍâÉèµİÔöÄ£Ê½£¬Ò»¸öÍâÉè  
+  //è®¾ç½®DMAçš„å¤–è®¾é€’å¢æ¨¡å¼ï¼Œä¸€ä¸ªå¤–è®¾  
   DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;  
   
-  //ÉèÖÃDMAµÄÄÚ´æµİÔöÄ£Ê½  
+  //è®¾ç½®DMAçš„å†…å­˜é€’å¢æ¨¡å¼  
   DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;  
   
-  //ÍâÉèÊı¾İ×Ö³¤  
+  //å¤–è®¾æ•°æ®å­—é•¿  
   DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;  
   
-  //ÄÚ´æÊı¾İ×Ö³¤  
+  //å†…å­˜æ•°æ®å­—é•¿  
   DMA_InitStructure.DMA_MemoryDataSize = DMA_PeripheralDataSize_Byte;  
   
-  //ÉèÖÃDMAµÄ´«ÊäÄ£Ê½  
+  //è®¾ç½®DMAçš„ä¼ è¾“æ¨¡å¼  
   DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;  
   
-  //ÉèÖÃDMAµÄÓÅÏÈ¼¶±ğ  
+  //è®¾ç½®DMAçš„ä¼˜å…ˆçº§åˆ«  
   DMA_InitStructure.DMA_Priority = DMA_Priority_High;  
   
-  //ÉèÖÃDMAµÄ2¸ömemoryÖĞµÄ±äÁ¿»¥Ïà·ÃÎÊ  
+  //è®¾ç½®DMAçš„2ä¸ªmemoryä¸­çš„å˜é‡äº’ç›¸è®¿é—®  
   DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;  
   DMA_Init(DMA1_Channel4, &DMA_InitStructure);  
   DMA_ITConfig(DMA1_Channel4, DMA_IT_TC,ENABLE);  
     
-  //Ê¹ÄÜÍ¨µÀ4  
+  //ä½¿èƒ½é€šé“4  
   //DMA_Cmd(DMA1_Channel4, ENABLE); 
 }
 void usart_init()
 {  
   NVIC_InitTypeDef NVIC_InitStructure;
   GPIO_InitTypeDef GPIO_InitStructure;
-  USART_InitTypeDef USART_InitStructure;                   //´®¿Ú³õÊ¼»¯½á¹¹ÌåÉùÃ÷
+  USART_InitTypeDef USART_InitStructure;                   //ä¸²å£åˆå§‹åŒ–ç»“æ„ä½“å£°æ˜
   USART_ClockInitTypeDef USART_ClockInitStruct;
   
   UartBufInit();
@@ -122,18 +124,18 @@ void usart_init()
   
   
   //USART_ClockInitTypeDef USART_ClockInitStruct;
-  USART_InitStructure.USART_BaudRate = 115200;      //ÉèÖÃ²¨ÌØÂÊÎª115200bps
-  USART_InitStructure.USART_WordLength = USART_WordLength_8b;  //Êı¾İÎ»8Î»
-  USART_InitStructure.USART_StopBits = USART_StopBits_1;   //Í£Ö¹Î»1Î»
-  USART_InitStructure.USART_Parity = USART_Parity_No;    //ÎŞĞ£ÑéÎ»
-  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;   //ÎŞÓ²¼şÁ÷¿Ø
-  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;     //½ÓÊÜºÍ·¢ËÍÄ£Ê½¶¼´ò¿ª
+  USART_InitStructure.USART_BaudRate = 115200;      //è®¾ç½®æ³¢ç‰¹ç‡ä¸º115200bps
+  USART_InitStructure.USART_WordLength = USART_WordLength_8b;  //æ•°æ®ä½8ä½
+  USART_InitStructure.USART_StopBits = USART_StopBits_1;   //åœæ­¢ä½1ä½
+  USART_InitStructure.USART_Parity = USART_Parity_No;    //æ— æ ¡éªŒä½
+  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;   //æ— ç¡¬ä»¶æµæ§
+  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;     //æ¥å—å’Œå‘é€æ¨¡å¼éƒ½æ‰“å¼€
   
-  USART_ClockInitStruct.USART_Clock=USART_Clock_Disable;      //´®¿ÚÊ±ÖÓ½ûÖ¹
-  USART_ClockInitStruct.USART_CPOL=USART_CPOL_Low;        //Êı¾İµÍµçÆ½ÓĞĞ§
-  USART_ClockInitStruct.USART_CPHA=USART_CPHA_2Edge;    //ÅäÖÃCPHAÊ¹Êı¾İÔÚµÚ2¸ö±ßÑØµÄÊ±ºò±»²¶»ñ
-  USART_ClockInitStruct.USART_LastBit=USART_LastBit_Disable;  // ½ûÓÃ×îºóÒ»Î»,Ê¹¶ÔÓ¦µÄÊ±ÖÓÂö³å²»»áÔÙÊä³öµ½SCLKÒı½Å
-  USART_ClockInit(USART1, &USART_ClockInitStruct);      //ÅäÖÃUSARTÓëÊ±ÖÓÏà¹ØµÄÉèÖÃ
+  USART_ClockInitStruct.USART_Clock=USART_Clock_Disable;      //ä¸²å£æ—¶é’Ÿç¦æ­¢
+  USART_ClockInitStruct.USART_CPOL=USART_CPOL_Low;        //æ•°æ®ä½ç”µå¹³æœ‰æ•ˆ
+  USART_ClockInitStruct.USART_CPHA=USART_CPHA_2Edge;    //é…ç½®CPHAä½¿æ•°æ®åœ¨ç¬¬2ä¸ªè¾¹æ²¿çš„æ—¶å€™è¢«æ•è·
+  USART_ClockInitStruct.USART_LastBit=USART_LastBit_Disable;  // ç¦ç”¨æœ€åä¸€ä½,ä½¿å¯¹åº”çš„æ—¶é’Ÿè„‰å†²ä¸ä¼šå†è¾“å‡ºåˆ°SCLKå¼•è„š
+  USART_ClockInit(USART1, &USART_ClockInitStruct);      //é…ç½®USARTä¸æ—¶é’Ÿç›¸å…³çš„è®¾ç½®
   
   // Init UART1
   USART_Init(USART1, &USART_InitStructure);
@@ -151,7 +153,7 @@ void usart_init()
   // Enable UART1 interrupts
   USART_ITConfig(USART1,USART_IT_RXNE,ENABLE);
   
-  //²ÉÓÃDMA·½Ê½·¢ËÍ  
+  //é‡‡ç”¨DMAæ–¹å¼å‘é€  
   USART_DMACmd(USART1,USART_DMAReq_Tx,ENABLE);  
 
   // Enable the UART1
@@ -202,14 +204,27 @@ unsigned char UART_TxBufSize()
 
 void usart_rx_analysis(uint8_t wdat)
 {
-  if(wdat == ';')
+  /* The CAT protocol is semicolon framed. Once a command is too long,
+   * ignore all bytes until its delimiter; otherwise the suffix might
+   * accidentally be interpreted as a fresh transmit command.
+   */
+  if (wdat == ';')
   {
-    Kenwood_CmdParser(UartRxBuf, UartRxLen);
+    if (!UartRxDiscard && UartRxLen >= 2)
+      Kenwood_CmdParser(UartRxBuf, UartRxLen);
     UartRxLen = 0;
+    UartRxDiscard = false;
   }
-  else
+  else if (!UartRxDiscard)
   {
-    UartRxBuf[ UartRxLen++ ] = wdat;
+    if (UartRxLen < sizeof UartRxBuf)
+      UartRxBuf[UartRxLen++] = wdat;
+    else
+    {
+      UartRxDiscard = true;
+      UartRxLen = 0;
+      ++UartRxOverflowCount;
+    }
   }
 }
 
@@ -230,12 +245,12 @@ void CopyTBufToDMA()
 void UART_DMAStart(uint8_t length)
 {
   DMA_IsReady = 0;
-  DMA_ClearFlag(DMA1_FLAG_TC4);      //ÇåDMA·¢ËÍÍê³É±êÖ¾
-  DMA_Cmd(DMA1_Channel4, DISABLE);   //Í£Ö¹DMA
+  DMA_ClearFlag(DMA1_FLAG_TC4);      //æ¸…DMAå‘é€å®Œæˆæ ‡å¿—
+  DMA_Cmd(DMA1_Channel4, DISABLE);   //åœæ­¢DMA
   
-  //ÉèÖÃ´«ÊäÊı¾İ³¤¶È  
-  DMA1_Channel4->CNDTR = length;      //ÖØÉè´«Êä³¤¶È
-  //´ò¿ªDMA  
+  //è®¾ç½®ä¼ è¾“æ•°æ®é•¿åº¦  
+  DMA1_Channel4->CNDTR = length;      //é‡è®¾ä¼ è¾“é•¿åº¦
+  //æ‰“å¼€DMA  
   DMA_Cmd(DMA1_Channel4,ENABLE);  
 }
 
@@ -254,15 +269,15 @@ void USART1_IRQHandler( void )
 
 }
 
-  //´®¿Ú1DMA·½Ê½·¢ËÍÖĞ¶Ï  
+  //ä¸²å£1DMAæ–¹å¼å‘é€ä¸­æ–­  
 void DMA1_Channel4_IRQHandler(void)  
 {  
-  //Çå³ı±êÖ¾Î»  
+  //æ¸…é™¤æ ‡å¿—ä½  
   DMA_ClearFlag(DMA1_FLAG_TC4);  
   
-  //¹Ø±ÕDMA  
+  //å…³é—­DMA  
   DMA_Cmd(DMA1_Channel4,DISABLE);  
 
-  //ÔÊĞíÔÙ´Î·¢ËÍ  
+  //å…è®¸å†æ¬¡å‘é€  
   DMA_IsReady = 1;  
 } 
