@@ -3,7 +3,7 @@
  * dependency on the compiled STM32 StdPeriph TIM driver in standalone builds.
  * Timer assignments: TIM2 input scan, TIM3 sidetone PWM, TIM4 CW keyer.
  */
-#include "stm32f10x_tim.h"
+#include "fx9a_legacy_types.h"
 #include "stm32f1xx_ll_tim.h"
 
 void TIM_DeInit(TIM_TypeDef *timer)
