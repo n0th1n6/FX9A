@@ -38,8 +38,11 @@ void fx9a_clock_init(void)
      */
     uint32_t cfgr = RCC->CFGR;
     cfgr &= ~((0xfu << 4) | (0x7u << 8) | (0x7u << 11) |
-              (0x3u << 16) | (0x1u << 17) | (0xfu << 18));
-    cfgr |= (0x4u << 8) | (1u << 16) | (1u << 17) | (0x7u << 18);
+              (0x3u << 14) | (0x3u << 16) | (0x1u << 17) |
+              (0xfu << 18));
+    /* APB1 /2, ADC /6 = 12 MHz (STM32F103 max ADC clock 14 MHz). */
+    cfgr |= (0x4u << 8) | (0x2u << 14) | (1u << 16) |
+            (1u << 17) | (0x7u << 18);
     RCC->CFGR = cfgr;
 
     RCC->CR |= (1u << 24); /* PLLON */
