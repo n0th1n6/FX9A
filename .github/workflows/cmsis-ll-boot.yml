@@ -36,6 +36,14 @@ jobs:
         run: |
           arm-none-eabi-size build-cmsis-ll/fx9a_boot.elf
           arm-none-eabi-objdump -h build-cmsis-ll/fx9a_boot.elf
+      - name: Compare against verified v0.1.0 release
+        run: |
+          curl --fail --location --retry 3 \
+            --output build-cmsis-ll/fx9a-v0.1.0.bin \
+            https://github.com/n0th1n6/FX9A/releases/download/v0.1.0/fx9a-v0.1.0.bin
+          python3 cmsis_ll/tests/compare_release.py \
+            --release build-cmsis-ll/fx9a-v0.1.0.bin \
+            --port build-cmsis-ll/fx9a_boot.bin
       - name: Upload debug-only images
         uses: actions/upload-artifact@v4
         with:
