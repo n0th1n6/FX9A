@@ -1132,9 +1132,10 @@ void board_refresh_manager()
         {
           grid = 0;
         }
+        uint8_t protection_grid = grid; /* Never trust user meter calibration for PA protection. */
         if (MeterCal_Active()) grid = MeterCal_Grid(2u, adc_val);
         oled_swr_grid(grid);
-        if( grid >= MENU.vswr && MENU.vswr > 0)
+        if (!Tune_IsActive() && protection_grid >= MENU.vswr && MENU.vswr > 0)
         {
           RF_ToRx();
           oled_h_vswr_disp();
