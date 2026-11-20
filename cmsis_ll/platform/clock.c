@@ -3,7 +3,7 @@
  * integration is a later milestone; no legacy StdPeriph functions are used.
  */
 #include <stdint.h>
-#include "stm32f10x.h"
+#include "stm32f1xx.h"
 
 volatile uint32_t fx9a_system_clock_hz = 8000000u;
 volatile uint32_t fx9a_clock_status = 0u;
