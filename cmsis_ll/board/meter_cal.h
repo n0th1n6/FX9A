@@ -69,4 +69,13 @@ static inline uint16_t *fx9a_cal_point(Fx9aMeterCal *cal, uint8_t index)
     if (index < 11u) return &cal->reflected[index - 8u];
     return (uint16_t *)0;
 }
+/* Optional, EEPROM-validated service calibration for displayed meters.
+ * RF protection never depends on this user-editable record.
+ */
+void MeterCal_Init(void);
+bool MeterCal_Active(void);
+uint16_t MeterCal_Value(uint8_t index);
+void MeterCal_Adjust(uint8_t position, int16_t step);
+bool MeterCal_Save(void);
+uint8_t MeterCal_Grid(uint8_t meter, uint16_t adc);
 #endif
