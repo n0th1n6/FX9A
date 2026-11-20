@@ -1,214 +1,114 @@
-# FX-9A CMSIS-Core + STM32 LL Port
+# FX-9A — standalone CMSIS-Core / STM32F1 LL firmware
 
-This directory is the development area for the Mbed-independent FX-9A firmware.
+Development branch: `cmsis-ll-port`. The `master` branch retains the
+previously tested Mbed CE firmware. Do **not** merge or flash the experimental
+image before hardware review.
 
-The working Mbed CE build remains at the repository root during the migration and acts as the known-good reference. The CMSIS/LL port is developed in parallel and should only replace the Mbed path after feature parity and hardware verification.
+## Software architecture
 
-## Branch
+The full FX-9A application now has its own startup, vector table, 16 MHz HSE /
+72 MHz PLL setup, linker script and main loop. The independent full firmware
+uses neither Mbed CE nor any old STM32 Standard Peripheral Library **source or
+header** file.
 
-Development branch:
+The project uses pinned official vendor components:
 
-`cmsis-ll-port`
+| Component | Version | Source |
+| --- | --- | --- |
+| CMSIS-Core | `5.9.0` | `ARM-software/CMSIS_5` |
+| STM32F1 CMSIS device | `v4.3.5` | `STMicroelectronics/cmsis-device-f1` |
+| STM32F1 LL driver headers | `v1.1.10` | `STMicroelectronics/stm32f1xx-hal-driver` |
 
-The `master` branch should remain the known-good radio firmware while this port is in progress.
+These files are fetched into the ignored `cmsis_ll/vendor/` directory.
+They are **not** copied into the repository. The selected MCU is
+`STM32F103xE`, with a 16 MHz HSE.
 
-## Target
+The complete application uses seven low-level peripheral modules:
 
-- MCU: STM32F103 high-density Cortex-M3 device used by the FX-9A
-- Board crystal: 16 MHz
-- System clock target: 72 MHz
-- Build system: CMake + GCC ARM Embedded
-- Runtime model: bare metal, no RTOS
-- Core layer: CMSIS-Core / STM32F1 device headers
-- Peripheral layer: STM32 LL where useful, direct register access for small timing-critical operations
-- Application logic: retain and gradually extract the existing FX-9A radio logic
-
-## Migration rule
-
-Do not perform a mechanical API translation from Mbed/StdPeriph to LL.
-
-When a subsystem is moved into this tree, also address the matching items in the root `TODO.md`. Examples:
-
-- USART/DMA migration includes CAT buffer safety and protocol fixes.
-- I2C/EEPROM migration includes error propagation and recovery.
-- ADC migration includes fast SWR protection.
-- DDS migration includes integer tuning-word math.
-- Band control migration includes hardware-revision tables.
-- UI migration includes continuous-tuning enable/disable.
-- TX/RX migration includes correct DDS-before-TX sequencing.
-- CW migration includes the low-power automatic-tuner TUNE state.
-
-## Intended layout
-
-```text
-cmsis_ll/
-├── CMakeLists.txt
-├── README.md
-├── cmake/
-│   └── arm-none-eabi-gcc.cmake
-├── app/                 # extracted radio/application logic
-├── board/               # FX-9A pin map and hardware revision data
-├── drivers/             # project-local peripheral/device drivers
-├── platform/            # startup, clock, vectors, IRQ ownership
-├── linker/              # STM32F103 linker script
-└── tests/               # port-specific host or build-time checks
-```
-
-Directories will be added as real files are migrated rather than populated with placeholder code.
-
-## First milestone — source prepared, hardware not yet validated
-
-The minimal Mbed-independent boot image sources are now in the branch. The boot
-image **is not the radio firmware** and has not been verified by flashing the
-radio. ARM GCC build and the vector/stack sanity test **passed on GitHub Actions** (run 44695123236). No hardware boot test has been performed. It uses the
-existing bundled STM32F10x CMSIS header as a *transitional dependency* and does
-not yet link the modern STM32 LL library.
-
-The minimal image:
-
-- has its own 76-entry STM32F103 high-density vector table and reset handler;
-- initializes .data and .bss without the Mbed runtime;
-- latches the board's existing PC5 power-hold signal high;
-- attempts 16 MHz HSE / 2 × 9 = 72 MHz PLL, with HSI fallback and debugger status;
-- performs no PA, TX, DDS, microphone, CW or filter control;
-- exposes debugger-readable `fx9a_boot_marker`, `fx9a_heartbeat`,
-  `fx9a_clock_status`, and `fx9a_system_clock_hz`.
-
-The planned milestone and checks are:
-
-1. Add current STM32F1 CMSIS device support and STM32 LL sources/headers.
-2. Add project-owned startup/vector table.
-3. Add linker script matching the working image layout.
-4. Configure the 16 MHz HSE and 72 MHz system clock.
-5. Boot to a minimal `main()` without Mbed.
-6. Verify vector placement, stack, clock, and a safe GPIO heartbeat or debugger-visible state.
-7. Do not enable the RF PA during this milestone.
-
-Only after this boots reliably should GPIO board control and the rest of the radio be migrated.
-
-## Build separation
-
-The existing root build remains the Mbed CE reference build.
-
-The future CMSIS/LL build will use a separate build directory, for example:
-
-```sh
-cmake -S cmsis_ll -B build-cmsis-ll \
-  -DCMAKE_TOOLCHAIN_FILE=cmsis_ll/cmake/arm-none-eabi-gcc.cmake
-cmake --build build-cmsis-ll
-```
-
-The independent CMake build now defines `fx9a_boot.elf`, plus debug-only
-`fx9a_boot.bin` and `fx9a_boot.hex`. Use an absolute toolchain file path,
-for example from the repository root:
-
-```sh
-cmake -S cmsis_ll -B build-cmsis-ll -G Ninja \
-  -DCMAKE_TOOLCHAIN_FILE="$PWD/cmsis_ll/cmake/arm-none-eabi-gcc.cmake"
-cmake --build build-cmsis-ll
-python3 cmsis_ll/tests/verify_boot_image.py build-cmsis-ll/fx9a_boot.bin
-```
-
-The Python check verifies vector-table placement and bounds only; it does not
-prove hardware compatibility. The image is **not ready for ordinary flashing**.
-Both legacy IAR and Mbed use base address `0x08000000`, which could overwrite
-a resident bootloader depending on the board; consult `DFU_BACKUP.md` and
-back up the device before any programming attempt. The flash and RAM limits
-follow the current Mbed target (256 KiB flash / 48 KiB RAM), not the IAR file's
-different RAM region. Confirm the actual chip marking and memory map first.
-
-## Safety
-
-During port bring-up:
-
-- keep RF power stages disabled where practical;
-- compare behavior against the current Mbed CE image;
-- preserve EEPROM layout and saved radio state;
-- verify DDS, filters, PTT, SWR protection, and CW timing before transmitting;
-- use a dummy load for first TX tests.
-
-## Next verification gate
-
-- [x] Build the standalone image with ARM GCC and run the vector test (GitHub Actions run 44695123236).
-- [ ] Review `fx9a_boot.map` and full ELF/vector contents before programming (the CI job already generated and checked basic vector data).
-- [ ] Confirm STM32 chip marking, RAM capacity, bootloader and flash layout.
-- [ ] Obtain full flash backup and verify readback.
-- [ ] Test through SWD with PA disabled; inspect PC5 and clock status.
-- [ ] Replace the bundled 2009 CMSIS headers with current CMSIS-Core/device pack
-      and introduce STM32F1 LL drivers for subsequent peripheral migrations.
-
-Build verification: https://github.com/n0th1n6/FX9A/actions/runs/44695123236
-
-## Full application — low-level driver migration status
-
-The independent CMake project builds two targets:
-
-- `fx9a_boot.elf`: minimal diagnostic image.
-- `fx9a_full.elf`: complete experimental radio application linked with
-  project-owned reset/clock code and no Mbed CE runtime.
-
-**First-stage peripheral replacement complete:** all compiled 2009
-StdPeriph driver source files have been removed from the standalone full
-target. Project-local register-level implementations now handle:
-
-| Subsystem | Standalone low-layer file |
+| Module | Role |
 | --- | --- |
-| GPIO + AFIO | `drivers/fx9a_gpio_ll.c` |
-| Clock enable/reset + bus clocks | `drivers/fx9a_rcc_ll.c` |
-| NVIC + EXTI | `drivers/fx9a_irq_ll.c` |
-| TIM2/TIM3/TIM4 | `drivers/fx9a_tim_ll.c` |
-| DMA1 | `drivers/fx9a_dma_ll.c` |
-| ADC1 | `drivers/fx9a_adc_ll.c` |
-| USART1 | `drivers/fx9a_usart_ll.c` |
+| `drivers/fx9a_gpio_ll.c` | GPIO/AFIO; ST LL pin I/O with correct F1 LL mask encoding |
+| `drivers/fx9a_rcc_ll.c` | ST LL bus clock enable/reset, bus clock calculations |
+| `drivers/fx9a_irq_ll.c` | CMSIS NVIC; ST LL EXTI management |
+| `drivers/fx9a_tim_ll.c` | TIM2 input scanning; TIM3 sidetone PWM; TIM4 keyer |
+| `drivers/fx9a_dma_ll.c` | DMA1 CH1 ADC sampling, CH4 USART1 TX |
+| `drivers/fx9a_adc_ll.c` | ADC1 scan/calibration, PC0–PC3 |
+| `drivers/fx9a_usart_ll.c` | USART1 / Kenwood CAT UART |
 
-The full standalone image has its own `platform/radio_main.c` and uses TIM4
-for the CW keyer without Mbed's TIM4-to-TIM5 remapping. Its compile/link test
-and pre-existing radio logic regression tests have passed in GitHub Actions.
+Where an ST LL inline call is appropriate the driver uses `LL_*`;
+F1 register-level access is retained where it is simpler or more deterministic.
+The actual radio application has an intentionally small compatibility surface
+(`compat/fx9a_legacy_types.h`) defining the *application-facing* old function
+names and structures. It does **not** import the 2009 device header or old
+peripheral libraries. Deleting all legacy API call sites in the original BSP
+would be a separate application refactor, not a missing low-level driver.
 
-**Do not confuse this stage with finished ST LL integration.** The new drivers
-are *direct-register / LL-style compatibility implementations* using
-the old `stm32f10x.h` CMSIS device header plus old declaration headers.
-Official modern `stm32f1xx_ll_*.h` API adoption, new CMSIS device headers,
-and complete removal of old compatibility declarations are still open.
-That work is required before calling the requested **full STM32 LL migration**
-complete.
+## Build
 
-Also, compile/link and host-level tests cannot guarantee the UART, DMA, ADC,
-timer, GPIO alternate-function, boot, or RF hardware behavior; this build
-is not cleared to flash or transmit. The user-facing TUNE and continuous
-tuning enable/disable features are separate TODO items and are not yet included.
+From the repository root with `git`, `cmake`, `Ninja`, Python 3, and
+`arm-none-eabi-gcc` installed:
 
-## Port completion gates
+```sh
+bash cmsis_ll/vendor/fetch_vendor.sh
+cmake -S cmsis_ll -B build-cmsis-ll -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE="$PWD/cmsis_ll/cmake/arm-none-eabi-gcc.cmake" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build-cmsis-ll
+```
 
-- [x] Full app builds independently of Mbed CE.
-- [x] All old STM32 StdPeriph driver `.c` files removed from standalone target.
-- [x] GPIO/RCC/IRQ/TIM/DMA/ADC/USART register-level replacements compile/link.
-- [x] Separate standalone `main()` and original TIM4 ownership.
-- [x] Full image vector checks and existing host radio logic tests.
-- [x] CI enforces required radio symbols and rejects linked StdPeriph source.
-- [ ] Integrate official ST STM32F1 LL headers/drivers with modern CMSIS device.
-- [ ] Remove the 2009 compatibility headers and old API aliases.
-- [ ] Add register-level host simulation or emulated-peripheral tests for
-      clock configuration, UART/DMA, ADC, EXTI, timers and GPIO pin mappings.
-- [ ] Verify the physical MCU marking and memory map.
-- [ ] Full RF-disabled hardware bring-up, followed by measured RX/TX tests.
+The independent build produces **two distinct targets**:
 
-## v0.1.0 release binary reference
+- `fx9a_boot.elf/.bin/.hex`: diagnostic boot image, **not** radio firmware.
+- `fx9a_full.elf/.bin/.hex`: complete experimental radio application,
+  including RX/TX, VFO, DDS, OLED, CAT, encoder, keyer and EEPROM code.
 
-The public v0.1.0 release contains a 53,808-byte Mbed CE firmware image
-(`fx9a-v0.1.0.bin`), described in the release notes as matching the image
-flashed and read back from the tested radio.
+Both use the current flash base `0x08000000`, 256 KiB flash and 48 KiB RAM,
+matching the previous Mbed target assumptions. Verify the actual STM32 chip,
+the saved flash image and bootloader regions before programming anything.
 
-The `cmsis_ll/tests/compare_release.py` utility compares the authenticated
-release binary to the standalone boot image. CI downloads the release, verifies
-its SHA-256 against the GitHub release digest, checks both initial stack pointers
-and Thumb reset vectors, and prints all 76 vector-table entries side by side.
-The comparison **passed** in GitHub Actions run 44695773339.
+## Automated checks
 
-This is a structural check only. It does not prove identical interrupts,
-correct PLL setup, bootloader preservation, analog/RF behavior or readiness to
-flash the standalone boot image. The source code of the port still uses
-transitional 2009 CMSIS headers; STM32 LL peripheral integration is pending.
+The GitHub Actions workflow `.github/workflows/cmsis-ll-boot.yml`:
 
-Reference: https://github.com/n0th1n6/FX9A/releases/tag/v0.1.0
-Comparison run: https://github.com/n0th1n6/FX9A/actions/runs/44695773339
+1. Downloads vendor packages at the pinned tags.
+2. Builds both independent images with ARM GCC.
+3. Checks reset vectors, stack addresses and flash image bounds.
+4. Checks that the linked full ELF contains the radio/interrupt handlers.
+5. Fails if the standalone build includes old Mbed, old CMSIS, or 2009
+   StdPeriph headers/sources.
+6. Compiles `platform/device_contracts.c`, asserting MCU IRQ positions,
+   selected peripheral register offsets and compatibility structure layouts.
+7. Runs the existing encoder, frequency and RX-alignment regression scripts.
+8. Runs `tests/driver_smoke.c` on Linux against mapped, simulated STM32F1
+   peripheral registers (RCC, GPIO, TIM, DMA, ADC and USART).
+9. Authenticates the reference v0.1.0 BIN by SHA-256 and compares boot vector
+   structure. The 53,808-byte v0.1.0 image is the previous Mbed CE release,
+   **not** functionally equivalent to the minimal boot image.
+
+The host register tests cannot model physical clock startup, interrupt timing,
+I2C bus transactions, radio RF outputs or analog measurement accuracy. Passing
+them is necessary but not sufficient for radio safety.
+
+## Runtime validation still required
+
+- [ ] Confirm exact STM32 model, RAM size, bootloader arrangement and flash map.
+- [ ] Make a full verified backup and confirm DFU programming restrictions
+      in the root `DFU_BACKUP.md`.
+- [ ] Inspect initial clock, PC5 power-hold and vector behavior under SWD.
+- [ ] Check GPIO mapping for the original and later board revisions.
+- [ ] Check encoder, TIM3 sidetone, TIM4 keyer, ADC/DMA, EEPROM and CAT
+      against the physical radio.
+- [ ] Verify LO/BFO, filter switching, protection response and TX/RX
+      sequencing before enabling RF output.
+- [ ] Only then conduct controlled dummy-load transmit measurements.
+
+The user-facing feature TODOs—low-power antenna-tuner TUNE mode,
+continuous-tuning ON/OFF in the long-press BAND menu, TX/RX sequencing
+refactor, faster SWR protection, board revision tables and calibration—are
+**not automatically implemented by the LL port**. They remain separate tasks
+in the root `TODO.md` and should be implemented and tested before making
+a new radio firmware release.
+
+Release reference:
+https://github.com/n0th1n6/FX9A/releases/tag/v0.1.0
