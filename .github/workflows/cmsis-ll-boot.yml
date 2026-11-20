@@ -33,13 +33,19 @@ jobs:
         run: |
           cmake -S cmsis_ll -B build-cmsis-ll -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="$PWD/cmsis_ll/cmake/arm-none-eabi-gcc.cmake" \
-            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
       - name: Build
         run: cmake --build build-cmsis-ll
       - name: Validate both vector tables and stacks
         run: |
           python3 cmsis_ll/tests/verify_boot_image.py build-cmsis-ll/fx9a_boot.bin
           python3 cmsis_ll/tests/verify_boot_image.py build-cmsis-ll/fx9a_full.bin
+      - name: Verify full application symbols and driver independence
+        run: |
+          python3 cmsis_ll/tests/verify_full_image.py \
+            --elf build-cmsis-ll/fx9a_full.elf \
+            --compile-commands build-cmsis-ll/compile_commands.json
       - name: Run radio logic regression tests
         run: |
           python3 tools/test_encoders.py
