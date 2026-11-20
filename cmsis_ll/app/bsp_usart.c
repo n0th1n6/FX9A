@@ -190,10 +190,10 @@ void USART1_IRQHandler( void )
 void DMA1_Channel4_IRQHandler(void)  
 {  
   //清除标志位  
-  DMA_ClearFlag(DMA1_FLAG_TC4);  
+  LL_DMA_ClearFlag_TC4(DMA1);  
   
   //关闭DMA  
-  DMA_Cmd(DMA1_Channel4,DISABLE);  
+  LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);  
 
   //允许再次发送  
   DMA_IsReady = 1;  
