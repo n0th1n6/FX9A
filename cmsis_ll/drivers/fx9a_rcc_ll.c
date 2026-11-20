@@ -3,7 +3,7 @@
  * Keeps old BSP signatures while replacing hardware access with a small
  * low-layer based on the actual RCC registers.
  */
-#include "stm32f10x_rcc.h"
+#include "fx9a_legacy_types.h"
 #include "stm32f1xx_ll_bus.h"
 
 void RCC_AHBPeriphClockCmd(uint32_t mask, FunctionalState state)
