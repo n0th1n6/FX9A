@@ -56,6 +56,8 @@ jobs:
       - name: Host simulated STM32F1 register tests
         run: |
           gcc -std=c11 -O0 -fshort-enums -Wall -Wextra \
+            -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast \
+            -include cmsis_ll/tests/host_intrinsics.h \
             -DSTM32F103xE -DHSE_VALUE=16000000 -DHSI_VALUE=8000000 \
             -Icmsis_ll/compat \
             -Icmsis_ll/vendor/cmsis-device-f1/Include \
