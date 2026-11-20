@@ -7,7 +7,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "stm32f10x_conf.h"
+#include "stm32f1xx.h"
 
 #include "bsp_delay.h"
 
@@ -17,9 +17,9 @@
 #define RX_LSB_MENU 20
 #define RX_ALIGNMENT_LIMIT 1000
 #define RX_ALIGNMENT_MAGIC 0x31584252u
-#define SIZE_OF_MENU 21         //BG6RDF Õâ¸ö¸èÖµÊÇ²Ëµ¥ÊıÁ¿+ºôºÅ×Ö·ûÊıÊıÁ¿
+#define SIZE_OF_MENU 21         //BG6RDF è¿™ä¸ªæ­Œå€¼æ˜¯èœå•æ•°é‡+å‘¼å·å­—ç¬¦æ•°æ•°é‡
 
-#define UPPER_OF_RIT 9990       //È¡Öµ·¶Î§²ÎÕÕKenwood¿ØÖÆÖ¸Áî     BG6RDF
+#define UPPER_OF_RIT 9990       //å–å€¼èŒƒå›´å‚ç…§Kenwoodæ§åˆ¶æŒ‡ä»¤     BG6RDF
 #define LOWER_OF_RIT -9990
 #define UPPER_OF_XIT 9990      //BG6RDF
 #define LOWER_OF_XIT -9990
@@ -50,7 +50,7 @@ typedef struct{
 
 typedef enum{
   LSB = 1,
-  USB = 2,
+  RADIO_USB = 2,
   CW = 3,
   CWA = 4,
   CWB = 5
@@ -61,15 +61,15 @@ typedef struct{
 }RADIO_AttrDef;
 
 
-#pragma pack(1)//Éè¶¨Îª1×Ö½Ú¶ÔÆë
+#pragma pack(1)//è®¾å®šä¸º1å­—èŠ‚å¯¹é½
 typedef struct{
   uint32_t freq;
   RADIO_ModeDef mode;
 }VFO_SaveInfo;
 #pragma pack()
 
-//#pragma pack(push) //±£´æ¶ÔÆë×´Ì¬
-//#pragma pack(1)//Éè¶¨Îª1×Ö½Ú¶ÔÆë
+//#pragma pack(push) //ä¿å­˜å¯¹é½çŠ¶æ€
+//#pragma pack(1)//è®¾å®šä¸º1å­—èŠ‚å¯¹é½
 typedef struct{
   int32_t RIT;
   int32_t XIT;
@@ -80,7 +80,7 @@ typedef struct{
   
 }VFO_SaveDef;
 //#pragma pack()
-//#pragma pack(pop)//»Ö¸´¶ÔÆë×´Ì¬
+//#pragma pack(pop)//æ¢å¤å¯¹é½çŠ¶æ€
 
 
 typedef enum{
@@ -122,15 +122,15 @@ typedef struct{
   uint16_t val;
 }WPM_AttrDef;
 
-//#pragma pack(push) //±£´æ¶ÔÆë×´Ì¬
-#pragma pack(1)//Éè¶¨Îª1×Ö½Ú¶ÔÆë
+//#pragma pack(push) //ä¿å­˜å¯¹é½çŠ¶æ€
+#pragma pack(1)//è®¾å®šä¸º1å­—èŠ‚å¯¹é½
 typedef struct{
   uint32_t freq;
   uint8_t baud;
   RADIO_ModeDef mode;
 }MEM_AttrDef;
 #pragma pack()
-//#pragma pack(pop)//»Ö¸´¶ÔÆë×´Ì¬
+//#pragma pack(pop)//æ¢å¤å¯¹é½çŠ¶æ€
 
 typedef enum{
   AUTO = 0,
@@ -141,13 +141,13 @@ typedef struct{
   uint8_t index;
 }CALL_Def;
 
-//×î´óºôºÅ³¤¶È
+//æœ€å¤§å‘¼å·é•¿åº¦
 #define MAX_CALLSIGN_LENGTH 10
-//CWÕ­´øÄ£Ê½ÏÂ±¾ÕñÆ«ÒÆÁ¿£¬ÓÃÓÚ²¹³¥¾§ÌåÂË²¨Æ÷ÖĞĞÄÆµÂÊÆ«ÒÆ
+//CWçª„å¸¦æ¨¡å¼ä¸‹æœ¬æŒ¯åç§»é‡ï¼Œç”¨äºè¡¥å¿æ™¶ä½“æ»¤æ³¢å™¨ä¸­å¿ƒé¢‘ç‡åç§»
 #define MAX_CWN_LO_OFFSET 9999
 
-//#pragma pack(push) //±£´æ¶ÔÆë×´Ì¬
-#pragma pack(1)//Éè¶¨Îª1×Ö½Ú¶ÔÆë
+//#pragma pack(push) //ä¿å­˜å¯¹é½çŠ¶æ€
+#pragma pack(1)//è®¾å®šä¸º1å­—èŠ‚å¯¹é½
 typedef struct{
   uint8_t numOfmenu;
   uint8_t key;  // 0: MODE0  1:MODE1
@@ -160,7 +160,7 @@ typedef struct{
   uint32_t rxAlignmentMagic;
   uint8_t null;
   uint8_t numOfcall;
-  uint8_t dutyOfbuzzer; // 0-29         ²àÒôÒôÁ¿
+  uint8_t dutyOfbuzzer; // 0-29         ä¾§éŸ³éŸ³é‡
   uint16_t freqOfbuzzer; // 500-1000Hz
   
   uint16_t null1;
@@ -171,10 +171,10 @@ typedef struct{
   uint32_t ref;
   uint32_t null2;
   uint8_t  callSign[MAX_CALLSIGN_LENGTH];
-  int16_t cwnloOffset;   //CWÕ­´øÄ£Ê½ÏÂ±¾ÕñÆ«ÒÆÁ¿£¬·¶Î§¡À9999Hz        BG6RDF
+  int16_t cwnloOffset;   //CWçª„å¸¦æ¨¡å¼ä¸‹æœ¬æŒ¯åç§»é‡ï¼ŒèŒƒå›´Â±9999Hz        BG6RDF
 }MENU_AttrDef;
 #pragma pack()
-//#pragma pack(pop)//»Ö¸´¶ÔÆë×´Ì¬
+//#pragma pack(pop)//æ¢å¤å¯¹é½çŠ¶æ€
 
 typedef enum{
   RADIOItem = 0x00000001,
@@ -197,7 +197,7 @@ typedef struct{
   DispRefreshItem item;
 }DispRefreshMgr;
 
-// ´¦ÓÚÉèÖÃ²Ëµ¥ÏîÊ±£¬ĞèÒª¿ØÖÆÆäËû°´¼üÊ§Ğ§£¬ÓÖÎªÍË³öÉèÖÃ×´Ì¬Ìá¹©ÒÀ¾İ
+// å¤„äºè®¾ç½®èœå•é¡¹æ—¶ï¼Œéœ€è¦æ§åˆ¶å…¶ä»–æŒ‰é”®å¤±æ•ˆï¼Œåˆä¸ºé€€å‡ºè®¾ç½®çŠ¶æ€æä¾›ä¾æ®
 typedef struct{
   uint32_t item;
 }AdjustItemMgr;
