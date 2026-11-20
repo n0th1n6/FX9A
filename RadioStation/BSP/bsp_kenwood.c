@@ -7,6 +7,7 @@
 #include "bsp_oled_api.h"
 #include "bsp_iambic_keyer.h"
 #include "bsp_key.h"
+#include "cat_validation.h"
 
 /**
  * itoa() 将整型值转换为字符串
@@ -625,8 +626,14 @@ void Kenwodd_KeyingSpeedAnswer()
   UartTx(buf, len);
 }
 //len : 指令及数据, 末尾的分号不计算在len内    BG6RDF
+volatile uint32_t CatMalformedCount;
+
 void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
-{ 
+{
+  if (!fx9a_cat_valid_frame(pBuf, len)) {
+    ++CatMalformedCount;
+    return;
+  }
   uint32_t tmp = 0;
   uint8_t buf[15];
   
@@ -1104,7 +1111,7 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
   else if(pBuf[0] == 'M' && pBuf[1] == 'R')
   {
     // Reads the Memory channel data.
-    if( pBuf[2] = '0' && pBuf[3] == '1')
+    if (len == 4 && pBuf[2] == '0' && pBuf[3] == '1')
     {
       Kenwood_MemoryDataAnswer();
     }
