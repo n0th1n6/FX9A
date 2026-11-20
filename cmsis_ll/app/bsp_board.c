@@ -107,24 +107,24 @@ void vfo_init()
 void gpio_init()
 {
       // GPIO enable clock and release Reset ,外部中断 辅助时钟必须打开
-  LL_APB2_GRP1_ReleaseReset(RCC_APB2Periph_GPIOA);
-  LL_APB2_GRP1_EnableClock(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO);
+  LL_APB2_GRP1_ReleaseReset(LL_APB2_GRP1_PERIPH_GPIOA);
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOA | LL_APB2_GRP1_PERIPH_AFIO);
       // GPIO enable clock and release Reset
-  LL_APB2_GRP1_ReleaseReset(RCC_APB2Periph_GPIOB);
-  LL_APB2_GRP1_EnableClock(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO);
+  LL_APB2_GRP1_ReleaseReset(LL_APB2_GRP1_PERIPH_GPIOB);
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB | LL_APB2_GRP1_PERIPH_AFIO);
   (AFIO->MAPR = (AFIO->MAPR & ~(7u << 24)) | (2u << 24));      /*使能SWD 禁用JTAG*/
   
       // GPIO enable clock and release Reset
-  LL_APB2_GRP1_ReleaseReset(RCC_APB2Periph_GPIOC);
-  LL_APB2_GRP1_EnableClock(RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO);
+  LL_APB2_GRP1_ReleaseReset(LL_APB2_GRP1_PERIPH_GPIOC);
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOC | LL_APB2_GRP1_PERIPH_AFIO);
   
       // GPIO enable clock and release Reset
-  LL_APB2_GRP1_ReleaseReset(RCC_APB2Periph_GPIOD);
-  LL_APB2_GRP1_EnableClock(RCC_APB2Periph_GPIOD | RCC_APB2Periph_AFIO);
+  LL_APB2_GRP1_ReleaseReset(LL_APB2_GRP1_PERIPH_GPIOD);
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOD | LL_APB2_GRP1_PERIPH_AFIO);
   
     // GPIO enable clock and release Reset
-  LL_APB2_GRP1_ReleaseReset(RCC_APB2Periph_GPIOE);
-  LL_APB2_GRP1_EnableClock(RCC_APB2Periph_GPIOE);
+  LL_APB2_GRP1_ReleaseReset(LL_APB2_GRP1_PERIPH_GPIOE);
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOE);
 }
 
 void power_key_init()
