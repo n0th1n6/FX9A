@@ -8,7 +8,7 @@
  * Pin mode layout matches STM32F1 reference manual; this file does not
  * use or link any functions from stm32f10x_gpio.c.
  */
-#include "stm32f10x_gpio.h"
+#include "fx9a_legacy_types.h"
 #include "stm32f1xx_ll_gpio.h"
 
 void GPIO_Init(GPIO_TypeDef *port, GPIO_InitTypeDef *config)
