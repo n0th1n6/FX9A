@@ -12,6 +12,13 @@
 #include "stm32f1xx.h"
 #include <stdint.h>
 
+/* Legacy FX-9A uses USB as the upper-sideband mode enum name. The newer
+ * device header defines USB as the USB peripheral pointer. No firmware code
+ * uses the USB peripheral, so reserve this identifier for the radio mode. */
+#ifdef USB
+#undef USB
+#endif
+
 #ifndef STM32F10X_HD
 #define STM32F10X_HD 1
 #endif
