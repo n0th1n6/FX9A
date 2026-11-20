@@ -2,6 +2,7 @@
 #include "tune_logic.h"
 #include "tuning_policy.h"
 #include "meter_cal.h"
+#include "settings_validation.h"
 #include "ll_pins.h"
 #include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_exti.h"
@@ -278,6 +279,52 @@ void ResetToDefault()
     e2p_menu_write(&MENU);
 }
 
+/* Validate unversioned EEPROM values before they can index band/memory
+ * tables or program synthesizers. Recover in RAM without silently rewriting
+ * the EEPROM; a future version/CRC format can distinguish missing reads.
+ */
+static void sanitize_saved_settings(void)
+{
+  VFO.CurrBaudOfVfoA = fx9a_saved_band(VFO.CurrBaudOfVfoA,
+                                      SIZE_OF_BAUD, 3u);
+  VFO.CurrBaudOfVfoB = fx9a_saved_band(VFO.CurrBaudOfVfoB,
+                                      SIZE_OF_BAUD, 3u);
+  for (uint8_t band = 0; band < SIZE_OF_BAUD; ++band) {
+    VFO_SaveInfo *a = &VFO.VFOA[band];
+    VFO_SaveInfo *b = &VFO.VFOB[band];
+    if (!fx9a_saved_frequency(a->freq, BAUD[0][0],
+                              BAUD[SIZE_OF_BAUD-1u][2]))
+      a->freq = BAUD[band][1];
+    if (!fx9a_saved_frequency(b->freq, BAUD[0][0],
+                              BAUD[SIZE_OF_BAUD-1u][2]))
+      b->freq = BAUD[band][1];
+    if (!fx9a_mode_valid(a->mode)) a->mode = band < 3u ? LSB : RADIO_USB;
+    if (!fx9a_mode_valid(b->mode)) b->mode = band < 3u ? LSB : RADIO_USB;
+  }
+  for (uint8_t i = 0; i < SIZE_OF_MEM; ++i) {
+    if (!fx9a_saved_frequency(MEM[i].freq, BAUD[0][0],
+                              BAUD[SIZE_OF_BAUD-1u][2]))
+      MEM[i].freq = BAUD[3][1];
+    MEM[i].baud = fx9a_saved_band(MEM[i].baud, SIZE_OF_BAUD, 3u);
+    if (!fx9a_mode_valid(MEM[i].mode)) MEM[i].mode = RADIO_USB;
+  }
+  if (FIL.func != W && FIL.func != N) FIL.func = W;
+  VOL.val = fx9a_saved_volume(VOL.val);
+  WPM.val = fx9a_saved_wpm(WPM.val);
+  ATT.val = ATT.val ? 1u : 0u;
+  MENU.vswr = fx9a_saved_swr(MENU.vswr);
+  MENU.delay = fx9a_saved_delay(MENU.delay);
+  if (MENU.cwMode > 1u) MENU.cwMode = AUTO;
+  if (MENU.key > 1u) MENU.key = 0u;
+  if (MENU.freqOfbuzzer < 500u || MENU.freqOfbuzzer > 1200u)
+    MENU.freqOfbuzzer = 600u;
+  if (MENU.ref < 1000000u || MENU.ref > 100000000u)
+    MENU.ref = 50000000u;
+  if (MENU.cwnloOffset > MAX_CWN_LO_OFFSET ||
+      MENU.cwnloOffset < -MAX_CWN_LO_OFFSET)
+    MENU.cwnloOffset = -1130;
+}
+
 void software_init()
 {
   //e2p_save_write(0x11);
@@ -291,6 +338,7 @@ void software_init()
     ATT.val = e2p_att_read();
     WPM.val = e2p_pwm_read();
     MENU = e2p_menu_read();
+    sanitize_saved_settings();
   }
   else  // 保存默认配置
   {
