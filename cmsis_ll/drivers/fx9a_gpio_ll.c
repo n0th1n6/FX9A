@@ -9,6 +9,7 @@
  * use or link any functions from stm32f10x_gpio.c.
  */
 #include "stm32f10x_gpio.h"
+#include "stm32f1xx_ll_gpio.h"
 
 void GPIO_Init(GPIO_TypeDef *port, GPIO_InitTypeDef *config)
 {
@@ -41,22 +42,22 @@ void GPIO_Init(GPIO_TypeDef *port, GPIO_InitTypeDef *config)
 
 void GPIO_SetBits(GPIO_TypeDef *port, uint16_t pins)
 {
-    port->BSRR = pins;
+    LL_GPIO_SetOutputPin(port, pins);
 }
 
 void GPIO_ResetBits(GPIO_TypeDef *port, uint16_t pins)
 {
-    port->BRR = pins;
+    LL_GPIO_ResetOutputPin(port, pins);
 }
 
 uint8_t GPIO_ReadInputDataBit(GPIO_TypeDef *port, uint16_t pins)
 {
-    return (port->IDR & pins) ? (uint8_t)Bit_SET : (uint8_t)Bit_RESET;
+    return LL_GPIO_IsInputPinSet(port, pins) ? (uint8_t)Bit_SET : (uint8_t)Bit_RESET;
 }
 
 uint16_t GPIO_ReadInputData(GPIO_TypeDef *port)
 {
-    return (uint16_t)port->IDR;
+    return (uint16_t)LL_GPIO_ReadInputPort(port);
 }
 
 void GPIO_PinRemapConfig(uint32_t remap, FunctionalState enabled)
