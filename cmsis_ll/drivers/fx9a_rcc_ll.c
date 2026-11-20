@@ -4,31 +4,32 @@
  * low-layer based on the actual RCC registers.
  */
 #include "stm32f10x_rcc.h"
+#include "stm32f1xx_ll_bus.h"
 
 void RCC_AHBPeriphClockCmd(uint32_t mask, FunctionalState state)
 {
-    if (state == ENABLE) RCC->AHBENR |= mask;
-    else RCC->AHBENR &= ~mask;
+    if (state == ENABLE) LL_AHB1_GRP1_EnableClock(mask);
+    else LL_AHB1_GRP1_DisableClock(mask);
 }
 void RCC_APB1PeriphClockCmd(uint32_t mask, FunctionalState state)
 {
-    if (state == ENABLE) RCC->APB1ENR |= mask;
-    else RCC->APB1ENR &= ~mask;
+    if (state == ENABLE) LL_APB1_GRP1_EnableClock(mask);
+    else LL_APB1_GRP1_DisableClock(mask);
 }
 void RCC_APB2PeriphClockCmd(uint32_t mask, FunctionalState state)
 {
-    if (state == ENABLE) RCC->APB2ENR |= mask;
-    else RCC->APB2ENR &= ~mask;
+    if (state == ENABLE) LL_APB2_GRP1_EnableClock(mask);
+    else LL_APB2_GRP1_DisableClock(mask);
 }
 void RCC_APB1PeriphResetCmd(uint32_t mask, FunctionalState state)
 {
-    if (state == ENABLE) RCC->APB1RSTR |= mask;
-    else RCC->APB1RSTR &= ~mask;
+    if (state == ENABLE) LL_APB1_GRP1_ForceReset(mask);
+    else LL_APB1_GRP1_ReleaseReset(mask);
 }
 void RCC_APB2PeriphResetCmd(uint32_t mask, FunctionalState state)
 {
-    if (state == ENABLE) RCC->APB2RSTR |= mask;
-    else RCC->APB2RSTR &= ~mask;
+    if (state == ENABLE) LL_APB2_GRP1_ForceReset(mask);
+    else LL_APB2_GRP1_ReleaseReset(mask);
 }
 void RCC_GetClocksFreq(RCC_ClocksTypeDef *clocks)
 {
