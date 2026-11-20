@@ -4,7 +4,7 @@
  */
 #include "fx9a_legacy_types.h"
 #include "stm32f1xx_ll_usart.h"
-#include "stm32f10x_rcc.h"
+
 
 void USART_DeInit(USART_TypeDef *u)
 {
