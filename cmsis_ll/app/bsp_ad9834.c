@@ -1,4 +1,5 @@
 #include "bsp_ad9834.h"
+#include "dds_math.h"
 #include "ll_pins.h"
 
 // DDS AD9834控制端  PE7/38/SDATA  PE8/39/SCLK   PE9/40/FSYNC
@@ -55,18 +56,14 @@ void ad9834_write(uint16_t data)
 
 void ad9834_tx_freq(uint32_t freq)
 { 
-  uint32_t temp; 
-  freq=freq*16384/(FCLK*1000000)*16384; 
-
-  temp=freq;    
+  uint32_t temp = fx9a_ad9834_ftw(freq, FCLK * 1000000u);    
   ad9834_write(temp/0x4000+0x4000); 
   ad9834_write(temp%0x4000+0x4000); 
 } 
 
 void ad9834_freq(uint32_t freq, uint32_t refClk)
 { 
-  unsigned long temp; 
-  temp = (unsigned long)(268435456.0 / refClk * freq);
+  uint32_t temp = fx9a_ad9834_ftw(freq, refClk);
   //temp = freq*4294967296/16/refClk; //8053063680000000 161061273.6
   
   ad9834_write(temp%0x4000+0x4000); 
@@ -88,7 +85,6 @@ void bfo_update(uint32_t freq, uint32_t ref)
 //发送相位
 void ad9834_tx_phase(uint16_t Phase) 
 { 
-  Phase %= 360;
-  Phase=(uint16_t)((float)Phase*2048/3.1415926+0.5);
+  Phase = fx9a_ad9834_phase_word(Phase);
   ad9834_write(0xC000+Phase);
 }
