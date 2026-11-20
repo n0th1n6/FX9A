@@ -9,6 +9,7 @@ import argparse
 import json
 from pathlib import Path
 import subprocess
+import re
 
 REQUIRED = {
     "main", "board_init", "board_task", "RF_ToTx", "RF_ToRx",
@@ -72,11 +73,26 @@ def main():
         line.strip().split()[-1]
         for line in result.stdout.splitlines() if line.strip()
     }
+    # A build can avoid the old source files while still linking project-owned
+    # compatibility shims. Disallow their exported function names as well.
+    old_apis = re.compile(
+        r"^(?:GPIO_(?:Init|SetBits|ResetBits|ReadInputData(?:Bit)?|PinRemapConfig|EXTILineConfig)"
+        r"|RCC_(?:AHBPeriphClockCmd|APB[12]Periph(?:Clock|Reset)Cmd|GetClocksFreq)"
+        r"|TIM_(?:DeInit|TimeBaseInit|OCStructInit|OC4Init|Cmd|ITConfig|GetITStatus|ClearITPendingBit)"
+        r"|DMA_(?:DeInit|Init|Cmd|ITConfig|ClearFlag)"
+        r"|ADC_(?:DeInit|Init|RegularChannelConfig|DMACmd|Cmd|StartCalibration|SoftwareStartConvCmd)"
+        r"|USART_(?:DeInit|Init|ClockInit|Cmd|ITConfig|DMACmd|GetITStatus|ReceiveData)"
+        r"|NVIC_(?:Init|PriorityGroupConfig)|EXTI_(?:Init|GetITStatus|ClearITPendingBit))$"
+    )
+    forbidden = sorted(sym for sym in symbols if old_apis.fullmatch(sym))
+    if forbidden:
+        raise SystemExit(f"FAIL: project-owned legacy peripheral wrappers remain: {forbidden}")
     missing = REQUIRED - symbols
     if missing:
         raise SystemExit(f"FAIL: required radio/IRQ symbols missing: {sorted(missing)}")
     print(f"PASS: {len(full)} source units, official ST CMSIS/LL paths, no legacy drivers/headers/Mbed")
     print(f"PASS: {len(REQUIRED)} required application and IRQ symbols present")
+    print("PASS: no project-owned legacy peripheral API symbols")
     print("CAUTION: structural checks only; RF hardware remains unverified")
 
 if __name__ == "__main__":
