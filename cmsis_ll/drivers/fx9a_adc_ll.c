@@ -3,6 +3,7 @@
  * The existing board's ADC_Value order and conversion behavior are retained.
  */
 #include "stm32f10x_adc.h"
+#include "stm32f1xx_ll_adc.h"
 
 void ADC_DeInit(ADC_TypeDef *adc)
 {
@@ -60,8 +61,8 @@ void ADC_DMACmd(ADC_TypeDef *adc, FunctionalState enabled)
 }
 void ADC_Cmd(ADC_TypeDef *adc, FunctionalState enabled)
 {
-    if (enabled == ENABLE) adc->CR2 |= 1u;
-    else adc->CR2 &= ~1u;
+    if (enabled == ENABLE) LL_ADC_Enable(adc);
+    else LL_ADC_Disable(adc);
 }
 void ADC_ResetCalibration(ADC_TypeDef *adc)
 {
