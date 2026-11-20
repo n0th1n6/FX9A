@@ -83,6 +83,10 @@ jobs:
           ./build-cmsis-ll/filter_new_test
           gcc -std=c11 -Wall -Wextra -Werror -DFX9A_BOARD_ORIGINAL -Icmsis_ll/board cmsis_ll/tests/filter_map_test.c -o build-cmsis-ll/filter_original_test
           ./build-cmsis-ll/filter_original_test
+      - name: Continuous tuning policy regression
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -Icmsis_ll/board cmsis_ll/tests/tuning_policy_test.c -o build-cmsis-ll/tuning_policy_test
+          ./build-cmsis-ll/tuning_policy_test
       - name: Inspect image sections
         run: |
           arm-none-eabi-size build-cmsis-ll/fx9a_boot.elf build-cmsis-ll/fx9a_full.elf
