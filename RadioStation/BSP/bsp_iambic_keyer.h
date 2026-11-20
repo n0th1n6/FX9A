@@ -17,6 +17,8 @@ typedef struct{
 
 void keyer_init();
 void keyer_auto_setup();
+void CWT_On(void);
+void CWT_Off(void);
 void keyer_manual_task();
 void keyer_auto_task();
 void call_enter();
