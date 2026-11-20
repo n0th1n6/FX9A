@@ -11,8 +11,9 @@
 #define FX9A_CAL_SWR_POINTS 3u
 #define FX9A_CAL_NUM_POINTS 11u
 
-typedef struct __attribute__((packed)) {
-    uint32_t magic;
+typedef struct {
+    uint16_t magic_low;
+    uint16_t magic_high;
     uint8_t version;
     uint8_t reserved;
     uint16_t s[5];           /* S0,S5,S9,S9+20,S9+40 */
@@ -43,7 +44,8 @@ static inline bool fx9a_cal_increasing(const uint16_t *a, unsigned len)
 }
 static inline bool fx9a_cal_valid(const Fx9aMeterCal *cal)
 {
-    return cal->magic == FX9A_CAL_MAGIC &&
+    return cal->magic_low == (uint16_t)FX9A_CAL_MAGIC &&
+        cal->magic_high == (uint16_t)(FX9A_CAL_MAGIC >> 16) &&
         cal->version == FX9A_CAL_VERSION &&
         fx9a_cal_increasing(cal->s, 5u) &&
         fx9a_cal_increasing(cal->rf, 3u) &&
