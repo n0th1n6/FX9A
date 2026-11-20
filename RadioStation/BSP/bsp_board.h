@@ -16,11 +16,13 @@
 #define RX_USB_MENU 19
 #define RX_LSB_MENU 20
 #define CONT_TUNE_MENU 21
+#define METER_CAL_FIRST 22
+#define METER_CAL_LAST 32
 #define CONT_TUNE_ON 0xc1u
 #define CONT_TUNE_OFF 0xc0u
 #define RX_ALIGNMENT_LIMIT 1000
 #define RX_ALIGNMENT_MAGIC 0x31584252u
-#define SIZE_OF_MENU 22         //BG6RDF 这个歌值是菜单数量+呼号字符数数量
+#define SIZE_OF_MENU 33         //BG6RDF 这个歌值是菜单数量+呼号字符数数量
 
 #define UPPER_OF_RIT 9990       //取值范围参照Kenwood控制指令     BG6RDF
 #define LOWER_OF_RIT -9990
