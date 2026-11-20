@@ -18,6 +18,7 @@ REQUIRED = {
 }
 FORBIDDEN_SOURCE_FRAGMENTS = (
     "/RadioStation/StdPeriph_Driver/",
+    "/RadioStation/CMSIS/",
     "/mbed-os/",
     "/port/mbed_main.c",
 )
@@ -38,6 +39,27 @@ def main():
         filename = cmd["file"].replace("\\", "/")
         if any(fragment in filename for fragment in FORBIDDEN_SOURCE_FRAGMENTS):
             raise SystemExit(f"FAIL: old framework/driver source linked: {filename}")
+        line = cmd["command"].replace("\\\\", "/")
+        if "/RadioStation/StdPeriph_Driver" in line or "/RadioStation/CMSIS" in line:
+            raise SystemExit("FAIL: legacy ST peripheral/CMSIS include path remains")
+        for official in (
+            "vendor/cmsis-core/CMSIS/Core/Include",
+            "vendor/cmsis-device-f1/Include",
+            "vendor/stm32f1xx-hal-driver/Inc",
+        ):
+            if official not in line:
+                raise SystemExit(f"FAIL: missing official ST/CMSIS include: {official}")
+        if "-DSTM32F103xE" not in line:
+            raise SystemExit("FAIL: wrong STM32 device selected")
+    required_drivers = {
+        "fx9a_gpio_ll.c", "fx9a_rcc_ll.c", "fx9a_irq_ll.c",
+        "fx9a_tim_ll.c", "fx9a_dma_ll.c", "fx9a_adc_ll.c",
+        "fx9a_usart_ll.c", "device_contracts.c",
+    }
+    sources = {Path(x["file"]).name for x in full}
+    if required_drivers - sources:
+        raise SystemExit(f"FAIL: missing low-layer drivers: {sorted(required_drivers - sources)}")
+
 
     result = subprocess.run(
         [args.nm, "--defined-only", args.elf],
@@ -50,7 +72,7 @@ def main():
     missing = REQUIRED - symbols
     if missing:
         raise SystemExit(f"FAIL: required radio/IRQ symbols missing: {sorted(missing)}")
-    print(f"PASS: {len(full)} source units, no legacy peripheral .c/Mbed runtime")
+    print(f"PASS: {len(full)} source units, official ST CMSIS/LL paths, no legacy drivers/headers/Mbed")
     print(f"PASS: {len(REQUIRED)} required application and IRQ symbols present")
     print("CAUTION: structural checks only; RF hardware remains unverified")
 
