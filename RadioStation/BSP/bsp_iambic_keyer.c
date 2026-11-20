@@ -88,7 +88,7 @@ extern bool DahPaddle;
 extern bool PaddleUpdate;
 KEYER_AttrDef KEYER;
 
-//PE10/41½Å  CW/T¿ØÖÆ½Å£¬Êä³ö¸ßµÍµçÆ½£¨Í¬²½ÓÚKEY1/KEY2£¬Ò²¾ÍÊÇµãºÍ»®¡£Êä³ö¸ßµçÆ½Ê±¼ä³¤¶ÌÍ¬²½ÓÚCW£©
+//PE10/41è„š  CW/Tæ§åˆ¶è„šï¼Œè¾“å‡ºé«˜ä½ç”µå¹³ï¼ˆåŒæ­¥äºKEY1/KEY2ï¼Œä¹Ÿå°±æ˜¯ç‚¹å’Œåˆ’ã€‚è¾“å‡ºé«˜ç”µå¹³æ—¶é—´é•¿çŸ­åŒæ­¥äºCWï¼‰
 #define CW_T GPIO_Pin_10
 #define CW_T_PORT GPIOE
 
@@ -145,7 +145,7 @@ void queue_clear()
   Queue.get_pos=0;      //BG6RDF
 }
 
-volatile uint16_t sTick = 0;    //¸ÄÎªvolatile BG6RDF
+volatile uint16_t sTick = 0;    //æ”¹ä¸ºvolatile BG6RDF
 void SysTickTask()
 {
   sTick ++;
@@ -163,28 +163,28 @@ void SysTickSet(uint16_t tick)
 
 void keyer_init()
 {
-  GPIO_InitTypeDef GPIO_InitStructure;
+  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
   
-  GPIO_InitStructure.GPIO_Pin =  CW_T;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(CW_T_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(CW_T) << GPIO_PIN_MASK_POS) | (CW_T));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(CW_T_PORT, &GPIO_InitStructure);
   
   queue_init();
   
-  TMR_Init(TIM4, 1000, 2, SysTickTask); //1ms ¶¨Ê±Æ÷3
+  TMR_Init(TIM4, 1000, 2, SysTickTask); //1ms å®šæ—¶å™¨3
   TMR_Stop(TIM4);
   TMR_IRQEnable(TIM4);
 }
 
 void CWT_On()
 {
-  GPIO_SetBits(CW_T_PORT, CW_T); 
+  (CW_T_PORT->BSRR = (CW_T)); 
 }
 
 void CWT_Off()
 {
-  GPIO_ResetBits(CW_T_PORT, CW_T); 
+  (CW_T_PORT->BRR = (CW_T)); 
 }
 
 void keyer_auto_setup()
@@ -198,7 +198,7 @@ void keyer_auto_setup()
   timer_state = TIMER_STATE_IDLE1;
 }
 
-// µ¥¼üÄ£Ê½
+// å•é”®æ¨¡å¼
 uint16_t TX_DELAY;
 void keyer_manual_task()
 {
@@ -240,7 +240,7 @@ void keyer_manual_task()
   {
     if (milliseconds - TX_DELAY>= MENU.delay*100)
     {
-      // ×ªµ½RXÄ£Ê½
+      // è½¬åˆ°RXæ¨¡å¼
       RF_ToRx();
     }
   }
@@ -276,16 +276,16 @@ void ascIndexToIambic(uint8_t index)
   uint8_t len; 
   uint16_t coder;
   coder = CallCoder[ index ];
-  len = coder >> 8; // ºôºÅÂë ¸ß8Î»Îª³¤¶È µÍ8Î»
-  for(uint8_t i=0; i<len; i++)  // ºôºÅ ×î³¤MAX_CALLSIGN_LENGTH¸ö,MorseÂë×î³¤8¸ö£¬BG6RDF
+  len = coder >> 8; // å‘¼å·ç  é«˜8ä½ä¸ºé•¿åº¦ ä½8ä½
+  for(uint8_t i=0; i<len; i++)  // å‘¼å· æœ€é•¿MAX_CALLSIGN_LENGTHä¸ª,Morseç æœ€é•¿8ä¸ªï¼ŒBG6RDF
   {     
     if( coder & (1 << (len-1-i)) )
     {
-      queue_save(3);    //ßÕ
+      queue_save(3);    //å“’
     }
     else
     {
-      queue_save(1);    //àÖ
+      queue_save(1);    //å˜€
     }
   }
 }
@@ -298,7 +298,7 @@ void call_task()
   switch( call_sending )
   {
   case 0:
-    // ·¢ËÍÍê±Ï£¬ ÍË³öºô½ĞÄ£Ê½
+    // å‘é€å®Œæ¯•ï¼Œ é€€å‡ºå‘¼å«æ¨¡å¼
     FREQ.item &= ~CALLItem;
     call_exit();
     RF_ToRx();
@@ -308,19 +308,19 @@ void call_task()
     {
       if( call_num == 0)
       {
-        ascIndexToIambic( 19 );  // ·¢ËÍ T
+        ascIndexToIambic( 19 );  // å‘é€ T
       }
       else if( call_num == 1)
       {
-        ascIndexToIambic( 4 );  // ·¢ËÍ E
+        ascIndexToIambic( 4 );  // å‘é€ E
       }
       else if( call_num == 2)
       {
-        ascIndexToIambic( 18 );  // ·¢ËÍ S
+        ascIndexToIambic( 18 );  // å‘é€ S
       }
       else
       {
-        ascIndexToIambic( 19 );  // ·¢ËÍ T
+        ascIndexToIambic( 19 );  // å‘é€ T
       }
       call_num ++;
       timer_state = TIMER_STATE_IDLE1;
@@ -337,7 +337,7 @@ void call_task()
     {
       if( call_num == 0)
       {
-        ascIndexToIambic( 10 );  // ·¢ËÍ K
+        ascIndexToIambic( 10 );  // å‘é€ K
       }
 
       call_num ++;
@@ -355,15 +355,15 @@ void call_task()
     {
       if( call_num == 0)
       {
-        ascIndexToIambic( 15 );  // ·¢ËÍ P
+        ascIndexToIambic( 15 );  // å‘é€ P
       }
       else if( call_num == 1)
       {
-        ascIndexToIambic( 18 );  // ·¢ËÍ S
+        ascIndexToIambic( 18 );  // å‘é€ S
       }
       else
       {
-        ascIndexToIambic( 4 );  // ·¢ËÍ E
+        ascIndexToIambic( 4 );  // å‘é€ E
       }
       call_num ++;
       timer_state = TIMER_STATE_IDLE1;
@@ -392,16 +392,16 @@ void call_task()
       call_num = 0;
     }
     break;
-  case 5:   // ·¢ËÍ DE  = 3,4
+  case 5:   // å‘é€ DE  = 3,4
     if(call_num <= 1 && timer_state == TIMER_STATE_IDLE2)
     {
       if( call_num == 0)
       {
-        ascIndexToIambic( 3 );  // ·¢ËÍ D
+        ascIndexToIambic( 3 );  // å‘é€ D
       }
       else
       {
-        ascIndexToIambic( 4 );  // ·¢ËÍ E
+        ascIndexToIambic( 4 );  // å‘é€ E
       }
       call_num ++;
       timer_state = TIMER_STATE_IDLE1;
@@ -413,23 +413,23 @@ void call_task()
       timer_state = TIMER_STATE_IDLE2;
     }
     break;
-  case 6:   // ·¢ËÍ CQ  = 2,16
-  case 7:   // ·¢ËÍ CQ  = 2,16
-  case 8:   // ·¢ËÍ CQ  = 2,16
+  case 6:   // å‘é€ CQ  = 2,16
+  case 7:   // å‘é€ CQ  = 2,16
+  case 8:   // å‘é€ CQ  = 2,16
     if(call_num <= 1 && timer_state == TIMER_STATE_IDLE2)
     {
       if( call_num == 0)
       {
-        ascIndexToIambic( 2 );  // ·¢ËÍ C
+        ascIndexToIambic( 2 );  // å‘é€ C
       }
       else
       {
-        ascIndexToIambic( 16 );  // ·¢ËÍ Q
+        ascIndexToIambic( 16 );  // å‘é€ Q
       }
       call_num ++;
       timer_state = TIMER_STATE_IDLE1;
     }
-    else if(timer_state == TIMER_STATE_IDLE3)   //´Ê½áÊøÇÒ´Ê½áÊøºóµÄGAPÒÑÍê³É
+    else if(timer_state == TIMER_STATE_IDLE3)   //è¯ç»“æŸä¸”è¯ç»“æŸåçš„GAPå·²å®Œæˆ
     {
       call_sending --;
       call_num = 0;
@@ -451,13 +451,13 @@ void call_task()
   
   switch (timer_state)
   {  
-  case TIMER_STATE_IDLE1:               //µ½ÕâËµÃ÷Ò»¸ö×Ö·ûµÄµã»®Ò»¶¨½áÊøÁË
+  case TIMER_STATE_IDLE1:               //åˆ°è¿™è¯´æ˜ä¸€ä¸ªå­—ç¬¦çš„ç‚¹åˆ’ä¸€å®šç»“æŸäº†
     if (milliseconds >= char_stop_time && call_sending)
     {
       timer_state = TIMER_STATE_IDLE2;
     }
     break;
-  case TIMER_STATE_IDLE2:               //´Ê½áÊø
+  case TIMER_STATE_IDLE2:               //è¯ç»“æŸ
     if (milliseconds >= word_stop_time && call_sending)
     {
       milliseconds = 0;
@@ -466,7 +466,7 @@ void call_task()
     }      
     break;
   case TIMER_STATE_ON1:
-    // ×ªµ½TXÄ£Ê½
+    // è½¬åˆ°TXæ¨¡å¼
     if (RF_IsRx())
     {
       RF_ToTx();
@@ -502,7 +502,7 @@ void call_task()
 
 }
 
-// Ë«¼üÄ£Ê½
+// åŒé”®æ¨¡å¼
 void keyer_auto_task()
 {
   milliseconds = SysTickGet();
@@ -620,7 +620,7 @@ void keyer_auto_task()
   {  
 
   case TIMER_STATE_ON1:
-    // ×ªµ½TXÄ£Ê½
+    // è½¬åˆ°TXæ¨¡å¼
     if (RF_IsRx())
     {
       RF_ToTx();
@@ -658,7 +658,7 @@ void keyer_auto_task()
   {
     if (milliseconds - TX_DELAY >= MENU.delay*100)
     {
-      // ×ªµ½RXÄ£Ê½
+      // è½¬åˆ°RXæ¨¡å¼
       RF_ToRx();
     }
   }
