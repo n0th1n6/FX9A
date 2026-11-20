@@ -1,8 +1,8 @@
 /* STM32F1 NVIC/EXTI register-level layer with legacy caller signatures.
  * Only the APIs needed by the FX-9A radio are implemented.
  */
-#include "misc.h"
-#include "stm32f10x_exti.h"
+#include "fx9a_legacy_types.h"
+
 
 void NVIC_PriorityGroupConfig(uint32_t group)
 {
