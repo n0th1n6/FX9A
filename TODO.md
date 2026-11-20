@@ -50,6 +50,35 @@ The display-oriented SWR update path currently runs much slower than the ADC sam
 - [ ] Keep the existing slower smoothing/update rate for the displayed meter.
 - [ ] Test shutdown timing into a controlled mismatch/dummy-load setup.
 
+### Automatic-tuner TUNE mode
+Add a dedicated low-power TUNE state for driving an external automatic antenna tuner. This should be implemented as its own state machine rather than by reusing normal CW keyer timing.
+
+- [ ] Add explicit tune-state functions such as `Tune_Start()`, `Tune_Task()`, and `Tune_Stop()`.
+- [ ] On TUNE start:
+  1. Save the current TX power setting.
+  2. Force the radio to LOW power before any RF is generated.
+  3. Prepare the LO/BFO and TX path for the current displayed RF frequency.
+  4. Generate a steady low-power CW carrier using the existing CW TX/carrier path rather than sending a literal Morse dit/dah.
+- [ ] Do not temporarily change the user's normal `RADIO.mode` just to tune; keep TUNE as a separate operating state so USB/LSB/CW mode and displayed frequency remain intact.
+- [ ] Keep SWR protection active during TUNE, but use tune-specific persistence:
+  - ordinary high SWR may be tolerated briefly because a tuner starts in a mismatched state;
+  - extremely high reflected power must still cause an immediate abort;
+  - normal TX should retain faster protection.
+- [ ] Use the existing fast ADC/SWR sampling path rather than slowing the global protection system.
+- [ ] Auto-complete tuning when SWR remains below a target threshold for a defined settling period (for example a few hundred milliseconds).
+- [ ] Add a hard maximum tune timeout so carrier generation can never continue indefinitely.
+- [ ] Stop TUNE immediately on user cancel, PTT, power-off, or another conflicting transmit/control action.
+- [ ] On TUNE exit:
+  1. Remove CW carrier/keying.
+  2. Return safely to RX.
+  3. Restore the user's previous H/L power setting.
+  4. Clear tune-specific timers/status.
+- [ ] Show a clear OLED indication such as `TUNE` and keep the SWR bar live while tuning.
+- [ ] Select a convenient front-panel long press or key combination for start/cancel without disturbing existing commonly used functions.
+- [ ] Reuse the existing dormant Kenwood CAT `CA` (CW TUNE) command if practical, e.g. start/query/cancel support after local TUNE behavior is stable.
+- [ ] Add host-side tests for tune-state transitions, forced LOW power, timeout, SWR success, severe-SWR abort, cancel behavior, and restoration of the previous power setting.
+- [ ] Determine final SWR thresholds and timing experimentally on the real radio with a dummy load / controlled mismatch and the RF power stages operated conservatively.
+
 ## Priority 3 — Hardware compatibility
 
 ### FX-9A filter-switching revisions
@@ -145,7 +174,8 @@ The current fork already includes several important improvements that should rem
 4. Board/filter revision support.
 5. TX/RX sequencing cleanup.
 6. Faster SWR protection.
-7. Meter calibration.
-8. DDS integer-math cleanup.
-9. Optional tuning acceleration.
-10. Larger architectural cleanup only after the above is stable.
+7. Automatic-tuner TUNE mode.
+8. Meter calibration.
+9. DDS integer-math cleanup.
+10. Optional tuning acceleration.
+11. Larger architectural cleanup only after the above is stable.
