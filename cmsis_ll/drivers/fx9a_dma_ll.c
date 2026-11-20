@@ -1,7 +1,7 @@
 /* STM32F1 DMA register-level compatibility implementation.
  * Channel 1: ADC sample ring, Channel 4: USART1 TX.
  */
-#include "stm32f10x_dma.h"
+#include "fx9a_legacy_types.h"
 #include "stm32f1xx_ll_dma.h"
 
 static uint32_t fx9a_channel_index(DMA_Channel_TypeDef *channel)
