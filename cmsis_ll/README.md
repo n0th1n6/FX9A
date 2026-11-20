@@ -125,6 +125,11 @@ on the physical radio yet.
 - **Board revisions:** `-DFX9A_BOARD_REVISION=2016_03` (default) or
   `-DFX9A_BOARD_REVISION=ORIGINAL`. Filter select GPIO maps are table driven
   and have per-band host tests. Confirm the *physical* board revision first.
+- **Optical VFO acceleration (optional):** compile with
+  `-DFX9A_VFO_ACCEL=ON` for velocity-sensitive tuning; OFF is the
+  default. This changes only the main optical VFO rotation and preserves TS
+  as the explicit coarse step. Timing/speed thresholds are provisional and
+  must be checked with the actual encoder.
 - **DDS:** Integer, rounded 28-bit AD9834 and 32-bit AD9951 FTWs; fixed
   AD9834 12-bit phase conversion. Host tests check reference values.
 - **CAT/EEPROM:** Invalid CAT frames are rejected before parsing, CAT
