@@ -77,6 +77,12 @@ jobs:
         run: |
           gcc -std=c11 -Wall -Wextra -Werror -Icmsis_ll/board cmsis_ll/tests/tune_logic_test.c -o build-cmsis-ll/tune_logic_test
           ./build-cmsis-ll/tune_logic_test
+      - name: Board revision filter mapping regression
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -Icmsis_ll/board cmsis_ll/tests/filter_map_test.c -o build-cmsis-ll/filter_new_test
+          ./build-cmsis-ll/filter_new_test
+          gcc -std=c11 -Wall -Wextra -Werror -DFX9A_BOARD_ORIGINAL -Icmsis_ll/board cmsis_ll/tests/filter_map_test.c -o build-cmsis-ll/filter_original_test
+          ./build-cmsis-ll/filter_original_test
       - name: Inspect image sections
         run: |
           arm-none-eabi-size build-cmsis-ll/fx9a_boot.elf build-cmsis-ll/fx9a_full.elf
