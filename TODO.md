@@ -4,6 +4,16 @@ This file records improvement areas identified during review of the current FX-9
 
 ## Priority 0 — Migrate to CMSIS-Core + STM32 LL
 
+**Software port status (development branch):** The independent full application now
+builds using pinned official CMSIS-Core/STM32F1 LL headers and project-local
+LL/register-level peripheral drivers. No Mbed or 2009 StdPeriph source/header
+is included in the standalone target. Existing radio regression tests and
+host-simulated peripheral register checks pass. **Physical hardware, RF and
+timing verification remain open.** The compatibility API in
+`cmsis_ll/compat/fx9a_legacy_types.h` is project-owned and keeps existing
+application call sites intact; retiring all those caller names is optional
+cleanup after verifying behavior. See `cmsis_ll/README.md`.
+
 Make the long-term firmware base independent of Mbed CE and the bundled legacy STM32 Standard Peripheral Library. The target architecture is a lean bare-metal STM32F103 firmware using modern CMSIS-Core/device headers plus STM32 LL, while retaining GCC/CMake and the existing application behavior.
 
 This should **not** be a big-bang rewrite. Migrate and verify one subsystem at a time, keeping the current Mbed CE build as the known-good reference until the replacement path reaches hardware feature parity.
@@ -27,14 +37,14 @@ STM32 LL + CMSIS-Core
 STM32F103
 ```
 
-- [ ] Keep the existing GCC + CMake build workflow.
-- [ ] Replace Mbed CE startup/runtime dependencies with project-owned startup, vector table, linker configuration, reset/init path, and system clock setup.
-- [ ] Use current CMSIS-Core / STM32F1 device headers rather than the old bundled CMSIS copy where practical.
-- [ ] Replace the 2009 STM32 Standard Peripheral Library usage with STM32 LL or small project-local register-level helpers.
-- [ ] Avoid STM32 HAL unless a specific peripheral clearly benefits from it; prefer LL/direct access for deterministic radio control.
-- [ ] Preserve the STM32F103 72 MHz clock behavior and the existing 16 MHz board crystal configuration.
+- [x] Keep the existing GCC + CMake build workflow.
+- [x] Replace Mbed CE startup/runtime dependencies with project-owned startup, vector table, linker configuration, reset/init path, and system clock setup.
+- [x] Use current CMSIS-Core / STM32F1 device headers rather than the old bundled CMSIS copy where practical.
+- [x] Replace the 2009 STM32 Standard Peripheral Library usage with STM32 LL or small project-local register-level helpers.
+- [x] Avoid STM32 HAL unless a specific peripheral clearly benefits from it; prefer LL/direct access for deterministic radio control.
+- [x] Preserve the STM32F103 72 MHz clock behavior and the existing 16 MHz board crystal configuration.
 - [ ] Preserve interrupt ownership and timing contracts currently checked by `tools/verify_image.cmake`.
-- [ ] Preserve the existing EEPROM binary layout unless an explicitly versioned migration is introduced.
+- [x] Preserve the existing EEPROM binary layout unless an explicitly versioned migration is introduced.
 - [ ] Preserve radio behavior first; optimize/clean up only after each migrated subsystem is covered by tests or hardware checks.
 
 ### Migration rule: fix each subsystem while porting it
@@ -85,8 +95,8 @@ Suggested subsystem order:
 ### Migration validation
 
 - [ ] Keep the current Mbed CE image buildable during migration for A/B comparison.
-- [ ] Compare flash/vector layout and important data structure sizes between old and new builds.
-- [ ] Extend host tests as logic is extracted from hardware-facing files.
+- [x] Compare flash/vector layout and important data structure sizes between old and new builds.
+- [x] Extend host tests as logic is extracted from hardware-facing files.
 - [ ] Add small hardware smoke-test checkpoints after each peripheral group rather than waiting for the whole migration to finish.
 - [ ] Verify in stages with RF power disabled first, then dummy-load RX/TX checks, then controlled on-air testing.
 - [ ] Do not remove the current compatibility documentation until the CMSIS/LL path is proven on the actual radio.
@@ -94,8 +104,8 @@ Suggested subsystem order:
 ## Priority 1 — Robustness and safety
 
 ### CAT / UART receive safety
-- [ ] Add bounds checking for `UartRxBuf[32]`.
-- [ ] If an incoming CAT command exceeds the buffer, discard input until the next `;` and reset the parser cleanly.
+- [x] Add bounds checking for `UartRxBuf[32]`.
+- [x] If an incoming CAT command exceeds the buffer, discard input until the next `;` and reset the parser cleanly.
 - [ ] Add malformed-command handling and optional diagnostic/error counters.
 
 ### CAT protocol correctness
@@ -108,8 +118,8 @@ Suggested subsystem order:
 - [ ] Add host-side CAT regression tests, e.g. `tools/test_cat.py`.
 
 ### EEPROM / 24LC16 reliability
-- [ ] Make multi-page EEPROM writes fail immediately if any page write fails.
-- [ ] Preserve the first error rather than allowing a later successful page write to make the overall operation appear successful.
+- [x] Make multi-page EEPROM writes fail immediately if any page write fails.
+- [x] Preserve the first error rather than allowing a later successful page write to make the overall operation appear successful.
 - [ ] Ensure I2C STOP / bus recovery is performed on NACK/error paths.
 - [ ] Consider adding a configuration version and CRC/checksum in unused EEPROM space while retaining compatibility with existing FX-9A EEPROM layouts.
 - [ ] Validate saved settings before applying them.
