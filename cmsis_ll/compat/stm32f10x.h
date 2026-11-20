@@ -38,4 +38,8 @@ typedef int8_t s8;
 typedef int16_t s16;
 typedef int32_t s32;
 
+/* Used by the legacy timer prescaler calculation; defined by the
+ * independent port/legacy_clock.c compatibility source. */
+extern const uint32_t SystemFrequency_AHBClk;
+
 #endif
