@@ -91,6 +91,10 @@ jobs:
         run: |
           gcc -std=c11 -Wall -Wextra -Werror -Icmsis_ll/board cmsis_ll/tests/meter_cal_test.c -o build-cmsis-ll/meter_cal_test
           ./build-cmsis-ll/meter_cal_test
+      - name: CAT malformed-frame regression
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -Icmsis_ll/board cmsis_ll/tests/cat_validation_test.c -o build-cmsis-ll/cat_validation_test
+          ./build-cmsis-ll/cat_validation_test
       - name: Inspect image sections
         run: |
           arm-none-eabi-size build-cmsis-ll/fx9a_boot.elf build-cmsis-ll/fx9a_full.elf
