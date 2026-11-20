@@ -409,7 +409,7 @@ void MODE_Refresh(uint8_t all)
     if(Mode == RADIO_USB)
     {
       voice_control_start();
-      oled_lsb_usb("RADIO_USB ");
+      oled_lsb_usb("USB ");
     }
     else if(Mode == LSB)
     {
@@ -439,7 +439,7 @@ void MEM_SetModeRefresh(uint8_t all)
     if(MemSetMode == RADIO_USB)
     {
       voice_control_start();
-      oled_lsb_usb_mem("RADIO_USB ");
+      oled_lsb_usb_mem("USB ");
     }
     else if(MemSetMode == LSB)
     {
