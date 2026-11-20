@@ -1813,8 +1813,49 @@ void UART_Task()
   }
 }
 
+/* Called at 10 ms intervals by TIM2's 250 us sampling ISR.
+ * Do not call OLED, DDS, delay, or EEPROM functions inside this ISR.
+ */
+static volatile uint8_t swr_trip_pending;
+static uint8_t swr_high_samples;
+static uint16_t swr_trip_level(uint8_t level)
+{
+  if (level <= 6u) return (uint16_t)(20u + level * 56u);
+  return (uint16_t)(360u + (level - 6u) * 71u);
+}
+
+void RF_SwrSampleISR(void)
+{
+  if (!RfIsTx || MENU.vswr == 0u || swr_trip_pending) {
+    swr_high_samples = 0u;
+    return;
+  }
+  /* Severe mismatch: hard RF abort without waiting for another sample.
+   * The ~10 ms sample interval and ADC threshold need hardware validation.
+   */
+  uint16_t reflected = adc_swr();
+  uint16_t limit = swr_trip_level(MENU.vswr > 9u ? 9u : MENU.vswr);
+  if (reflected >= 800u || reflected >= limit) {
+    if (reflected >= 800u || ++swr_high_samples >= 3u) {
+      MICControlOff();
+      tx_control_off();
+      swr_trip_pending = 1u;
+      hswr_timeout = 1u;
+    }
+  } else swr_high_samples = 0u;
+}
+
+void RF_SwrService(void)
+{
+  if (!swr_trip_pending) return;
+  swr_trip_pending = 0u;
+  RF_ToRx();
+  oled_h_vswr_disp();
+}
+
 void board_task()
 {
+  RF_SwrService();
   key_task();
   
   board_refresh_manager();
