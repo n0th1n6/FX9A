@@ -93,7 +93,7 @@ void dma_init()
 void usart_init()
 {  
   NVIC_InitTypeDef NVIC_InitStructure;
-  GPIO_InitTypeDef GPIO_InitStructure;
+  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
   USART_InitTypeDef USART_InitStructure;                   //串口初始化结构体声明
   USART_ClockInitTypeDef USART_ClockInitStruct;
   
@@ -111,16 +111,16 @@ void usart_init()
   RCC_APB2PeriphResetCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, DISABLE);
   
   // Assign PA9 to UART1 (Tx)
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_ALTERNATE;
+  GPIO_InitStructure.Pin = (((uint32_t)(GPIO_Pin_9) << GPIO_PIN_MASK_POS) | (GPIO_Pin_9));
+  LL_GPIO_Init(GPIOA, &GPIO_InitStructure);
   
-  // Assign PA10 to UART1 (Rx)GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  //GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
+  // Assign PA10 to UART1 (Rx)GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+  //GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_FLOATING;
+  GPIO_InitStructure.Pin = (((uint32_t)(GPIO_Pin_10) << GPIO_PIN_MASK_POS) | (GPIO_Pin_10));
+  LL_GPIO_Init(GPIOA, &GPIO_InitStructure);
   
   
   //USART_ClockInitTypeDef USART_ClockInitStruct;
