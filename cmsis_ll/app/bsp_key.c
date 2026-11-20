@@ -53,6 +53,8 @@ static KEY_AttrDef key;
 static EncoderState channel_encoder;
 static EncoderState volume_encoder;
 static uint8_t key_scan_divider;
+static uint16_t swr_sample_divider;
+volatile uint32_t fx9a_ticks_10ms;
 #ifdef FX9A_ENCODER_TRACE
 /* Diagnostic only: 50 us raw contacts, normal 250 us control decoding.
  * Stop when full so ST-Link can read a consistent completed trace. */
@@ -836,6 +838,17 @@ static void channel_encoder_step(int8_t step)
 
 void key_timer_callback(void)
 {
+  /* Fast SWR sampling must run even if diagnostic encoder trace exits early. */
+#ifdef FX9A_ENCODER_TRACE
+  const uint16_t swr_interval = 200u; /* 50 us ticks */
+#else
+  const uint16_t swr_interval = 40u;  /* 250 us ticks */
+#endif
+  if (++swr_sample_divider >= swr_interval) {
+    swr_sample_divider = 0;
+    ++fx9a_ticks_10ms;
+    RF_SwrSampleISR();
+  }
   uint8_t ch_phases = channel_phases((KEY_K1A1B_PORT->IDR));
   uint8_t vol_phases = volume_phases((KEY_23456R1A1BK2A2B_PORT->IDR));
 #ifdef FX9A_ENCODER_TRACE
