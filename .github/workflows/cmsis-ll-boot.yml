@@ -73,6 +73,10 @@ jobs:
           gcc -std=c11 -Wall -Wextra -Werror -Icmsis_ll/board \
             cmsis_ll/tests/dds_math_test.c -o build-cmsis-ll/dds_math_test
           ./build-cmsis-ll/dds_math_test
+      - name: TUNE state-machine regression
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -Icmsis_ll/board cmsis_ll/tests/tune_logic_test.c -o build-cmsis-ll/tune_logic_test
+          ./build-cmsis-ll/tune_logic_test
       - name: Inspect image sections
         run: |
           arm-none-eabi-size build-cmsis-ll/fx9a_boot.elf build-cmsis-ll/fx9a_full.elf
