@@ -136,7 +136,25 @@ int main(void)
     USART_Cmd(USART1, DISABLE);
     assert(!(USART1->CR1 & (1u << 13)));
 
-    puts("PASS: RCC 72MHz model, GPIOC5, TIM2/3, DMA1, ADC1 and USART1 register programming");
+    EXTI_InitTypeDef exti = {
+        .EXTI_Line = EXTI_Line2,
+        .EXTI_Mode = EXTI_Mode_Interrupt,
+        .EXTI_Trigger = EXTI_Trigger_Falling,
+        .EXTI_LineCmd = ENABLE,
+    };
+    EXTI_Init(&exti);
+    assert(EXTI->IMR & EXTI_Line2);
+    assert(EXTI->FTSR & EXTI_Line2);
+    assert(!(EXTI->RTSR & EXTI_Line2));
+    EXTI->PR = EXTI_Line2; /* Simulate a pending EXTI line. */
+    assert(EXTI_GetITStatus(EXTI_Line2) == SET);
+    EXTI_ClearITPendingBit(EXTI_Line2);
+    assert(EXTI->PR == EXTI_Line2); /* W1C operation is a write on host. */
+    exti.EXTI_LineCmd = DISABLE;
+    EXTI_Init(&exti);
+    assert(!(EXTI->IMR & EXTI_Line2));
+
+    puts("PASS: RCC 72MHz/ADC 12MHz, GPIOC5, TIM2/3, DMA1, ADC1, USART1 and EXTI2 registers");
     puts("CAUTION: host-simulated register writes only; not a hardware/RF validation");
     return 0;
 }
