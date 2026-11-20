@@ -22,7 +22,6 @@ foreach(pkg FX9A_CMSIS_CORE FX9A_CMSIS_DEVICE FX9A_ST_LL)
     endif()
 endforeach()
 set(FX9A_ST_INCLUDES
-    "${CMAKE_CURRENT_SOURCE_DIR}/compat"
     "${FX9A_CMSIS_DEVICE}"
     "${FX9A_CMSIS_CORE}"
     "${FX9A_ST_LL}"
@@ -77,10 +76,6 @@ if(FX9A_BUILD_FULL)
     add_executable(fx9a_full.elf
         platform/startup_stm32f103_hd.s
         platform/clock.c
-        drivers/fx9a_gpio_ll.c
-        drivers/fx9a_rcc_ll.c
-        drivers/fx9a_irq_ll.c
-        drivers/fx9a_exti_ll.c
         app/bsp_timer.c
         app/bsp_pwm.c
         app/bsp_vol.c
@@ -97,11 +92,9 @@ if(FX9A_BUILD_FULL)
         app/bsp_ad9951.c
         app/bsp_ad9834.c
         ${FX9A_VENDOR}/stm32f1xx-hal-driver/Src/stm32f1xx_ll_gpio.c
-        drivers/fx9a_dma_ll.c
         platform/radio_main.c
         platform/device_contracts.c
         ${FX9A_ROOT}/port/bsp_delay.c
-        ${FX9A_ROOT}/port/legacy_clock.c
         ${FX9A_ROOT}/port/layout_checks.c
         ${FX9A_BSP_SOURCES}
     )
