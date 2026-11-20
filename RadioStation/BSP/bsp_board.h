@@ -15,9 +15,12 @@
 #define SIZE_OF_MEM 100
 #define RX_USB_MENU 19
 #define RX_LSB_MENU 20
+#define CONT_TUNE_MENU 21
+#define CONT_TUNE_ON 0xc1u
+#define CONT_TUNE_OFF 0xc0u
 #define RX_ALIGNMENT_LIMIT 1000
 #define RX_ALIGNMENT_MAGIC 0x31584252u
-#define SIZE_OF_MENU 21         //BG6RDF 这个歌值是菜单数量+呼号字符数数量
+#define SIZE_OF_MENU 22         //BG6RDF 这个歌值是菜单数量+呼号字符数数量
 
 #define UPPER_OF_RIT 9990       //取值范围参照Kenwood控制指令     BG6RDF
 #define LOWER_OF_RIT -9990
@@ -158,7 +161,7 @@ typedef struct{
   int16_t rxUsbOffset;
   int16_t rxLsbOffset;
   uint32_t rxAlignmentMagic;
-  uint8_t null;
+  uint8_t null; /* EEPROM reserved byte reused for continuous tuning mode */
   uint8_t numOfcall;
   uint8_t dutyOfbuzzer; // 0-29         侧音音量
   uint16_t freqOfbuzzer; // 500-1000Hz
@@ -224,6 +227,7 @@ extern uint8_t rf_grid_old;
 
 void board_init();
 void board_task();
+bool ContinuousTuning_Enabled(void);
 
 bool Frequency_Set(uint32_t frequency);
 void Frequency_Tune(int32_t step);
