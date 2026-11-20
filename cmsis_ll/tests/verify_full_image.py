@@ -53,7 +53,7 @@ def main():
             raise SystemExit("FAIL: wrong STM32 device selected")
     required_drivers = {
         "fx9a_gpio_ll.c", "fx9a_rcc_ll.c", "fx9a_irq_ll.c",
-        "fx9a_exti_ll.c", "fx9a_tim_ll.c", "fx9a_dma_ll.c", "fx9a_adc_ll.c",
+        "fx9a_exti_ll.c", "bsp_timer.c", "bsp_pwm.c", "fx9a_dma_ll.c", "fx9a_adc_ll.c",
         "fx9a_usart_ll.c", "device_contracts.c",
     }
     sources = {Path(x["file"]).name for x in full}
