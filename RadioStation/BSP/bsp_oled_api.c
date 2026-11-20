@@ -1680,7 +1680,7 @@ void oled_menu_arrows_set(uint8_t position)
 
 static void Show_RX_Alignment(uint8_t y, uint8_t usb, int16_t offset)
 {
-  uint8_t text[] = "RX RADIO_USB: +0000 Hz";
+  uint8_t text[] = "RX USB: +0000 Hz";
   uint16_t magnitude = offset < 0 ? -offset : offset;
   if (!usb) { text[3] = 'L'; text[4] = 'S'; }
   text[8] = offset < 0 ? '-' : '+';
