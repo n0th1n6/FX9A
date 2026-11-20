@@ -50,7 +50,7 @@ uint8_t NumOfMem;
 
 bool isRun = false;
 
-bool RfIsTx = false;
+volatile bool RfIsTx = false;
 
 uint16_t hswr_timeout= 0;
 FIL_AttrDef CWFilter; 
