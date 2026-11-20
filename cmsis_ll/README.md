@@ -7,7 +7,8 @@ image before hardware review.
 ## Software architecture
 
 The full FX-9A application now has its own startup, vector table, 16 MHz HSE /
-72 MHz PLL setup, linker script and main loop. The independent full firmware
+72 MHz PLL setup, an explicit ADC /6 prescaler (12 MHz ADC clock), linker
+script and main loop. The independent full firmware
 uses neither Mbed CE nor any old STM32 Standard Peripheral Library **source or
 header** file.
 
@@ -85,6 +86,11 @@ The GitHub Actions workflow `.github/workflows/cmsis-ll-boot.yml`:
 9. Authenticates the reference v0.1.0 BIN by SHA-256 and compares boot vector
    structure. The 53,808-byte v0.1.0 image is the previous Mbed CE release,
    **not** functionally equivalent to the minimal boot image.
+
+The host register tests caught and guarded fixes for the ST LL GPIO mask
+encoding and TIM3 CH4 output-enable field. They also check the 12 MHz ADC
+prescaler and 115200-baud USART divisor. Verified CI run:
+https://github.com/n0th1n6/FX9A/actions/runs/44703550499
 
 The host register tests cannot model physical clock startup, interrupt timing,
 I2C bus transactions, radio RF outputs or analog measurement accuracy. Passing
