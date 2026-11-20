@@ -65,6 +65,7 @@ jobs:
             -Icmsis_ll/vendor/stm32f1xx-hal-driver/Inc \
             cmsis_ll/tests/driver_smoke.c \
             cmsis_ll/drivers/fx9a_gpio_ll.c \
+            cmsis_ll/drivers/fx9a_exti_ll.c \
             cmsis_ll/drivers/fx9a_rcc_ll.c \
             cmsis_ll/drivers/fx9a_tim_ll.c \
             cmsis_ll/drivers/fx9a_dma_ll.c \
