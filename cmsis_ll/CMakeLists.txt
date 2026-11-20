@@ -85,6 +85,7 @@ if(FX9A_BUILD_FULL)
         drivers/fx9a_adc_ll.c
         drivers/fx9a_usart_ll.c
         platform/radio_main.c
+        platform/device_contracts.c
         ${FX9A_ROOT}/port/bsp_delay.c
         ${FX9A_ROOT}/port/legacy_clock.c
         ${FX9A_ROOT}/port/layout_checks.c
