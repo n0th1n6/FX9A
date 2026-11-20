@@ -1,4 +1,5 @@
 #include "bsp_board.h"
+#include "tune_logic.h"
 #include "ll_pins.h"
 #include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_exti.h"
@@ -777,8 +778,65 @@ void MENU_Ts(uint8_t pos)
 }
 
 
+extern volatile uint32_t fx9a_ticks_10ms;
+static Fx9aTuneLogic tune_logic;
+static TP_LevelDef tune_saved_power;
+static bool tune_active;
+
+bool Tune_IsActive(void)
+{
+  return tune_active;
+}
+
+bool Tune_Start(void)
+{
+  if (tune_active || RfIsTx || !isRun || PttPressed || AIMgr.item)
+    return false;
+  /* Physically select LOW power before asserting the transmitter.
+   * Do not change RADIO.mode or the user's displayed RF frequency.
+   */
+  tune_saved_power = TP.level;
+  TP.level = L;
+  power_high_off();
+  DRMgr.item |= TPItem;
+  fx9a_tune_logic_init(&tune_logic, fx9a_ticks_10ms);
+  tune_active = true;
+  CWT_Off();
+  RF_ToTx();
+  MICControlOff();
+  CWT_On(); /* Continuous CW carrier, never the iambic keyer. */
+  oled_lsb_usb("TUNE");
+  return true;
+}
+
+void Tune_Stop(void)
+{
+  if (!tune_active) return;
+  CWT_Off();
+  MICControlOff();
+  tx_control_off();
+  tune_active = false; /* Restore the ordinary receive DDS calculations. */
+  RF_ToRx();
+  TP.level = tune_saved_power;
+  if (TP.level == L) power_high_off();
+  else power_high_on();
+  DRMgr.item |= TPItem | RADIOItem | TXRXItem | SWRCHKItem;
+}
+
+void Tune_Task(void)
+{
+  if (!tune_active) return;
+  uint32_t tick = fx9a_ticks_10ms;
+  Fx9aTuneResult result = fx9a_tune_logic_step(
+      &tune_logic, tick, adc_swr(),
+      PttPressed || hswr_timeout || !isRun || !RfIsTx);
+  if (result != FX9A_TUNE_RUNNING)
+    Tune_Stop();
+}
+
 uint32_t Get_DDSLO(uint32_t freq)
 {
+  if (Tune_IsActive()) return freq * 10u;
   int32_t tmp;
   if( RADIO.mode == RADIO_USB)
   {
@@ -815,6 +873,7 @@ uint32_t Get_DDSLO(uint32_t freq)
 
 uint32_t Get_DDSBFO()
 {
+  if (Tune_IsActive()) return 0u;
   uint32_t tmp;
   if( RADIO.mode == RADIO_USB)
   {
@@ -1849,13 +1908,15 @@ void RF_SwrService(void)
 {
   if (!swr_trip_pending) return;
   swr_trip_pending = 0u;
-  RF_ToRx();
+  if (Tune_IsActive()) Tune_Stop();
+  else RF_ToRx();
   oled_h_vswr_disp();
 }
 
 void board_task()
 {
   RF_SwrService();
+  Tune_Task();
   key_task();
   
   board_refresh_manager();
@@ -1969,7 +2030,7 @@ static void RF_ProgramSynth(void)
 {
   uint32_t freq = FREQ.val;
   if (!(FREQ.item & MEMItem)) {
-    if (RfIsTx && (FREQ.item & XITItem)) {
+    if (RfIsTx && !Tune_IsActive() && (FREQ.item & XITItem)) {
       int64_t adjusted = (int64_t)freq + VFO.XIT;
       if (adjusted > 0) freq = (uint32_t)adjusted;
     } else if (!RfIsTx && (FREQ.item & RITItem)) {
@@ -1987,9 +2048,10 @@ void RF_Tx(void)
   MICControlOff();
   QuietModeOn();
   CW_FilterControl(0);
-  if (RADIO.mode == CWA || RADIO.mode == CWB) {
+  if (Tune_IsActive() || RADIO.mode == CWA || RADIO.mode == CWB) {
     CW_BFOControl(1);
-    TMR_Start(TIM4);
+    if (!Tune_IsActive()) TMR_Start(TIM4);
+    else TMR_Stop(TIM4);
   } else {
     CW_BFOControl(0);
     TMR_Stop(TIM4);
@@ -1997,7 +2059,7 @@ void RF_Tx(void)
   RF_ProgramSynth();
   delay_ms(2); /* First hardware gate must verify synthesizer settling. */
   tx_control_on();
-  if (RADIO.mode != CWA && RADIO.mode != CWB)
+  if (!Tune_IsActive() && RADIO.mode != CWA && RADIO.mode != CWB)
     MICControlOn();
 }
 
