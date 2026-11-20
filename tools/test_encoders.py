@@ -130,7 +130,7 @@ int main(void) {
     cycle(false, true); assert(FREQ.numOfbaud == 4 && FREQ.val == BAUD[4][1]);
     cycle(false, false); assert(FREQ.numOfbaud == 3);
     AIMgr.item = 0; FREQ.item = MEMItem; FREQ.numOfmem = 0;
-    MEM[1].freq = 750000; MEM[1].mode = USB;
+    MEM[1].freq = 750000; MEM[1].mode = RADIO_USB;
     cycle(true, true); assert(FREQ.numOfmem == 1 && FREQ.val == 750000);
     assert(FREQ.numOfbaud == 3);
     FREQ.numOfmem = 99; cycle(true, true); assert(FREQ.numOfmem == 99);
