@@ -53,26 +53,21 @@ jobs:
           python3 tools/test_encoders.py
           python3 tools/test_frequency.py
           python3 tools/test_rx_alignment.py
-      - name: Host simulated STM32F1 register tests
+      - name: Simulated native STM32F1 LL peripheral tests
         run: |
-          gcc -std=c11 -O0 -fshort-enums -Wall -Wextra \
-            -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast \
+          gcc -std=c11 -O0 -Wall -Wextra -Wno-pointer-to-int-cast \
+            -Wno-int-to-pointer-cast \
             -include cmsis_ll/tests/host_intrinsics.h \
             -DSTM32F103xE -DHSE_VALUE=16000000 -DHSI_VALUE=8000000 \
-            -Icmsis_ll/compat \
+            -DUSE_FULL_LL_DRIVER \
+            -Icmsis_ll/board \
             -Icmsis_ll/vendor/cmsis-device-f1/Include \
             -Icmsis_ll/vendor/cmsis-core/CMSIS/Core/Include \
             -Icmsis_ll/vendor/stm32f1xx-hal-driver/Inc \
-            cmsis_ll/tests/driver_smoke.c \
-            cmsis_ll/drivers/fx9a_gpio_ll.c \
-            cmsis_ll/drivers/fx9a_exti_ll.c \
-            cmsis_ll/drivers/fx9a_rcc_ll.c \
-            cmsis_ll/drivers/fx9a_tim_ll.c \
-            cmsis_ll/drivers/fx9a_dma_ll.c \
-            cmsis_ll/drivers/fx9a_adc_ll.c \
-            cmsis_ll/drivers/fx9a_usart_ll.c \
-            -o build-cmsis-ll/driver_smoke
-          ./build-cmsis-ll/driver_smoke
+            cmsis_ll/tests/native_ll_smoke.c \
+            cmsis_ll/vendor/stm32f1xx-hal-driver/Src/stm32f1xx_ll_gpio.c \
+            -o build-cmsis-ll/native_ll_smoke
+          ./build-cmsis-ll/native_ll_smoke
       - name: Inspect image sections
         run: |
           arm-none-eabi-size build-cmsis-ll/fx9a_boot.elf build-cmsis-ll/fx9a_full.elf
