@@ -87,6 +87,10 @@ jobs:
         run: |
           gcc -std=c11 -Wall -Wextra -Werror -Icmsis_ll/board cmsis_ll/tests/tuning_policy_test.c -o build-cmsis-ll/tuning_policy_test
           ./build-cmsis-ll/tuning_policy_test
+      - name: Meter calibration record regression
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -Icmsis_ll/board cmsis_ll/tests/meter_cal_test.c -o build-cmsis-ll/meter_cal_test
+          ./build-cmsis-ll/meter_cal_test
       - name: Inspect image sections
         run: |
           arm-none-eabi-size build-cmsis-ll/fx9a_boot.elf build-cmsis-ll/fx9a_full.elf
