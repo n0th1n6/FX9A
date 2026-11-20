@@ -56,9 +56,25 @@ cmsis_ll/
 
 Directories will be added as real files are migrated rather than populated with placeholder code.
 
-## First milestone
+## First milestone — source prepared, hardware not yet validated
 
-The first CMSIS/LL milestone is intentionally small:
+The minimal Mbed-independent boot image sources are now in the branch. The boot
+image **is not the radio firmware** and has not been verified by flashing the
+radio. No local ARM GCC build has been completed in this session. It uses the
+existing bundled STM32F10x CMSIS header as a *transitional dependency* and does
+not yet link the modern STM32 LL library.
+
+The minimal image:
+
+- has its own 76-entry STM32F103 high-density vector table and reset handler;
+- initializes .data and .bss without the Mbed runtime;
+- latches the board's existing PC5 power-hold signal high;
+- attempts 16 MHz HSE / 2 × 9 = 72 MHz PLL, with HSI fallback and debugger status;
+- performs no PA, TX, DDS, microphone, CW or filter control;
+- exposes debugger-readable `fx9a_boot_marker`, `fx9a_heartbeat`,
+  `fx9a_clock_status`, and `fx9a_system_clock_hz`.
+
+The planned milestone and checks are:
 
 1. Add current STM32F1 CMSIS device support and STM32 LL sources/headers.
 2. Add project-owned startup/vector table.
@@ -82,7 +98,24 @@ cmake -S cmsis_ll -B build-cmsis-ll \
 cmake --build build-cmsis-ll
 ```
 
-At the moment the CMake entry point is scaffolding only; it intentionally does not create a firmware target until the CMSIS/device/startup/linker inputs are present.
+The independent CMake build now defines `fx9a_boot.elf`, plus debug-only
+`fx9a_boot.bin` and `fx9a_boot.hex`. Use an absolute toolchain file path,
+for example from the repository root:
+
+```sh
+cmake -S cmsis_ll -B build-cmsis-ll -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE="$PWD/cmsis_ll/cmake/arm-none-eabi-gcc.cmake"
+cmake --build build-cmsis-ll
+python3 cmsis_ll/tests/verify_boot_image.py build-cmsis-ll/fx9a_boot.bin
+```
+
+The Python check verifies vector-table placement and bounds only; it does not
+prove hardware compatibility. The image is **not ready for ordinary flashing**.
+Both legacy IAR and Mbed use base address `0x08000000`, which could overwrite
+a resident bootloader depending on the board; consult `DFU_BACKUP.md` and
+back up the device before any programming attempt. The flash and RAM limits
+follow the current Mbed target (256 KiB flash / 48 KiB RAM), not the IAR file's
+different RAM region. Confirm the actual chip marking and memory map first.
 
 ## Safety
 
@@ -93,3 +126,13 @@ During port bring-up:
 - preserve EEPROM layout and saved radio state;
 - verify DDS, filters, PTT, SWR protection, and CW timing before transmitting;
 - use a dummy load for first TX tests.
+
+## Next verification gate
+
+- [ ] Build the standalone image with ARM GCC and run the vector test.
+- [ ] Inspect `fx9a_boot.map` and ELF vectors before programming.
+- [ ] Confirm STM32 chip marking, RAM capacity, bootloader and flash layout.
+- [ ] Obtain full flash backup and verify readback.
+- [ ] Test through SWD with PA disabled; inspect PC5 and clock status.
+- [ ] Replace the bundled 2009 CMSIS headers with current CMSIS-Core/device pack
+      and introduce STM32F1 LL drivers for subsequent peripheral migrations.
