@@ -24,26 +24,24 @@ These files are fetched into the ignored `cmsis_ll/vendor/` directory.
 They are **not** copied into the repository. The selected MCU is
 `STM32F103xE`, with a 16 MHz HSE.
 
-The complete application uses eight low-level peripheral modules:
+The complete application now calls CMSIS and the official STM32F1 LL APIs directly. The obsolete project-owned compatibility drivers and the entire `cmsis_ll/compat/` directory have been deleted. Native peripheral logic lives in the `cmsis_ll/app/` sources, while `board/ll_pins.h` converts board signal bitmasks to the STM32F1 LL pin-selection encoding.
 
-| Module | Role |
+The native application uses these subsystems:
+
+| Module | Direct CMSIS/LL responsibility |
 | --- | --- |
-| `drivers/fx9a_gpio_ll.c` | GPIO/AFIO; ST LL pin I/O with correct F1 LL mask encoding |
-| `drivers/fx9a_rcc_ll.c` | ST LL bus clock enable/reset, bus clock calculations |
-| `drivers/fx9a_irq_ll.c` | CMSIS NVIC priorities and IRQ ownership |
-| `drivers/fx9a_exti_ll.c` | ST LL EXTI masks, trigger selection and flags |
-| `drivers/fx9a_tim_ll.c` | TIM2 input scanning; TIM3 sidetone PWM; TIM4 keyer |
-| `drivers/fx9a_dma_ll.c` | DMA1 CH1 ADC sampling, CH4 USART1 TX |
-| `drivers/fx9a_adc_ll.c` | ADC1 scan/calibration, PC0–PC3 |
-| `drivers/fx9a_usart_ll.c` | USART1 / Kenwood CAT UART |
+| `app/bsp_board.c`, `app/bsp_key.c` | GPIO, AFIO, EXTI and CMSIS interrupt priorities |
+| `app/bsp_timer.c`, `app/bsp_pwm.c` | TIM2/TIM3/TIM4, encoder scheduling and sidetone |
+| `app/bsp_adc.c` | ADC1 scan and DMA1 circular samples |
+| `app/bsp_usart.c` | USART1 and DMA1 CH4 for CAT |
+| `app/bsp_ad9834.c`, `app/bsp_ad9951.c` | DDS GPIO controls |
+| `app/i2c.c`, `app/bsp_oled.c` | EEPROM bus and OLED bit-banged I/O |
+| Other `app/bsp_*.c` | Amplifier, audio, VFO input and other board peripherals |
 
-Where an ST LL inline call is appropriate the driver uses `LL_*`;
-F1 register-level access is retained where it is simpler or more deterministic.
-The actual radio application has an intentionally small compatibility surface
-(`compat/fx9a_legacy_types.h`) defining the *application-facing* old function
-names and structures. It does **not** import the 2009 device header or old
-peripheral libraries. Deleting all legacy API call sites in the original BSP
-would be a separate application refactor, not a missing low-level driver.
+`RadioStation/BSP/` retains source files inherited from the original
+firmware for reference; the independent CMake target explicitly selects its
+native LL counterparts. The original `master` branch remains the known-good
+Mbed CE reference.
 
 ## Build
 
@@ -82,22 +80,23 @@ The GitHub Actions workflow `.github/workflows/cmsis-ll-boot.yml`:
 6. Compiles `platform/device_contracts.c`, asserting MCU IRQ positions,
    selected peripheral register offsets and compatibility structure layouts.
 7. Runs the existing encoder, frequency and RX-alignment regression scripts.
-8. Runs `tests/driver_smoke.c` on Linux against mapped, simulated STM32F1
-   peripheral registers (RCC, GPIO, TIM, DMA, ADC, USART and EXTI).
+8. Runs `tests/native_ll_smoke.c` on Linux with vendor LL GPIO code against
+   mapped, simulated STM32F1 registers (GPIO pin encoding, timers, DMA, ADC,
+   USART and EXTI).
 9. Authenticates the reference v0.1.0 BIN by SHA-256 and compares boot vector
    structure. The 53,808-byte v0.1.0 image is the previous Mbed CE release,
    **not** functionally equivalent to the minimal boot image.
 
-The host register tests caught and guarded fixes for the ST LL GPIO mask
-encoding and TIM3 CH4 output-enable field. They also check the 12 MHz ADC
-prescaler and 115200-baud USART divisor. Verified CI run:
+The native host test guards STM32F1 LL pin-mask encoding (including high GPIO
+pins), timer PWM bit positions, DMA channel programming and USART divisor.
+The platform clock initializes SYSCLK to 72 MHz and ADC clock to 12 MHz. Verified CI run:
 https://github.com/n0th1n6/FX9A/actions/runs/44703550499
 
 The host register tests cannot model physical clock startup, interrupt timing,
 I2C bus transactions, radio RF outputs or analog measurement accuracy. Passing
 them is necessary but not sufficient for radio safety.
 
-## Runtime validation still required
+## Hardware and release validation still required
 
 - [ ] Confirm exact STM32 model, RAM size, bootloader arrangement and flash map.
 - [ ] Make a full verified backup and confirm DFU programming restrictions
