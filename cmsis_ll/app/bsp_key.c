@@ -1,5 +1,6 @@
 #include "bsp_key.h"
 #include "ll_pins.h"
+#include "vfo_accel.h"
 #include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_exti.h"
 #include "bsp_encoder.h"
@@ -54,6 +55,21 @@ static EncoderState channel_encoder;
 static EncoderState volume_encoder;
 static uint8_t key_scan_divider;
 static uint16_t swr_sample_divider;
+#ifdef FX9A_VFO_ACCEL
+extern volatile uint32_t fx9a_ticks_10ms;
+static Fx9aVfoAccel optical_accel;
+#endif
+static int32_t optical_frequency_step(int8_t sign)
+{
+#ifdef FX9A_VFO_ACCEL
+    return fx9a_vfo_accel_step(&optical_accel, fx9a_ticks_10ms,
+                               sign, (FREQ.item & TSItem) != 0u);
+#else
+    return sign > 0 ? ((FREQ.item & TSItem) ? 100 : 1)
+                    : ((FREQ.item & TSItem) ? -100 : -1);
+#endif
+}
+
 volatile uint32_t fx9a_ticks_10ms;
 #ifdef FX9A_ENCODER_TRACE
 /* Diagnostic only: 50 us raw contacts, normal 250 us control decoding.
@@ -529,7 +545,7 @@ void EXTI2_IRQHandler(void)
         }
         else
         {
-          Frequency_Tune((FREQ.item & TSItem) ? 100 : 1);
+          Frequency_Tune(optical_frequency_step(1));
         }
         if (AIMgr.item & MENUSETItem)
         {
@@ -597,7 +613,7 @@ void EXTI2_IRQHandler(void)
         }
         else
         {
-          Frequency_Tune((FREQ.item & TSItem) ? -100 : -1);
+          Frequency_Tune(optical_frequency_step(-1));
         }
 
         if (AIMgr.item & MENUSETItem)
