@@ -19,6 +19,8 @@ REQUIRED = {
 FORBIDDEN_SOURCE_FRAGMENTS = (
     "/RadioStation/StdPeriph_Driver/",
     "/RadioStation/CMSIS/",
+    "/cmsis_ll/drivers/fx9a_",
+    "/cmsis_ll/compat/",
     "/mbed-os/",
     "/port/mbed_main.c",
 )
@@ -40,7 +42,7 @@ def main():
         if any(fragment in filename for fragment in FORBIDDEN_SOURCE_FRAGMENTS):
             raise SystemExit(f"FAIL: old framework/driver source linked: {filename}")
         line = cmd["command"].replace("\\\\", "/")
-        if "/RadioStation/StdPeriph_Driver" in line or "/RadioStation/CMSIS" in line:
+        if "/RadioStation/StdPeriph_Driver" in line or "/RadioStation/CMSIS" in line or "/cmsis_ll/compat" in line:
             raise SystemExit("FAIL: legacy ST peripheral/CMSIS include path remains")
         for official in (
             "vendor/cmsis-core/CMSIS/Core/Include",
@@ -52,9 +54,10 @@ def main():
         if "-DSTM32F103xE" not in line:
             raise SystemExit("FAIL: wrong STM32 device selected")
     required_drivers = {
-        "fx9a_gpio_ll.c", "fx9a_rcc_ll.c", "fx9a_irq_ll.c",
-        "fx9a_exti_ll.c", "bsp_timer.c", "bsp_pwm.c",
-        "bsp_adc.c", "bsp_usart.c", "device_contracts.c",
+        "bsp_timer.c", "bsp_pwm.c", "bsp_adc.c", "bsp_usart.c",
+        "bsp_board.c", "bsp_key.c", "bsp_ad9834.c", "bsp_ad9951.c",
+        "bsp_transmit_power.c", "bsp_vol.c", "i2c.c",
+        "stm32f1xx_ll_gpio.c", "device_contracts.c",
     }
     sources = {Path(x["file"]).name for x in full}
     if required_drivers - sources:
