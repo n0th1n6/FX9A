@@ -90,7 +90,7 @@ extern bool PaddleUpdate;
 KEYER_AttrDef KEYER;
 
 //PE10/41脚  CW/T控制脚，输出高低电平（同步于KEY1/KEY2，也就是点和划。输出高电平时间长短同步于CW）
-#define CW_T GPIO_Pin_10
+#define CW_T GPIO_BSRR_BS10
 #define CW_T_PORT GPIOE
 
 #define MAX_SIZE_OF_QUEUE 10
