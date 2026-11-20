@@ -4,6 +4,7 @@
  * Timer assignments: TIM2 input scan, TIM3 sidetone PWM, TIM4 CW keyer.
  */
 #include "stm32f10x_tim.h"
+#include "stm32f1xx_ll_tim.h"
 
 void TIM_DeInit(TIM_TypeDef *timer)
 {
@@ -77,8 +78,8 @@ void TIM_ITConfig(TIM_TypeDef *timer, uint16_t mask, FunctionalState enabled)
 }
 void TIM_Cmd(TIM_TypeDef *timer, FunctionalState enabled)
 {
-    if (enabled == ENABLE) timer->CR1 |= 1u;
-    else timer->CR1 &= ~1u;
+    if (enabled == ENABLE) LL_TIM_EnableCounter(timer);
+    else LL_TIM_DisableCounter(timer);
 }
 void TIM_InternalClockConfig(TIM_TypeDef *timer)
 {
