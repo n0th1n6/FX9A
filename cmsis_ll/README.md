@@ -60,7 +60,7 @@ Directories will be added as real files are migrated rather than populated with 
 
 The minimal Mbed-independent boot image sources are now in the branch. The boot
 image **is not the radio firmware** and has not been verified by flashing the
-radio. No local ARM GCC build has been completed in this session. It uses the
+radio. ARM GCC build and the vector/stack sanity test **passed on GitHub Actions** (run 44695123236). No hardware boot test has been performed. It uses the
 existing bundled STM32F10x CMSIS header as a *transitional dependency* and does
 not yet link the modern STM32 LL library.
 
@@ -129,10 +129,12 @@ During port bring-up:
 
 ## Next verification gate
 
-- [ ] Build the standalone image with ARM GCC and run the vector test.
-- [ ] Inspect `fx9a_boot.map` and ELF vectors before programming.
+- [x] Build the standalone image with ARM GCC and run the vector test (GitHub Actions run 44695123236).
+- [ ] Review `fx9a_boot.map` and full ELF/vector contents before programming (the CI job already generated and checked basic vector data).
 - [ ] Confirm STM32 chip marking, RAM capacity, bootloader and flash layout.
 - [ ] Obtain full flash backup and verify readback.
 - [ ] Test through SWD with PA disabled; inspect PC5 and clock status.
 - [ ] Replace the bundled 2009 CMSIS headers with current CMSIS-Core/device pack
       and introduce STM32F1 LL drivers for subsequent peripheral migrations.
+
+Build verification: https://github.com/n0th1n6/FX9A/actions/runs/44695123236
