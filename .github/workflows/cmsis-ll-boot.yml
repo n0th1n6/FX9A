@@ -5,10 +5,16 @@ on:
     branches: [cmsis-ll-port]
     paths:
       - "cmsis_ll/**"
+      - "RadioStation/BSP/**"
+      - "RadioStation/StdPeriph_Driver/**"
+      - "port/**"
       - ".github/workflows/cmsis-ll-boot.yml"
   pull_request:
     paths:
       - "cmsis_ll/**"
+      - "RadioStation/BSP/**"
+      - "RadioStation/StdPeriph_Driver/**"
+      - "port/**"
       - ".github/workflows/cmsis-ll-boot.yml"
   workflow_dispatch:
 
@@ -30,12 +36,20 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: cmake --build build-cmsis-ll
-      - name: Validate vector and stack
-        run: python3 cmsis_ll/tests/verify_boot_image.py build-cmsis-ll/fx9a_boot.bin
+      - name: Validate both vector tables and stacks
+        run: |
+          python3 cmsis_ll/tests/verify_boot_image.py build-cmsis-ll/fx9a_boot.bin
+          python3 cmsis_ll/tests/verify_boot_image.py build-cmsis-ll/fx9a_full.bin
+      - name: Run radio logic regression tests
+        run: |
+          python3 tools/test_encoders.py
+          python3 tools/test_frequency.py
+          python3 tools/test_rx_alignment.py
       - name: Inspect image sections
         run: |
-          arm-none-eabi-size build-cmsis-ll/fx9a_boot.elf
+          arm-none-eabi-size build-cmsis-ll/fx9a_boot.elf build-cmsis-ll/fx9a_full.elf
           arm-none-eabi-objdump -h build-cmsis-ll/fx9a_boot.elf
+          arm-none-eabi-objdump -h build-cmsis-ll/fx9a_full.elf
       - name: Compare against verified v0.1.0 release
         run: |
           curl --fail --location --retry 3 \
@@ -53,3 +67,7 @@ jobs:
             build-cmsis-ll/fx9a_boot.bin
             build-cmsis-ll/fx9a_boot.hex
             build-cmsis-ll/fx9a_boot.map
+            build-cmsis-ll/fx9a_full.elf
+            build-cmsis-ll/fx9a_full.bin
+            build-cmsis-ll/fx9a_full.hex
+            build-cmsis-ll/fx9a_full.map
