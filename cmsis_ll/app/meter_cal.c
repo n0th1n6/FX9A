@@ -13,7 +13,8 @@ static bool meter_cal_dirty;
 static void meter_cal_defaults(void)
 {
     memset(&meter_cal, 0, sizeof meter_cal);
-    meter_cal.magic = FX9A_CAL_MAGIC;
+    meter_cal.magic_low = (uint16_t)FX9A_CAL_MAGIC;
+    meter_cal.magic_high = (uint16_t)(FX9A_CAL_MAGIC >> 16);
     meter_cal.version = FX9A_CAL_VERSION;
     const uint16_t s[5] = {32, 80, 131, 2408, 3932};
     const uint16_t rf[3] = {150, 770, 1081};
@@ -52,7 +53,7 @@ void MeterCal_Adjust(uint8_t position, int16_t step)
     uint16_t *point = fx9a_cal_point(&meter_cal, index);
     if (!point) return;
     int32_t candidate = (int32_t)*point + step;
-    uint16_t *before = index % 5u ? 0 : 0; /* configured by group below */
+    uint16_t *before = 0; /* configured by group below */
     uint16_t *after = 0;
     if (index < 5u) {
         before = index ? &meter_cal.s[index - 1u] : 0;
@@ -76,7 +77,8 @@ void MeterCal_Adjust(uint8_t position, int16_t step)
 bool MeterCal_Save(void)
 {
     if (!meter_cal_dirty) return true;
-    meter_cal.magic = FX9A_CAL_MAGIC;
+    meter_cal.magic_low = (uint16_t)FX9A_CAL_MAGIC;
+    meter_cal.magic_high = (uint16_t)(FX9A_CAL_MAGIC >> 16);
     meter_cal.version = FX9A_CAL_VERSION;
     meter_cal.crc = fx9a_cal_crc(&meter_cal);
     if (!fx9a_cal_valid(&meter_cal)) return false;
