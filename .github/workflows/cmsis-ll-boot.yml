@@ -1,0 +1,47 @@
+name: CMSIS LL boot image
+
+on:
+  push:
+    branches: [cmsis-ll-port]
+    paths:
+      - "cmsis_ll/**"
+      - ".github/workflows/cmsis-ll-boot.yml"
+  pull_request:
+    paths:
+      - "cmsis_ll/**"
+      - ".github/workflows/cmsis-ll-boot.yml"
+  workflow_dispatch:
+
+jobs:
+  boot-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Install ARM embedded GCC
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi ninja-build
+      - name: Configure independent build
+        run: |
+          cmake -S cmsis_ll -B build-cmsis-ll -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$PWD/cmsis_ll/cmake/arm-none-eabi-gcc.cmake" \
+            -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build-cmsis-ll
+      - name: Validate vector and stack
+        run: python3 cmsis_ll/tests/verify_boot_image.py build-cmsis-ll/fx9a_boot.bin
+      - name: Inspect image sections
+        run: |
+          arm-none-eabi-size build-cmsis-ll/fx9a_boot.elf
+          arm-none-eabi-objdump -h build-cmsis-ll/fx9a_boot.elf
+      - name: Upload debug-only images
+        uses: actions/upload-artifact@v4
+        with:
+          name: fx9a-cmsis-ll-boot-debug-only
+          path: |
+            build-cmsis-ll/fx9a_boot.elf
+            build-cmsis-ll/fx9a_boot.bin
+            build-cmsis-ll/fx9a_boot.hex
+            build-cmsis-ll/fx9a_boot.map
