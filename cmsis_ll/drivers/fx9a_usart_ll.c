@@ -2,7 +2,7 @@
  * Only USART1 is used by FX-9A CAT at 115200 8N1 with DMA1 CH4 TX.
  * Other USARTs are supported by clock lookup, not used by this board.
  */
-#include "stm32f10x_usart.h"
+#include "fx9a_legacy_types.h"
 #include "stm32f1xx_ll_usart.h"
 #include "stm32f10x_rcc.h"
 
