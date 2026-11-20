@@ -1889,6 +1889,7 @@ void key_task()
 
 void UART_Task()
 {
+  usart_process_rx_commands();
   uint8_t size = 0;
   if (DMA_IsTxComplete())
   {
