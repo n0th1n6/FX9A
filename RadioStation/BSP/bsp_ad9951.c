@@ -1,6 +1,6 @@
 #include "bsp_ad9951.h"
 
-// DDS  AD9951���ƽӿ�  PD13/60/UPD  PD14/61/SDIO   PD15/62/CLK   PC6/63/RET
+// DDS  AD9951¿ØÖÆ½Ó¿Ú  PD13/60/UPD  PD14/61/SDIO   PD15/62/CLK   PC6/63/RET
 #define AD9951_UPD  GPIO_Pin_13
 #define AD9951_SDIO GPIO_Pin_14
 #define AD9951_CLK  GPIO_Pin_15
@@ -18,22 +18,22 @@ uint8_t RegisterData[4] = {0,0,0,0};
 
 void ad9951_sdio_out()
 {
-  GPIO_InitTypeDef GPIO_InitStructure;
+  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
   
-  GPIO_InitStructure.GPIO_Pin =  AD9951_SDIO;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(AD9951_UPD_SDIO_CLK_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(AD9951_SDIO) << GPIO_PIN_MASK_POS) | (AD9951_SDIO));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(AD9951_UPD_SDIO_CLK_PORT, &GPIO_InitStructure);
 }
 
 void ad9951_sdio_in()
 {
-  GPIO_InitTypeDef GPIO_InitStructure;
+  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
   
-  GPIO_InitStructure.GPIO_Pin =  AD9951_SDIO;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(AD9951_UPD_SDIO_CLK_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(AD9951_SDIO) << GPIO_PIN_MASK_POS) | (AD9951_SDIO));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_INPUT; GPIO_InitStructure.Pull = LL_GPIO_PULL_UP;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(AD9951_UPD_SDIO_CLK_PORT, &GPIO_InitStructure);
 }
 
 void ad9951_write(uint8_t RegisterAddress, uint8_t NumberofRegisters, uint8_t *RegisterData)
@@ -45,25 +45,25 @@ void ad9951_write(uint8_t RegisterAddress, uint8_t NumberofRegisters, uint8_t *R
   //Create the 8-bit header
   ControlValue = RegisterAddress;
         
-  GPIO_SetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_CLK);
+  (AD9951_UPD_SDIO_CLK_PORT->BSRR = (AD9951_CLK));
   ad9951_sdio_out(); //Make SDIO an output
   
   //Write out the control word
   for(uint8_t i=0; i<8; i++)
   {
-    GPIO_ResetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_CLK);
+    (AD9951_UPD_SDIO_CLK_PORT->BRR = (AD9951_CLK));
     if(0x80 == (ControlValue & 0x80))
     {
-      GPIO_SetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_SDIO);	  //Send one to SDIO pin
+      (AD9951_UPD_SDIO_CLK_PORT->BSRR = (AD9951_SDIO));	  //Send one to SDIO pin
     }
     else
     {
-      GPIO_ResetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_SDIO); 	  //Send zero to SDIO pin
+      (AD9951_UPD_SDIO_CLK_PORT->BRR = (AD9951_SDIO)); 	  //Send zero to SDIO pin
     }
-    GPIO_SetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_CLK); 
+    (AD9951_UPD_SDIO_CLK_PORT->BSRR = (AD9951_CLK)); 
     ControlValue <<= 1;	//Rotate data
   }
-  //GPIO_ResetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_CLK);
+  //(AD9951_UPD_SDIO_CLK_PORT->BRR = (AD9951_CLK));
 
   //And then the data
   for (RegisterIndex=NumberofRegisters; RegisterIndex>0; RegisterIndex--)
@@ -71,21 +71,21 @@ void ad9951_write(uint8_t RegisterAddress, uint8_t NumberofRegisters, uint8_t *R
     ValueToWrite = *(RegisterData + RegisterIndex - 1);
     for (uint8_t i=0; i<8; i++)	
     {
-      GPIO_ResetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_CLK);
+      (AD9951_UPD_SDIO_CLK_PORT->BRR = (AD9951_CLK));
       if(0x80 == (ValueToWrite & 0x80))
       {
-        GPIO_SetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_SDIO);	  //Send one to SDIO pin
+        (AD9951_UPD_SDIO_CLK_PORT->BSRR = (AD9951_SDIO));	  //Send one to SDIO pin
       }
       else
       {
-        GPIO_ResetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_SDIO);	  //Send zero to SDIO pin
+        (AD9951_UPD_SDIO_CLK_PORT->BRR = (AD9951_SDIO));	  //Send zero to SDIO pin
       }
 
-      GPIO_SetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_CLK);
+      (AD9951_UPD_SDIO_CLK_PORT->BSRR = (AD9951_CLK));
       ValueToWrite <<= 1;	//Rotate data
     }
   }
-  //GPIO_ResetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_CLK);
+  //(AD9951_UPD_SDIO_CLK_PORT->BRR = (AD9951_CLK));
 }
 
 void ad9951_read(uint8_t RegisterAddress, uint8_t NumberofRegisters, uint8_t *RegisterData)
@@ -98,23 +98,23 @@ void ad9951_read(uint8_t RegisterAddress, uint8_t NumberofRegisters, uint8_t *Re
   //Create the 8-bit header
   ControlValue = RegisterAddress;
         
-  GPIO_SetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_CLK);
+  (AD9951_UPD_SDIO_CLK_PORT->BSRR = (AD9951_CLK));
   ad9951_sdio_out();
 
   //Write out the control word
   for(i=0; i<8; i++)
   {
-    GPIO_ResetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_CLK);
+    (AD9951_UPD_SDIO_CLK_PORT->BRR = (AD9951_CLK));
     if(0x80 == (ControlValue & 0x80))
     {
-      GPIO_SetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_SDIO);	  //Send one to SDIO pin
+      (AD9951_UPD_SDIO_CLK_PORT->BSRR = (AD9951_SDIO));	  //Send one to SDIO pin
     }
     else
     {
-      GPIO_ResetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_SDIO);	  //Send zero to SDIO pin
+      (AD9951_UPD_SDIO_CLK_PORT->BRR = (AD9951_SDIO));	  //Send zero to SDIO pin
     }
 
-    GPIO_SetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_CLK);
+    (AD9951_UPD_SDIO_CLK_PORT->BSRR = (AD9951_CLK));
     ControlValue <<= 1;	//Rotate data
   }
   delay_us(10);
@@ -125,11 +125,11 @@ void ad9951_read(uint8_t RegisterAddress, uint8_t NumberofRegisters, uint8_t *Re
   {
     for(i=0; i<8; i++)
     {     
-      GPIO_SetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_CLK);
+      (AD9951_UPD_SDIO_CLK_PORT->BSRR = (AD9951_CLK));
       delay_us(1);
-      GPIO_ResetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_CLK);
+      (AD9951_UPD_SDIO_CLK_PORT->BRR = (AD9951_CLK));
       ReceiveData <<= 1;		//Rotate data	
-      if(GPIO_ReadInputDataBit(AD9951_UPD_SDIO_CLK_PORT, AD9951_SDIO)) //Read SDIO of AD9959
+      if((((AD9951_UPD_SDIO_CLK_PORT->IDR) & (AD9951_SDIO)) != 0u)) //Read SDIO of AD9959
       {
         ReceiveData |= 1;	
       }
@@ -142,21 +142,21 @@ void ad9951_read(uint8_t RegisterAddress, uint8_t NumberofRegisters, uint8_t *Re
 
 void ad9951_update_low()
 {  
-  GPIO_ResetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_UPD);
+  (AD9951_UPD_SDIO_CLK_PORT->BRR = (AD9951_UPD));
 }
 
 void ad9951_update_high()
 {  
-  GPIO_SetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_UPD); 
+  (AD9951_UPD_SDIO_CLK_PORT->BSRR = (AD9951_UPD)); 
 }
 
 void ad9951_update()
 { 
-  GPIO_ResetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_UPD);
+  (AD9951_UPD_SDIO_CLK_PORT->BRR = (AD9951_UPD));
   delay_us(2);
-  GPIO_SetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_UPD); 
+  (AD9951_UPD_SDIO_CLK_PORT->BSRR = (AD9951_UPD)); 
   delay_us(8);
-  GPIO_ResetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_UPD);
+  (AD9951_UPD_SDIO_CLK_PORT->BRR = (AD9951_UPD));
 }
 
 
@@ -175,21 +175,21 @@ void ad9951_write_freq(uint32_t freq, uint32_t ref)
 
 void ad9951_init()
 {
-  GPIO_InitTypeDef GPIO_InitStructure;
+  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
   
-  GPIO_InitStructure.GPIO_Pin =  AD9951_UPD | AD9951_SDIO | AD9951_CLK;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(AD9951_UPD_SDIO_CLK_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(AD9951_UPD | AD9951_SDIO | AD9951_CLK) << GPIO_PIN_MASK_POS) | (AD9951_UPD | AD9951_SDIO | AD9951_CLK));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(AD9951_UPD_SDIO_CLK_PORT, &GPIO_InitStructure);
   
-  GPIO_InitStructure.GPIO_Pin =  AD9951_RET;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(AD9951_RET_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(AD9951_RET) << GPIO_PIN_MASK_POS) | (AD9951_RET));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(AD9951_RET_PORT, &GPIO_InitStructure);
   
-  GPIO_SetBits(AD9951_UPD_SDIO_CLK_PORT, AD9951_CLK);
-  GPIO_SetBits(AD9951_RET_PORT, AD9951_RET);
-  GPIO_ResetBits(AD9951_RET_PORT, AD9951_RET);
+  (AD9951_UPD_SDIO_CLK_PORT->BSRR = (AD9951_CLK));
+  (AD9951_RET_PORT->BSRR = (AD9951_RET));
+  (AD9951_RET_PORT->BRR = (AD9951_RET));
   ad9951_update_low();
    
   delay_ms(1);
