@@ -68,7 +68,7 @@ if(FX9A_BUILD_FULL)
         bsp_24lc16.c    
          bsp_dac.c bsp_debug.c  bsp_kenwood.c
           bsp_oled_api.c 
-        bsp_transmit_power.c  bsp_vol.c 
+           
     )
     list(TRANSFORM FX9A_BSP_SOURCES PREPEND
         "${FX9A_ROOT}/RadioStation/BSP/")
@@ -83,6 +83,8 @@ if(FX9A_BUILD_FULL)
         drivers/fx9a_exti_ll.c
         app/bsp_timer.c
         app/bsp_pwm.c
+        app/bsp_vol.c
+        app/bsp_transmit_power.c
         app/bsp_usart.c
         app/bsp_adc.c
         app/bsp_key.c
