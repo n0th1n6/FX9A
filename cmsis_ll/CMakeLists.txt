@@ -10,18 +10,32 @@ if(NOT FX9A_HSE_HZ STREQUAL "16000000" OR NOT FX9A_SYSCLK_HZ STREQUAL "72000000"
 endif()
 
 set(FX9A_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
+# Official STM32F1 CMSIS + LL packages. CI checks out pinned vendor tags;
+# local builds should run cmsis_ll/vendor/fetch_vendor.sh first.
+set(FX9A_VENDOR "${CMAKE_CURRENT_SOURCE_DIR}/vendor")
+set(FX9A_CMSIS_CORE "${FX9A_VENDOR}/cmsis-core/CMSIS/Core/Include")
+set(FX9A_CMSIS_DEVICE "${FX9A_VENDOR}/cmsis-device-f1/Include")
+set(FX9A_ST_LL "${FX9A_VENDOR}/stm32f1xx-hal-driver/Inc")
+foreach(pkg FX9A_CMSIS_CORE FX9A_CMSIS_DEVICE FX9A_ST_LL)
+    if(NOT EXISTS "${${pkg}}")
+        message(FATAL_ERROR "Missing ${pkg} at ${${pkg}}; run bash cmsis_ll/vendor/fetch_vendor.sh")
+    endif()
+endforeach()
+set(FX9A_ST_INCLUDES
+    "${CMAKE_CURRENT_SOURCE_DIR}/compat"
+    "${FX9A_CMSIS_DEVICE}"
+    "${FX9A_CMSIS_CORE}"
+    "${FX9A_ST_LL}"
+)
+set(FX9A_ST_DEFINES STM32F103xE HSE_VALUE=16000000 HSI_VALUE=8000000)
+
 add_executable(fx9a_boot.elf
     platform/startup_stm32f103_hd.s
     platform/clock.c
     platform/main.c
 )
-target_include_directories(fx9a_boot.elf PRIVATE
-    "${FX9A_ROOT}/RadioStation/CMSIS"
-)
-target_compile_definitions(fx9a_boot.elf PRIVATE
-    STM32F10X_HD
-    HSE_Value=16000000
-)
+target_include_directories(fx9a_boot.elf PRIVATE ${FX9A_ST_INCLUDES})
+target_compile_definitions(fx9a_boot.elf PRIVATE ${FX9A_ST_DEFINES})
 target_compile_options(fx9a_boot.elf PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-std=c11;-Os;-ffreestanding;-fno-builtin;-Wall;-Wextra>
 )
@@ -77,17 +91,12 @@ if(FX9A_BUILD_FULL)
         ${FX9A_BSP_SOURCES}
     )
     target_include_directories(fx9a_full.elf PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/compat
+        ${FX9A_ST_INCLUDES}
         ${FX9A_ROOT}/port
         ${FX9A_ROOT}/RadioStation/BSP
-        ${FX9A_ROOT}/RadioStation/CMSIS
         ${FX9A_ROOT}/RadioStation/StdPeriph_Driver
     )
-    target_compile_definitions(fx9a_full.elf PRIVATE
-        STM32F10X_HD
-        HSE_Value=16000000
-        USE_STDPERIPH_DRIVER
-    )
+    target_compile_definitions(fx9a_full.elf PRIVATE ${FX9A_ST_DEFINES})
     target_compile_options(fx9a_full.elf PRIVATE
         $<$<COMPILE_LANGUAGE:C>:-std=c11;-Os;-fshort-enums;-fsigned-char;-Wno-deprecated-declarations;-Wno-int-conversion>
     )
