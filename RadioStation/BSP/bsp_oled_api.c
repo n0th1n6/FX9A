@@ -1,4 +1,5 @@
 #include "bsp_oled_api.h"
+#include "meter_cal.h"
 #include "zk.h"
 #include "bsp_pwm.h"
 #include "bsp_transmit_power.h"
@@ -1656,6 +1657,10 @@ void oled_arrows_set_1608(uint8_t position)
 
 void oled_menu_arrows_set(uint8_t position)
 {
+  if (position >= METER_CAL_FIRST) {
+    arrows_pos = position;
+    return;
+  }
   if (position == CONT_TUNE_MENU)
   {
     arrows_pos = position;
@@ -1702,6 +1707,25 @@ void oled_menu_set(uint8_t position)
   uint8_t pos_y = 12;
   uint8_t all = 0 ;
 
+  if (position >= METER_CAL_FIRST && position <= METER_CAL_LAST)
+  {
+    static const char *const names[11] = {
+      "S0", "S5", "S9", "S9+20", "S9+40",
+      "PWR 1W", "PWR 5W", "PWR 10W",
+      "SWR LOW", "SWR MID", "SWR HIGH"
+    };
+    char number[22];
+    uint8_t index = position - METER_CAL_FIRST;
+    if (menu_pos < METER_CAL_FIRST)
+      oled_set_screen(0x00);
+    Show_String0705(5, 4, "METER CALIBRATION");
+    Show_String0705(5, 20, names[index]);
+    snprintf(number, sizeof number, "ADC: %04u   ", (unsigned)MeterCal_Value(index));
+    Show_String0705(5, 36, number);
+    Show_String0705(5, 52, "VFO / TS:STEP");
+    menu_pos = position;
+    return;
+  }
   if (position == CONT_TUNE_MENU)
   {
     if (menu_pos != CONT_TUNE_MENU)
@@ -1714,7 +1738,7 @@ void oled_menu_set(uint8_t position)
   }
   if (position >= RX_USB_MENU)
   {
-    if (menu_pos < RX_USB_MENU || menu_pos == CONT_TUNE_MENU)
+    if (menu_pos < RX_USB_MENU || menu_pos >= CONT_TUNE_MENU)
       oled_set_screen(0x00);
     Show_String0705(5, 4, "RX ALIGNMENT");
     Show_RX_Alignment(20, 1, MENU.rxUsbOffset);
