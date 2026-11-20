@@ -92,7 +92,7 @@ void Draw_Rectangle(unsigned char Data, unsigned char a, unsigned char b, unsign
   k=a%4;
   if(k == 0)
   {
-    l=(a/4)-1;  //¼ÆËãĞĞÊı
+    l=(a/4)-1;  //è®¡ç®—è¡Œæ•°
   }
   else
   {
@@ -344,73 +344,73 @@ void Grayscale()
 }
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-//  Show String0705: ÏÔÊ¾×Ö·û´®
+//  Show String0705: æ˜¾ç¤ºå­—ç¬¦ä¸²
 //      BG6RDF
 //    x: Start X Address
 //    y: Start Y Address
-//    str: ×Ö·û´®Ö¸Õë
+//    str: å­—ç¬¦ä¸²æŒ‡é’ˆ
 //    
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 void Show_String0705(uint8_t x, uint8_t y, uint8_t *str)
 {
-  //OLED·Ö±æÂÊ256*64£¬Òò´Ë0705µÄ×Ö·ûÍâ¼ÓÃ¿¸ö×Ö·û¼äÒ»¸öÏñËØµÄ¿ÕÏ¶£¬Ò»ĞĞ×î¶àÏÔÊ¾43¸ö×Ö·û
+  //OLEDåˆ†è¾¨ç‡256*64ï¼Œå› æ­¤0705çš„å­—ç¬¦å¤–åŠ æ¯ä¸ªå­—ç¬¦é—´ä¸€ä¸ªåƒç´ çš„ç©ºéš™ï¼Œä¸€è¡Œæœ€å¤šæ˜¾ç¤º43ä¸ªå­—ç¬¦
   uint8_t row[7][43];
-  uint8_t len=strlen((char const *)str);        //×Ö·û´®³¤¶È
-  uint8_t tlen=len*6-1;                         //Ã¿ĞĞ×ÜÏñËØÊıÁ¿
-  uint8_t bytelen=(tlen+7)/8;                   //Ã¿ĞĞÄ¿±ê×Ö½ÚÊı
+  uint8_t len=strlen((char const *)str);        //å­—ç¬¦ä¸²é•¿åº¦
+  uint8_t tlen=len*6-1;                         //æ¯è¡Œæ€»åƒç´ æ•°é‡
+  uint8_t bytelen=(tlen+7)/8;                   //æ¯è¡Œç›®æ ‡å­—èŠ‚æ•°
   tlen=bytelen*8/4-1;
   
-  for(int i=0; i<7; i++)        //7ĞĞÏñËØ
+  for(int i=0; i<7; i++)        //7è¡Œåƒç´ 
   {
-    int startBit=8;             //¸´ÖÆµ½Ä¿±ê×Ö½ÚµÄ¿ªÊ¼Î»Êı£¬×î¸ßÎ»ÊÇ8£¬×îµÍÎ»ÊÇ1
-    int processedBit=0;         //ÒòÒ»¸ö×Ö·ûµÄÒ»ĞĞ¿ÉÄÜ¿ç¶à¸öÄ¿±ê×Ö½Ú£¬Òò´ËÒª¼ÇÂ¼ÒÑ´¦ÀíÁË¶àÉÙÎ»
-    int byteIdx=0;              //Ä¿±ê×Ö½ÚµÄÏÂ±ê
+    int startBit=8;             //å¤åˆ¶åˆ°ç›®æ ‡å­—èŠ‚çš„å¼€å§‹ä½æ•°ï¼Œæœ€é«˜ä½æ˜¯8ï¼Œæœ€ä½ä½æ˜¯1
+    int processedBit=0;         //å› ä¸€ä¸ªå­—ç¬¦çš„ä¸€è¡Œå¯èƒ½è·¨å¤šä¸ªç›®æ ‡å­—èŠ‚ï¼Œå› æ­¤è¦è®°å½•å·²å¤„ç†äº†å¤šå°‘ä½
+    int byteIdx=0;              //ç›®æ ‡å­—èŠ‚çš„ä¸‹æ ‡
     
     row[i][0]=0;
     for(int j=0; j<len; )
     {
-      //ÏÈ×óÒÆ¶¯3Î»£¬¶ÔÆë×î¸ßÎ»£¬Èç¹ûÒÑ´¦ÀíÁË¼¸Î»ÔÙ¼ÓÉÏprocessedBit£¬ÔÙ¼õÈ¥ÆğÊ¼Î»Ïà¶Ô×î¸ßÎ»µÄÆ«ÒÆ
+      //å…ˆå·¦ç§»åŠ¨3ä½ï¼Œå¯¹é½æœ€é«˜ä½ï¼Œå¦‚æœå·²å¤„ç†äº†å‡ ä½å†åŠ ä¸ŠprocessedBitï¼Œå†å‡å»èµ·å§‹ä½ç›¸å¯¹æœ€é«˜ä½çš„åç§»
       int shiftBit=3+processedBit-(8-startBit);
       int firstBit=5-processedBit;
-      //×Ö·ûÔÚµ±Ç°Ä¿±ê×Ö½ÚµÄÓĞĞ§Î»Êı
+      //å­—ç¬¦åœ¨å½“å‰ç›®æ ‡å­—èŠ‚çš„æœ‰æ•ˆä½æ•°
       int effectiveBit=startBit>=firstBit ? firstBit : startBit;
       uint8_t bits=ASCII_0705[str[j]-0x20][i];
       if (shiftBit>0)
         bits<<=shiftBit;
       else if (shiftBit<0)
         bits>>=(-shiftBit);
-      //°ÑÓĞĞ§Î»ÊıÒÔÍâµÄËùÓĞÎ»ÖÃÎª0
-      //ÑÚÂëÏÈÉú³ÉÒ»¸öÓĞĞ§Î»Êı³¤¶ÈµÄ1Î»£¬È»ºóÒÆ¶¯µ½ÆğÊ¼Î»
+      //æŠŠæœ‰æ•ˆä½æ•°ä»¥å¤–çš„æ‰€æœ‰ä½ç½®ä¸º0
+      //æ©ç å…ˆç”Ÿæˆä¸€ä¸ªæœ‰æ•ˆä½æ•°é•¿åº¦çš„1ä½ï¼Œç„¶åç§»åŠ¨åˆ°èµ·å§‹ä½
       uint8_t maskBit=((1<<effectiveBit)-1)<<(startBit-effectiveBit);
       bits&=maskBit;
-      //ÉèÖÃÄ¿±ê×Ö½Ú
+      //è®¾ç½®ç›®æ ‡å­—èŠ‚
       row[i][byteIdx] |= bits ;
       
-      //ÒÆ¶¯Ä¿±êÎ»Ö¸Õë
+      //ç§»åŠ¨ç›®æ ‡ä½æŒ‡é’ˆ
       startBit-=effectiveBit;
       
-      //µ±Ç°×Ö·ûÊÇ·ñÒÑ´¦ÀíÍê
+      //å½“å‰å­—ç¬¦æ˜¯å¦å·²å¤„ç†å®Œ
       if (processedBit+effectiveBit>=5)
       {
-        j++;                    //µ±Ç°×Ö·ûÒÑ´¦ÀíÍê
+        j++;                    //å½“å‰å­—ç¬¦å·²å¤„ç†å®Œ
         processedBit=0;
-        if (startBit>0)         //Ä¿±ê×Ö½Ú»¹ÓĞ¿ÕÎ»
-          startBit--;           //Ïàµ±ÓÚ²åÈëÒ»¸ö¿ÕÏñËØ
+        if (startBit>0)         //ç›®æ ‡å­—èŠ‚è¿˜æœ‰ç©ºä½
+          startBit--;           //ç›¸å½“äºæ’å…¥ä¸€ä¸ªç©ºåƒç´ 
         else
         {
-          startBit=7;           //Ïàµ±ÓÚ²åÈëÒ»¸ö¿ÕÏñËØ
-          row[i][++byteIdx]=0;  //ÏÂÒ»¸öÄ¿±ê×Ö½ÚÇå¿Õ
+          startBit=7;           //ç›¸å½“äºæ’å…¥ä¸€ä¸ªç©ºåƒç´ 
+          row[i][++byteIdx]=0;  //ä¸‹ä¸€ä¸ªç›®æ ‡å­—èŠ‚æ¸…ç©º
         }
         //if (':'==str[j] || '.'==str[j])
-        //  processedBit=3;       //Ã°ºÅºÍ¾äºÅÖ»Õ¼ÓÃÁ½¸öÏñËØ¿í
+        //  processedBit=3;       //å†’å·å’Œå¥å·åªå ç”¨ä¸¤ä¸ªåƒç´ å®½
       }
       else
-        processedBit+=effectiveBit;     //µ±Ç°×Ö·û»¹ÓĞÓàÏÂµÄÎ»
+        processedBit+=effectiveBit;     //å½“å‰å­—ç¬¦è¿˜æœ‰ä½™ä¸‹çš„ä½
 
-      if (startBit<=0)    //²åÈë¿ÕÏñËØºóÃ»¿ÕÎ»ÁË
+      if (startBit<=0)    //æ’å…¥ç©ºåƒç´ åæ²¡ç©ºä½äº†
       {
         startBit=8;
-        row[i][++byteIdx]=0;    //ÏÂÒ»¸öÄ¿±ê×Ö½ÚÇå¿Õ
+        row[i][++byteIdx]=0;    //ä¸‹ä¸€ä¸ªç›®æ ‡å­—èŠ‚æ¸…ç©º
       }
     }
   }
@@ -676,7 +676,7 @@ unsigned char *Src_Pointer;
 //    b: Column Address of End (Total Columns Devided by 4)
 //    c: Row Address of Start
 //    d: Row Address of End
-// »Ò¶ÈÄ£Ê½ÏÂÏÔÊ¾Ò»¸±Í¼Æ¬
+// ç°åº¦æ¨¡å¼ä¸‹æ˜¾ç¤ºä¸€å‰¯å›¾ç‰‡
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 void Show_Pattern(unsigned char *Data_Pointer, unsigned char a, unsigned char b, unsigned char c, unsigned char d)
 {
@@ -684,7 +684,7 @@ void Show_Pattern(unsigned char *Data_Pointer, unsigned char a, unsigned char b,
 unsigned char *Src_Pointer;
 unsigned char i,j;
 //unsigned char temp1,temp2;
- /*	   È¡Ä£Ê±ÏñËØ·´Ğò
+ /*	   å–æ¨¡æ—¶åƒç´ ååº
 Set_Remap_Format(0x10);	
 	Src_Pointer=Data_Pointer;
 	Set_Column_Address(Shift+a,Shift+b);
@@ -706,7 +706,7 @@ Set_Remap_Format(0x10);
 		}
 	}
  */
- //È¡Ä£Ê±ºòÏñËØÕıĞò	£¨²»ÄÜ·´ĞòÓë2.7²»Í¬£©
+ //å–æ¨¡æ—¶å€™åƒç´ æ­£åº	ï¼ˆä¸èƒ½ååºä¸2.7ä¸åŒï¼‰
     Src_Pointer=Data_Pointer;
 	Set_Column_Address(Shift+a,Shift+b);
 	Set_Row_Address(c,d);
@@ -892,13 +892,13 @@ void Sleep(unsigned char a)
 
 void oled_draw_scale1(uint8_t x, uint8_t y, uint8_t *data)
 {
-  Set_Column_Address(Shift+x,Shift+x+15); // ÉèÖÃÁĞ×ø±ê£¬shiftÎªÁĞÆ«ÒÆÁ¿ÓÉ1322¾ö¶¨¡£15Îª64/4-1
+  Set_Column_Address(Shift+x,Shift+x+15); // è®¾ç½®åˆ—åæ ‡ï¼Œshiftä¸ºåˆ—åç§»é‡ç”±1322å†³å®šã€‚15ä¸º64/4-1
   Set_Row_Address(y,y+11);  //
-  Set_Write_RAM();	 //	Ğ´ÏÔ´æ
+  Set_Write_RAM();	 //	å†™æ˜¾å­˜
   
   for(uint16_t j=0;j<88;j++)
   {
-      con_4_byte(data[j]);	 //Êı¾İ×ª»»
+      con_4_byte(data[j]);	 //æ•°æ®è½¬æ¢
   }
 }
 
@@ -914,7 +914,7 @@ void oled_update_freq(uint8_t three, uint16_t two, uint8_t one, uint8_t all)
       oled_ascii_3216(pos, pos_y, DIGIT_3216[three%100/10]);  // 16/4-1
     }else if(freq_three > 9 || freq_three != 0xff)
     {
-      oled_ascii_3216(pos, pos_y, DIGIT_3216[11]);  // Çå³ıÎ»
+      oled_ascii_3216(pos, pos_y, DIGIT_3216[11]);  // æ¸…é™¤ä½
     }
     freq_three = three;
     pos += 4;
@@ -965,9 +965,9 @@ void oled_update_tx_scaler()
 
 void oled_draw_grid(uint8_t x, uint8_t y)
 {
-  Set_Column_Address(Shift+x,Shift+x); // ÉèÖÃÁĞ×ø±ê£¬shiftÎªÁĞÆ«ÒÆÁ¿ÓÉ1322¾ö¶¨¡£1Îª8/4-1
+  Set_Column_Address(Shift+x,Shift+x); // è®¾ç½®åˆ—åæ ‡ï¼Œshiftä¸ºåˆ—åç§»é‡ç”±1322å†³å®šã€‚1ä¸º8/4-1
   Set_Row_Address(y,y+6);  //
-  Set_Write_RAM();	 //	Ğ´ÏÔ´æ
+  Set_Write_RAM();	 //	å†™æ˜¾å­˜
   
   for(uint8_t j=0;j<6;j++)
   {
@@ -987,9 +987,9 @@ void oled_draw_grid(uint8_t x, uint8_t y)
 
 void oled_clear_grid(uint8_t x, uint8_t y)
 {
-  Set_Column_Address(Shift+x,Shift+x); // ÉèÖÃÁĞ×ø±ê£¬shiftÎªÁĞÆ«ÒÆÁ¿ÓÉ1322¾ö¶¨¡£1Îª8/4-1
+  Set_Column_Address(Shift+x,Shift+x); // è®¾ç½®åˆ—åæ ‡ï¼Œshiftä¸ºåˆ—åç§»é‡ç”±1322å†³å®šã€‚1ä¸º8/4-1
   Set_Row_Address(y,y+6);  //
-  Set_Write_RAM();	 //	Ğ´ÏÔ´æ
+  Set_Write_RAM();	 //	å†™æ˜¾å­˜
   
   for(uint8_t j=0;j<6;j++)
   {
@@ -1124,7 +1124,7 @@ void oled_rx_grid(uint8_t num)
     return;
   }
   
-  if(num < rx_grid_old)       // ¸ñ×Ó¼õÉÙ
+  if(num < rx_grid_old)       // æ ¼å­å‡å°‘
   {
     for(uint8_t i=rx_grid_old; i>num; i--)
     {
@@ -1134,7 +1134,7 @@ void oled_rx_grid(uint8_t num)
       }
     }
   }
-  else if(num > rx_grid_old)  // ¸ñ×ÓÔö¶à
+  else if(num > rx_grid_old)  // æ ¼å­å¢å¤š
   {
     for(uint8_t i=rx_grid_old; i<=num; i++)
     {
@@ -1155,7 +1155,7 @@ void oled_swr_grid(uint8_t num)
     return;
   }
   
-  if(num < swr_grid_old)       // ¸ñ×Ó¼õÉÙ
+  if(num < swr_grid_old)       // æ ¼å­å‡å°‘
   {
     for(uint8_t i=swr_grid_old; i>num; i--)
     {
@@ -1165,7 +1165,7 @@ void oled_swr_grid(uint8_t num)
       }
     }
   }
-  else if(num > rx_grid_old)  // ¸ñ×ÓÔö¶à
+  else if(num > rx_grid_old)  // æ ¼å­å¢å¤š
   {
     for(uint8_t i=swr_grid_old; i<=num; i++)
     {
@@ -1186,7 +1186,7 @@ void oled_rf_grid(uint8_t num)
     return;
   }
   
-  if(num < rf_grid_old)       // ¸ñ×Ó¼õÉÙ
+  if(num < rf_grid_old)       // æ ¼å­å‡å°‘
   {
     for(uint8_t i=rf_grid_old; i>num; i--)
     {
@@ -1196,7 +1196,7 @@ void oled_rf_grid(uint8_t num)
       }
     }
   }
-  else if(num > rf_grid_old)  // ¸ñ×ÓÔö¶à
+  else if(num > rf_grid_old)  // æ ¼å­å¢å¤š
   {
     for(uint8_t i=rf_grid_old; i<=num; i++)
     {
@@ -1240,8 +1240,8 @@ void Set_Linear_Gray_Scale_Table()
 }
 
 /**************************************
-  Êı¾İ×ª»»³ÌĞò£º½«2Î»·Ö³É1¸ö×Ö½Ú´æÈëÏÔ´æ£¬ÓÉÓÚ1¸öseg±íÊ¾4¸öÁĞËùÒÔÒªÍ¬Ê±Ğ´2¸ö×Ö½Ú¼´4¸öÏñËØ
-  uint8_t DATA£ºÈ¡Ä£À´µÄ×ÖÄ£Êı¾İ
+  æ•°æ®è½¬æ¢ç¨‹åºï¼šå°†2ä½åˆ†æˆ1ä¸ªå­—èŠ‚å­˜å…¥æ˜¾å­˜ï¼Œç”±äº1ä¸ªsegè¡¨ç¤º4ä¸ªåˆ—æ‰€ä»¥è¦åŒæ—¶å†™2ä¸ªå­—èŠ‚å³4ä¸ªåƒç´ 
+  uint8_t DATAï¼šå–æ¨¡æ¥çš„å­—æ¨¡æ•°æ®
 ****************************************/
 void con_4_byte(uint8_t DATA)
 {
@@ -1250,11 +1250,11 @@ void con_4_byte(uint8_t DATA)
    uint8_t d,k1,k2;
    d=DATA;
  
-  for(i=0;i<2;i++)   // Ò»Á½Î»µÄ·½Ê½Ğ´Èë  2*4=8Î»
+  for(i=0;i<2;i++)   // ä¸€ä¸¤ä½çš„æ–¹å¼å†™å…¥  2*4=8ä½
    {
-     k1=d&0xc0;     //µ±i=0Ê± ÎªD7,D6Î» µ±i=1Ê± ÎªD5,D4Î»
+     k1=d&0xc0;     //å½“i=0æ—¶ ä¸ºD7,D6ä½ å½“i=1æ—¶ ä¸ºD5,D4ä½
 
-     /****ÓĞ4ÖÖ¿ÉÄÜ£¬16¼¶»Ò¶È,Ò»¸ö×Ö½ÚÊı¾İ±íÊ¾Á½¸öÏñËØ£¬Ò»¸öÏñËØ¶ÔÓ¦Ò»¸ö×Ö½ÚµÄ4Î»***/
+     /****æœ‰4ç§å¯èƒ½ï¼Œ16çº§ç°åº¦,ä¸€ä¸ªå­—èŠ‚æ•°æ®è¡¨ç¤ºä¸¤ä¸ªåƒç´ ï¼Œä¸€ä¸ªåƒç´ å¯¹åº”ä¸€ä¸ªå­—èŠ‚çš„4ä½***/
 
      switch(k1)
        {
@@ -1279,9 +1279,9 @@ void con_4_byte(uint8_t DATA)
 	   }
      
 	   d=d<<2;
-	  k2=d&0xc0;     //µ±i=0Ê± ÎªD7,D6Î» µ±i=1Ê± ÎªD5,D4Î»
+	  k2=d&0xc0;     //å½“i=0æ—¶ ä¸ºD7,D6ä½ å½“i=1æ—¶ ä¸ºD5,D4ä½
 
-     /****ÓĞ4ÖÖ¿ÉÄÜ£¬16¼¶»Ò¶È,Ò»¸ö×Ö½ÚÊı¾İ±íÊ¾Á½¸öÏñËØ£¬Ò»¸öÏñËØ¶ÔÓ¦Ò»¸ö×Ö½ÚµÄ4Î»***/
+     /****æœ‰4ç§å¯èƒ½ï¼Œ16çº§ç°åº¦,ä¸€ä¸ªå­—èŠ‚æ•°æ®è¡¨ç¤ºä¸¤ä¸ªåƒç´ ï¼Œä¸€ä¸ªåƒç´ å¯¹åº”ä¸€ä¸ªå­—èŠ‚çš„4ä½***/
 
      switch(k2)
        {
@@ -1305,35 +1305,35 @@ void con_4_byte(uint8_t DATA)
       	 break;
 	   }
 	  
-	  d=d<<2;                                //×óÒÆÁ½Î»
+	  d=d<<2;                                //å·¦ç§»ä¸¤ä½
       
 	  
-	  spi_write_data(d1_4byte[i]);                //Ğ´Ç°2ÁĞ
-	  spi_write_data(d2_4byte[i]);                //Ğ´ºó2ÁĞ	  ¹²¼Æ4ÁĞ
+	  spi_write_data(d1_4byte[i]);                //å†™å‰2åˆ—
+	  spi_write_data(d2_4byte[i]);                //å†™å2åˆ—	  å…±è®¡4åˆ—
    }
 
 }
 /****************************************************
-   Ğ´ÈëÒ»¸ö16*16ºº×Ö
-   x:ÁĞ×ø±ê£¬1¸ö×Ö½ÚÊı¾İ±íÊ¾2ÁĞ
-   y: ĞĞ×ø±ê
-   a[32]£º16µãÕó×ÖÄ£Êı¾İ
-   Õı³£ÏÔÊ¾
+   å†™å…¥ä¸€ä¸ª16*16æ±‰å­—
+   x:åˆ—åæ ‡ï¼Œ1ä¸ªå­—èŠ‚æ•°æ®è¡¨ç¤º2åˆ—
+   y: è¡Œåæ ‡
+   a[32]ï¼š16ç‚¹é˜µå­—æ¨¡æ•°æ®
+   æ­£å¸¸æ˜¾ç¤º
 ******************************************************/
 void hz_1616(uint8_t x,uint8_t y,uint8_t a[32])//write chinese word of1616
 {
   uint16_t i,j;
   uint8_t temp;
-  Set_Column_Address(Shift+x,Shift+x+3); // ÉèÖÃÁĞ×ø±ê£¬shiftÎªÁĞÆ«ÒÆÁ¿ÓÉ1322¾ö¶¨¡£3Îª16/4-1
+  Set_Column_Address(Shift+x,Shift+x+3); // è®¾ç½®åˆ—åæ ‡ï¼Œshiftä¸ºåˆ—åç§»é‡ç”±1322å†³å®šã€‚3ä¸º16/4-1
   Set_Row_Address(y,y+15);  //
-  Set_Write_RAM();	 //	Ğ´ÏÔ´æ
+  Set_Write_RAM();	 //	å†™æ˜¾å­˜
   
   for(j=0;j<16;j++)
   {
     for (i=0;i<2;i++) /* 2*8 column , a nibble of command is a dot*/
     {
       temp = a[(j<<1)+i];
-      con_4_byte(temp);	 //Êı¾İ×ª»»
+      con_4_byte(temp);	 //æ•°æ®è½¬æ¢
     }
   }
 }
@@ -1351,9 +1351,9 @@ void ascii_1608_dot(uint8_t x, uint8_t y, uint8_t *data)
 {
   uint16_t j;
   uint8_t tmp;
-  Set_Column_Address(Shift+x,Shift+x+1); // ÉèÖÃÁĞ×ø±ê£¬shiftÎªÁĞÆ«ÒÆÁ¿ÓÉ1322¾ö¶¨¡£1Îª8/4-1
+  Set_Column_Address(Shift+x,Shift+x+1); // è®¾ç½®åˆ—åæ ‡ï¼Œshiftä¸ºåˆ—åç§»é‡ç”±1322å†³å®šã€‚1ä¸º8/4-1
   Set_Row_Address(y,y+15);  //
-  Set_Write_RAM();	 //	Ğ´ÏÔ´æ
+  Set_Write_RAM();	 //	å†™æ˜¾å­˜
   
   for(j=0;j<16;j++)
   {
@@ -1362,7 +1362,7 @@ void ascii_1608_dot(uint8_t x, uint8_t y, uint8_t *data)
     {
       tmp |= ASCII_1608['.'-0x20][j];
     }
-    con_4_byte(tmp);	//Êı¾İ×ª»»
+    con_4_byte(tmp);	//æ•°æ®è½¬æ¢
   }
 }
 void oled_freq_1608(uint8_t x, uint8_t y, uint8_t three, uint16_t two, uint8_t one, uint8_t all)
@@ -1377,7 +1377,7 @@ void oled_freq_1608(uint8_t x, uint8_t y, uint8_t three, uint16_t two, uint8_t o
       ascii_1608(pos, pos_y, ASCII_1608[three%100/10+16]);  // 16/4-1
     }else if(mem_set_three > 9 && mem_set_three != 0xff)
     {
-      ascii_1608(pos, pos_y, ASCII_1608[' '-0x20]);  // Çå³ıÎ»
+      ascii_1608(pos, pos_y, ASCII_1608[' '-0x20]);  // æ¸…é™¤ä½
     }
     mem_set_three = three;
     pos += 2;
@@ -1589,25 +1589,25 @@ void Show_CWN_LO_SET(uint8_t x, uint8_t y, int16_t offset)
   
   Show_String0705(x, y, strbuf);
 }
-//Ã²ËÆ·ÏÆú  BG6RDF
+//è²Œä¼¼åºŸå¼ƒ  BG6RDF
 void Show_CH_SET(uint8_t x, uint8_t y, uint8_t pos, uint32_t freq)
 {
   uint8_t row[7][14];
   
   for(uint8_t i=0; i<7; i++)
   {
-    row[i][0] = ASCII_0705['C'-0x20][i] << 3 | ASCII_0705['H'-0x20][i] >> 3 & 0x03 ;  // C(5) + ¿Õ + H(2)
-    row[i][1] = ASCII_0705['H'-0x20][i] << 5 | ASCII_0705[pos%100/10+16][i] >> 1;  // H(3) + ¿Õ + Ê®Î»4)
-    row[i][2] = ASCII_0705[pos%100/10+16][i] << 7 | ASCII_0705[pos%10+16][i] << 1; // Ê®Î»(1) + ¿Õ + ¸öÎ»(5) + ¿Õ 
+    row[i][0] = ASCII_0705['C'-0x20][i] << 3 | ASCII_0705['H'-0x20][i] >> 3 & 0x03 ;  // C(5) + ç©º + H(2)
+    row[i][1] = ASCII_0705['H'-0x20][i] << 5 | ASCII_0705[pos%100/10+16][i] >> 1;  // H(3) + ç©º + åä½4)
+    row[i][2] = ASCII_0705[pos%100/10+16][i] << 7 | ASCII_0705[pos%10+16][i] << 1; // åä½(1) + ç©º + ä¸ªä½(5) + ç©º 
     
-    row[i][3] = ASCII_0705[':'-0x20][i] << 3 | ASCII_0705[freq%10000000/1000000+16][i] >> 1; // ¿Õ + :(1) + ¿Õ(2) + °ÙÍòÎ»(4) 
-    row[i][4] = ASCII_0705[freq%10000000/1000000+16][i] << 7 | ASCII_0705[freq%1000000/100000+16][i] << 1; // °ÙÍòÎ»(1) + ¿Õ + Ê®ÍòÎ»(5) + ¿Õ 
-    row[i][5] = ASCII_0705['.'-0x20][i] << 4 | ASCII_0705[freq%100000/10000+16][i] << 1; // .(1) + ¿Õ +ÍòÎ»(5) + ¿Õ
-    row[i][6] = ASCII_0705[freq%10000/1000+16][i] << 3 | ASCII_0705[freq%1000/100+16][i] >> 3; // Ç§Î»(5) + ¿Õ + °ÙÎ»(2) 
-    row[i][7] = ASCII_0705[freq%1000/100+16][i] << 5 | ASCII_0705['.'-0x20][i] | ASCII_0705[freq%100/10+16][i] >> 3; // °ÙÎ»(3) + ¿Õ + .(1) + ¿Õ + Ê®Î»(2) 
-    row[i][8] = ASCII_0705[freq%100/10+16][i] << 5 | ASCII_0705[freq%10+16][i] >> 1; // Ê®Î»(3) + ¿Õ + ¸öÎ»(4)
-    row[i][9] = ASCII_0705[freq%10+16][i] << 7 | ASCII_0705['H'-0x20][i] << 1; // ¸öÎ»(1) + ¿Õ + H(5) + ¿Õ
-    row[i][10] = ASCII_0705['Z'-0x20][i] << 3; // Z(5) + ¿Õ(3)
+    row[i][3] = ASCII_0705[':'-0x20][i] << 3 | ASCII_0705[freq%10000000/1000000+16][i] >> 1; // ç©º + :(1) + ç©º(2) + ç™¾ä¸‡ä½(4) 
+    row[i][4] = ASCII_0705[freq%10000000/1000000+16][i] << 7 | ASCII_0705[freq%1000000/100000+16][i] << 1; // ç™¾ä¸‡ä½(1) + ç©º + åä¸‡ä½(5) + ç©º 
+    row[i][5] = ASCII_0705['.'-0x20][i] << 4 | ASCII_0705[freq%100000/10000+16][i] << 1; // .(1) + ç©º +ä¸‡ä½(5) + ç©º
+    row[i][6] = ASCII_0705[freq%10000/1000+16][i] << 3 | ASCII_0705[freq%1000/100+16][i] >> 3; // åƒä½(5) + ç©º + ç™¾ä½(2) 
+    row[i][7] = ASCII_0705[freq%1000/100+16][i] << 5 | ASCII_0705['.'-0x20][i] | ASCII_0705[freq%100/10+16][i] >> 3; // ç™¾ä½(3) + ç©º + .(1) + ç©º + åä½(2) 
+    row[i][8] = ASCII_0705[freq%100/10+16][i] << 5 | ASCII_0705[freq%10+16][i] >> 1; // åä½(3) + ç©º + ä¸ªä½(4)
+    row[i][9] = ASCII_0705[freq%10+16][i] << 7 | ASCII_0705['H'-0x20][i] << 1; // ä¸ªä½(1) + ç©º + H(5) + ç©º
+    row[i][10] = ASCII_0705['Z'-0x20][i] << 3; // Z(5) + ç©º(3)
   }
   
   Set_Column_Address(Shift+x,Shift+x+21);  // 11 * 8/4 - 1
@@ -1680,7 +1680,7 @@ void oled_menu_arrows_set(uint8_t position)
 
 static void Show_RX_Alignment(uint8_t y, uint8_t usb, int16_t offset)
 {
-  uint8_t text[] = "RX USB: +0000 Hz";
+  uint8_t text[] = "RX RADIO_USB: +0000 Hz";
   uint16_t magnitude = offset < 0 ? -offset : offset;
   if (!usb) { text[3] = 'L'; text[4] = 'S'; }
   text[8] = offset < 0 ? '-' : '+';
@@ -1709,8 +1709,8 @@ void oled_menu_set(uint8_t position)
     return;
   }
   
-  // µ±²Ëµ¥´ÓµÚ¶şÆÁ ·­µ½ µÚÒ»ÆÁµÄÊ±ºò£¬ÇåÆÁ¼°Ë¢ĞÂµÚÒ»ÆÁÊı¾İ
-  if(position <= 8 && menu_pos >= 9)    //BG6RDF menu_posÊÇÉÏ´ÎµÄÎ»ÖÃ
+  // å½“èœå•ä»ç¬¬äºŒå± ç¿»åˆ° ç¬¬ä¸€å±çš„æ—¶å€™ï¼Œæ¸…å±åŠåˆ·æ–°ç¬¬ä¸€å±æ•°æ®
+  if(position <= 8 && menu_pos >= 9)    //BG6RDF menu_posæ˜¯ä¸Šæ¬¡çš„ä½ç½®
   {
     oled_set_screen(0x00);
     all = 1;
@@ -1812,7 +1812,7 @@ void oled_menu_set(uint8_t position)
 
   pos_x = 4;
   pos_y = 24;
-  // µ±²Ëµ¥´ÓµÚÒ»ÆÁ ·­µ½ µÚ¶şÆÁµÄÊ±ºò£¬ÇåÆÁ¼°Ë¢ĞÂµÚ¶şÆÁÊı¾İ
+  // å½“èœå•ä»ç¬¬ä¸€å± ç¿»åˆ° ç¬¬äºŒå±çš„æ—¶å€™ï¼Œæ¸…å±åŠåˆ·æ–°ç¬¬äºŒå±æ•°æ®
   if(position >= 9 && position < RX_USB_MENU &&
       (menu_pos <= 8 || menu_pos >= RX_USB_MENU))
   {
@@ -1823,7 +1823,7 @@ void oled_menu_set(uint8_t position)
   {
     Show_CALL_SET(pos_x, pos_y, &MENU.callSign[0], position - 9, 0);
   }
-  //menu_pos¼ÇÂ¼ÉÏÒ»´ÎÏÔÊ¾µÄÊÇÄÄ¸ö²Ëµ¥
+  //menu_posè®°å½•ä¸Šä¸€æ¬¡æ˜¾ç¤ºçš„æ˜¯å“ªä¸ªèœå•
   menu_pos = position;
 }
 
@@ -1935,31 +1935,31 @@ void oled_mem_set(uint8_t position, uint32_t freq, uint8_t all)
 }
 
  /****************************************************
-   Ğ´ÈëÒ»¸ö8*16 ascii
-   x:ÁĞ×ø±ê£¬
-   y: ĞĞ×ø±ê
-   a[16]£º16µãÕó×ÖÄ£Êı¾İ
-   Õı³£ÏÔÊ¾ 
+   å†™å…¥ä¸€ä¸ª8*16 ascii
+   x:åˆ—åæ ‡ï¼Œ
+   y: è¡Œåæ ‡
+   a[16]ï¼š16ç‚¹é˜µå­—æ¨¡æ•°æ®
+   æ­£å¸¸æ˜¾ç¤º 
 ******************************************************/
 void ascii_1608(uint8_t x,uint8_t y,uint8_t a[16] )
 {
   uint16_t j;
-  Set_Column_Address(Shift+x,Shift+x+1); // ÉèÖÃÁĞ×ø±ê£¬shiftÎªÁĞÆ«ÒÆÁ¿ÓÉ1322¾ö¶¨¡£1Îª8/4-1
+  Set_Column_Address(Shift+x,Shift+x+1); // è®¾ç½®åˆ—åæ ‡ï¼Œshiftä¸ºåˆ—åç§»é‡ç”±1322å†³å®šã€‚1ä¸º8/4-1
   Set_Row_Address(y,y+15);  //
-  Set_Write_RAM();	 //	Ğ´ÏÔ´æ
+  Set_Write_RAM();	 //	å†™æ˜¾å­˜
   
   for(j=0;j<16;j++)
   {
-    con_4_byte(a[j]);	//Êı¾İ×ª»»
+    con_4_byte(a[j]);	//æ•°æ®è½¬æ¢
   }
 }
 
 void oled_ascii_3216_dot(uint8_t x, uint8_t y, uint8_t *data)
 {
   uint8_t temp;
-  Set_Column_Address(Shift+x,Shift+x+3); // ÉèÖÃÁĞ×ø±ê£¬shiftÎªÁĞÆ«ÒÆÁ¿ÓÉ1322¾ö¶¨¡£3Îª16/4-1
+  Set_Column_Address(Shift+x,Shift+x+3); // è®¾ç½®åˆ—åæ ‡ï¼Œshiftä¸ºåˆ—åç§»é‡ç”±1322å†³å®šã€‚3ä¸º16/4-1
   Set_Row_Address(y,y+31);  //
-  Set_Write_RAM();	 //	Ğ´ÏÔ´æ
+  Set_Write_RAM();	 //	å†™æ˜¾å­˜
   
   for(uint8_t j=0;j<32;j++)
   {
@@ -1968,7 +1968,7 @@ void oled_ascii_3216_dot(uint8_t x, uint8_t y, uint8_t *data)
       temp = data[(j<<1)+i];
       if( ((j<<1)+i)==49 || ((j<<1)+i)==51)
       {
-        temp |= DIGIT_3216[10][(j<<1)+i];	 //Êı¾İ×ª»»
+        temp |= DIGIT_3216[10][(j<<1)+i];	 //æ•°æ®è½¬æ¢
       }
       con_4_byte(temp);
     }
@@ -1978,28 +1978,28 @@ void oled_ascii_3216_dot(uint8_t x, uint8_t y, uint8_t *data)
 void oled_ascii_3216(uint8_t x, uint8_t y, uint8_t *data)
 {
   uint8_t temp;
-  Set_Column_Address(Shift+x,Shift+x+3); // ÉèÖÃÁĞ×ø±ê£¬shiftÎªÁĞÆ«ÒÆÁ¿ÓÉ1322¾ö¶¨¡£3Îª16/4-1
+  Set_Column_Address(Shift+x,Shift+x+3); // è®¾ç½®åˆ—åæ ‡ï¼Œshiftä¸ºåˆ—åç§»é‡ç”±1322å†³å®šã€‚3ä¸º16/4-1
   Set_Row_Address(y,y+31);  //
-  Set_Write_RAM();	 //	Ğ´ÏÔ´æ
+  Set_Write_RAM();	 //	å†™æ˜¾å­˜
   
   for(uint8_t j=0;j<32;j++)
   {
     for (uint8_t i=0;i<2;i++) /* 2*8 column , a nibble of command is a dot*/
     {
       temp = data[(j<<1)+i];
-      con_4_byte(temp);	 //Êı¾İ×ª»»
+      con_4_byte(temp);	 //æ•°æ®è½¬æ¢
     }
   }
 }
 
 void oled_draw_scale(uint8_t x, uint8_t y)
 {
-  Set_Column_Address(Shift+x,Shift+x+29); // ÉèÖÃÁĞ×ø±ê£¬shiftÎªÁĞÆ«ÒÆÁ¿ÓÉ1322¾ö¶¨¡£29Îª120/4-1
+  Set_Column_Address(Shift+x,Shift+x+29); // è®¾ç½®åˆ—åæ ‡ï¼Œshiftä¸ºåˆ—åç§»é‡ç”±1322å†³å®šã€‚29ä¸º120/4-1
   Set_Row_Address(y,y+11);  //
-  Set_Write_RAM();	 //	Ğ´ÏÔ´æ
+  Set_Write_RAM();	 //	å†™æ˜¾å­˜
   
   for(uint16_t j=0;j<165;j++)
   {
-      con_4_byte(scaler_rx[j]);	 //Êı¾İ×ª»»
+      con_4_byte(scaler_rx[j]);	 //æ•°æ®è½¬æ¢
   }
 }
