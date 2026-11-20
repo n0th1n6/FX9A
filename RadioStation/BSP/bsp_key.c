@@ -4,20 +4,20 @@
 #include "bsp_adc.h"
 #include "bsp_oled_api.h"
 
-// ÀÏ°æ±¾
-//¿ª¹Ø        PD6/87/K1  PD5/86/K2  PD7/88/K3  PD4/85/K4  PD0/81/K5  PD1/82/K6  
-//¿ª¹Ø        PC12/80/K7  PC11/79/K8  PC10/78/K9  PA15/77/K10 
-//±àÂëÆ÷      PB4/90/K1-A  PB3/89/K1-B  PA12/71/K9-A  PA11/70/K9-B  PA10/69/K10-A  PA9/68/K10-B
-//¹âµç±àÂëÆ÷  PD2/83/R1-A  PD3/84/R1-B
+// è€ç‰ˆæœ¬
+//å¼€å…³        PD6/87/K1  PD5/86/K2  PD7/88/K3  PD4/85/K4  PD0/81/K5  PD1/82/K6  
+//å¼€å…³        PC12/80/K7  PC11/79/K8  PC10/78/K9  PA15/77/K10 
+//ç¼–ç å™¨      PB4/90/K1-A  PB3/89/K1-B  PA12/71/K9-A  PA11/70/K9-B  PA10/69/K10-A  PA9/68/K10-B
+//å…‰ç”µç¼–ç å™¨  PD2/83/R1-A  PD3/84/R1-B
 
-// ĞÂ°æ±¾
-//¿ª¹Ø        PB4/90/K1   PD6/87/K3 
-//±àÂëÆ÷      PA12/71/K1-A  PA11/70/K1-B
-//ÉùÒô±àÂëÆ÷  PA10/69/K2-A  PA9/68/K2-B   -> ºóÆÚ ¸Äµ½ 57/PD10 58/PD11½Å
-//¹âµç±àÂëÆ÷  PD2/83/R1-A  PD3/84/R1-B
-//PE12/43/KEY1 ÊÇµã¿ØÖÆ¡£PE13/44/KEY2ÊÇ»®¿ØÖÆ
-//PB0/35½Å    PTT¿ª¹Ø¼ì²â¶Ë£¨´Ë½ÅÊ¹ÓÃµç×èÉÏÀ­µ½3.3V£¬ÔÚSSBÄ£Ê½ÏÂ£¬°´ÏÂ»°Í²¿ª¹Ø£¬¿ª 
-//        ¹Ø°Ñ´Ë½Å¶ÔµØ¶ÌÂ·£¬°Ñ35½ÅµçÆ½À­µÍ¡£µ¥Æ¬»ú¿ØÖÆÏàÓ¦µÄµçÂ··¢Éä£¬´Ë½ÅÖ»ÔÚSSBÄ£Ê½ÏÂÆğ×÷ÓÃ£©
+// æ–°ç‰ˆæœ¬
+//å¼€å…³        PB4/90/K1   PD6/87/K3 
+//ç¼–ç å™¨      PA12/71/K1-A  PA11/70/K1-B
+//å£°éŸ³ç¼–ç å™¨  PA10/69/K2-A  PA9/68/K2-B   -> åæœŸ æ”¹åˆ° 57/PD10 58/PD11è„š
+//å…‰ç”µç¼–ç å™¨  PD2/83/R1-A  PD3/84/R1-B
+//PE12/43/KEY1 æ˜¯ç‚¹æ§åˆ¶ã€‚PE13/44/KEY2æ˜¯åˆ’æ§åˆ¶
+//PB0/35è„š    PTTå¼€å…³æ£€æµ‹ç«¯ï¼ˆæ­¤è„šä½¿ç”¨ç”µé˜»ä¸Šæ‹‰åˆ°3.3Vï¼Œåœ¨SSBæ¨¡å¼ä¸‹ï¼ŒæŒ‰ä¸‹è¯ç­’å¼€å…³ï¼Œå¼€ 
+//        å…³æŠŠæ­¤è„šå¯¹åœ°çŸ­è·¯ï¼ŒæŠŠ35è„šç”µå¹³æ‹‰ä½ã€‚å•ç‰‡æœºæ§åˆ¶ç›¸åº”çš„ç”µè·¯å‘å°„ï¼Œæ­¤è„šåªåœ¨SSBæ¨¡å¼ä¸‹èµ·ä½œç”¨ï¼‰
 #define PTT GPIO_Pin_0
 #define DIT GPIO_Pin_12
 #define DAH GPIO_Pin_13
@@ -66,8 +66,8 @@ uint8_t KVal = 0;
 uint8_t K9_A = 0;
 uint8_t K9_B = 0;
 
-uint8_t kVal    = 0xff; //°´¼ü±êÊ¶£¬¼üÖµ
-uint16_t kTick   = 0;    //È¥¶¶Ê±¼äkTick * 20ºÁÃë
+uint8_t kVal    = 0xff; //æŒ‰é”®æ ‡è¯†ï¼Œé”®å€¼
+uint16_t kTick   = 0;    //å»æŠ–æ—¶é—´kTick * 20æ¯«ç§’
 bool scan_state = true;
 uint8_t tick1s = 0;
 uint8_t ditUp = 0;
@@ -77,11 +77,11 @@ uint8_t dahDown = 0;
 uint8_t pttUp = 0;
 uint8_t pttDown = 0;
 
-bool DitPaddle;   // DIT¼üÊÇ·ñ±»°´ÏÂ
-bool DahPaddle;   // DAH¼üÊÇ·ñ±»°´ÏÂ
+bool DitPaddle;   // DITé”®æ˜¯å¦è¢«æŒ‰ä¸‹
+bool DahPaddle;   // DAHé”®æ˜¯å¦è¢«æŒ‰ä¸‹
 bool PaddleUpdate = false;
-bool PttPressed;  // PTT¿ØÖÆ¼üÊÇ·ñ±»°´ÏÂ
-bool PttFinish;   // PTT°´ÏÂ²Ù×÷ÊÇ·ñ±»Ö´ĞĞ
+bool PttPressed;  // PTTæ§åˆ¶é”®æ˜¯å¦è¢«æŒ‰ä¸‹
+bool PttFinish;   // PTTæŒ‰ä¸‹æ“ä½œæ˜¯å¦è¢«æ‰§è¡Œ
 void KEY_EXTI_Config()
 {
   EXTI_InitTypeDef config;
@@ -111,7 +111,7 @@ void GPIO_NVIC_Config()
 }
 void key_init()
 {
-  GPIO_InitTypeDef GPIO_InitStructure;
+  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
 #ifdef FX9A_ENCODER_TRACE
   TMR_Init(TIM2, 20000, 100, key_timer_callback); // 50 us diagnostic contacts
 #else
@@ -119,42 +119,42 @@ void key_init()
 #endif
   TMR_IRQEnable(TIM2);
   
-  GPIO_InitStructure.GPIO_Pin =  K1;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(KEY_1_PORT, &GPIO_InitStructure);
-  GPIO_ResetBits(KEY_1_PORT, K1);
+  GPIO_InitStructure.Pin = (((uint32_t)(K1) << GPIO_PIN_MASK_POS) | (K1));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_FLOATING;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(KEY_1_PORT, &GPIO_InitStructure);
+  (KEY_1_PORT->BRR = (K1));
   
-  GPIO_InitStructure.GPIO_Pin =  PTT;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(KEY_1_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(PTT) << GPIO_PIN_MASK_POS) | (PTT));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_INPUT; GPIO_InitStructure.Pull = LL_GPIO_PULL_UP;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(KEY_1_PORT, &GPIO_InitStructure);
   
-  GPIO_InitStructure.GPIO_Pin =  K2 | K3 | K4 | K5 | K6 | R1A | R1B | K2A | K2B;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(KEY_23456R1A1BK2A2B_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(K2 | K3 | K4 | K5 | K6 | R1A | R1B | K2A | K2B) << GPIO_PIN_MASK_POS) | (K2 | K3 | K4 | K5 | K6 | R1A | R1B | K2A | K2B));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_FLOATING;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(KEY_23456R1A1BK2A2B_PORT, &GPIO_InitStructure);
   
-  GPIO_InitStructure.GPIO_Pin =  K7 | K8;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(KEY_78_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(K7 | K8) << GPIO_PIN_MASK_POS) | (K7 | K8));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_FLOATING;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(KEY_78_PORT, &GPIO_InitStructure);
   
-  GPIO_InitStructure.GPIO_Pin =  K1A | K1B;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(KEY_K1A1B_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(K1A | K1B) << GPIO_PIN_MASK_POS) | (K1A | K1B));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_FLOATING;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(KEY_K1A1B_PORT, &GPIO_InitStructure);
   
-  GPIO_InitStructure.GPIO_Pin =  DIT | DAH;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(PADDLE_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(DIT | DAH) << GPIO_PIN_MASK_POS) | (DIT | DAH));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_FLOATING;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(PADDLE_PORT, &GPIO_InitStructure);
   encoders_init();
   KEY_EXTI_Config();
   GPIO_NVIC_Config();
   
-  // CWÄ£Ê½ £ºµ¥¼ü »ò Ë«¼üÅĞ¶Ï
-  if (GPIO_ReadInputDataBit(PADDLE_PORT, DIT) == 0)
+  // CWæ¨¡å¼ ï¼šå•é”® æˆ– åŒé”®åˆ¤æ–­
+  if ((((PADDLE_PORT->IDR) & (DIT)) != 0u) == 0)
   {
     MENU.cwMode = MANUAL;
   }
@@ -168,13 +168,13 @@ uint8_t key_read()
 {
   uint16_t port;
   
-  port = GPIO_ReadInputData(KEY_1_PORT);
+  port = ((KEY_1_PORT)->IDR);
   if( !(port & K1) )
   {
     return 1;
   }
   
-  port = GPIO_ReadInputData(KEY_23456R1A1BK2A2B_PORT);
+  port = ((KEY_23456R1A1BK2A2B_PORT)->IDR);
   if ( !(port & K2) )
   {
     return 2; 
@@ -200,7 +200,7 @@ uint8_t key_read()
     return 6;
   }
   
-  port = GPIO_ReadInputData(KEY_78_PORT);
+  port = ((KEY_78_PORT)->IDR);
   if( !(port & K7) )
   {
     return 7;
@@ -210,29 +210,29 @@ uint8_t key_read()
   {
     return 8;
   }
-  uint8_t ptt = GPIO_ReadInputDataBit(KEY_1_PORT, PTT);
-  if(ptt && PttPressed)         //ÒÔÇ°ÊÇ°´ÏÂµÄµ«ÏÖÔÚËÉ¿ªÁË
+  uint8_t ptt = (((KEY_1_PORT->IDR) & (PTT)) != 0u);
+  if(ptt && PttPressed)         //ä»¥å‰æ˜¯æŒ‰ä¸‹çš„ä½†ç°åœ¨æ¾å¼€äº†
   {
     if(pttDown > 0)
     {
       pttDown = 0;
     }
     pttUp ++;
-    if(pttUp >= 1)              //ËÉ¿ª·À¶¶£¬Ô­Öµ1      BG6RDF
+    if(pttUp >= 1)              //æ¾å¼€é˜²æŠ–ï¼ŒåŸå€¼1      BG6RDF
     {
       pttUp = 0;
       PttPressed = false;
 
     }
   }
-  else if(!ptt && !PttPressed ) //ÒÔÇ°ÊÇËÉ¿ªµÄµ«ÏÖÔÚ°´ÏÂÁË
+  else if(!ptt && !PttPressed ) //ä»¥å‰æ˜¯æ¾å¼€çš„ä½†ç°åœ¨æŒ‰ä¸‹äº†
   {
     if(pttUp > 0)
     {
       pttUp = 0;
     }
     pttDown ++;
-    if(pttDown >= 1)            //°´ÏÂ·À¶¶£¬Ô­Öµ1      BG6RDF
+    if(pttDown >= 1)            //æŒ‰ä¸‹é˜²æŠ–ï¼ŒåŸå€¼1      BG6RDF
     {
       pttDown = 0;
       PttPressed = true;
@@ -240,7 +240,7 @@ uint8_t key_read()
   }
   
   tick1s ++;
-  if(tick1s % 40 == 0)          //Ô­Öµ10      BG6RDF
+  if(tick1s % 40 == 0)          //åŸå€¼10      BG6RDF
   {
     if( RF_IsRx() )
     {
@@ -252,13 +252,13 @@ uint8_t key_read()
       DRMgr.item |= RFCHKItem;
     }
   }
-  if(tick1s == 200)             //Ô­Öµ50      BG6RDF
+  if(tick1s == 200)             //åŸå€¼50      BG6RDF
   {
     tick1s = 0;
     DRMgr.item |= DCItem;
   }
   
-  port = GPIO_ReadInputData(PADDLE_PORT);
+  port = ((PADDLE_PORT)->IDR);
 
   if(port & DIT)
   {
@@ -267,7 +267,7 @@ uint8_t key_read()
       ditDown = 0;
     }
     ditUp ++;
-    if(ditUp >= 1)      //µãËÉ¿ª·À¶¶£¬Ô­Öµ1      BG6RDF
+    if(ditUp >= 1)      //ç‚¹æ¾å¼€é˜²æŠ–ï¼ŒåŸå€¼1      BG6RDF
     {
       ditUp = 0;
       DitPaddle = false;
@@ -280,7 +280,7 @@ uint8_t key_read()
       ditUp = 0;
     }
     ditDown ++;
-    if(ditDown >= 1)    //µã°´ÏÂ·À¶¶£¬Ô­Öµ1      BG6RDF
+    if(ditDown >= 1)    //ç‚¹æŒ‰ä¸‹é˜²æŠ–ï¼ŒåŸå€¼1      BG6RDF
     {
       ditDown = 0;
       DitPaddle = true;
@@ -293,7 +293,7 @@ uint8_t key_read()
       dahDown = 0;
     }
     dahUp ++;
-    if(dahUp >= 1)      //»®ËÉ¿ª·À¶¶£¬Ô­Öµ1      BG6RDF
+    if(dahUp >= 1)      //åˆ’æ¾å¼€é˜²æŠ–ï¼ŒåŸå€¼1      BG6RDF
     {
       dahUp = 0;
       DahPaddle = false;
@@ -306,14 +306,14 @@ uint8_t key_read()
       dahUp = 0;
     }
     dahDown ++;
-    if(dahDown >= 1)    //»®°´ÏÂ·À¶¶£¬Ô­Öµ1      BG6RDF
+    if(dahDown >= 1)    //åˆ’æŒ‰ä¸‹é˜²æŠ–ï¼ŒåŸå€¼1      BG6RDF
     {
       dahDown = 0;
       DahPaddle = true;
     }
   }
   
-  PaddleUpdate = true;  //ÓÃÓÚCWÄ£Ê½µÄ Paddle¸üĞÂ
+  PaddleUpdate = true;  //ç”¨äºCWæ¨¡å¼çš„ Paddleæ›´æ–°
   
   return 0xff;
 }
@@ -322,7 +322,7 @@ void key_readkeyer()
 {
   uint16_t port;
   
-  port = GPIO_ReadInputData(PADDLE_PORT);
+  port = ((PADDLE_PORT)->IDR);
   if(port & DIT)
   {
     DitPaddle = false;
@@ -392,7 +392,7 @@ void key_readkeyer()
 //    }
 //  }
   
-  PaddleUpdate = true;  //ÓÃÓÚCWÄ£Ê½µÄ Paddle¸üĞÂ
+  PaddleUpdate = true;  //ç”¨äºCWæ¨¡å¼çš„ Paddleæ›´æ–°
 }
 
 bool key_ispress(KEY_AttrDef *rkey)
@@ -411,7 +411,7 @@ void key_calback( void  )
 {
   uint8_t kTmp = key_read();
   
-  if(kVal == 0xff)      //Ö®Ç°×´Ì¬ÎŞ°´¼ü
+  if(kVal == 0xff)      //ä¹‹å‰çŠ¶æ€æ— æŒ‰é”®
   {
     kVal = kTmp;
     key.state = keyNull;
@@ -419,20 +419,20 @@ void key_calback( void  )
     return;
   }
   
-  if(kTmp != kVal)      //ºÍÇ°´Î°´¼ü²»Í¬
+  if(kTmp != kVal)      //å’Œå‰æ¬¡æŒ‰é”®ä¸åŒ
   {
     upCnt ++;
-    if (upCnt >= 8)     //·À¶¶    Ô­ÖµÊÇ2    BG6RDF
+    if (upCnt >= 8)     //é˜²æŠ–    åŸå€¼æ˜¯2    BG6RDF
     {
       upCnt = 0;
-      if(kTmp == 0xff)    //¶Ì°´µ¯Æğ
+      if(kTmp == 0xff)    //çŸ­æŒ‰å¼¹èµ·
       {
         if( key.state == keyShot)
         {
           key_availlble = true; 
         } 
       }
-      kVal = kTmp;        //±£´æĞÂ°´¼üÖµ
+      kVal = kTmp;        //ä¿å­˜æ–°æŒ‰é”®å€¼
       kTick = 0;
       return;
     }
@@ -444,13 +444,13 @@ void key_calback( void  )
     {
       upCnt = 0;
     }
-    if(kTick == 16)          //20ms * 4 = 80ms£¬Ô­ÖµÊÇ4   BG6RDF
+    if(kTick == 16)          //20ms * 4 = 80msï¼ŒåŸå€¼æ˜¯4   BG6RDF
     {
       key.state = keyShot;
       key.val = kVal;
     }  
     
-    if(kTick == 200)      //°´×¡2Ãëºó£¬Ô­Öµ50£¬ÎªÉ¶ÊÇ2Ãë 20mS*50=1S?  BG6RDF
+    if(kTick == 200)      //æŒ‰ä½2ç§’åï¼ŒåŸå€¼50ï¼Œä¸ºå•¥æ˜¯2ç§’ 20mS*50=1S?  BG6RDF
     {
       key.val = kVal;
       key.state = keyLong;
@@ -469,22 +469,22 @@ void KEY_SoftwareSet(uint8_t kval, KEY_State state)
   }
 }
 
-// Ö÷±àÂëÆ÷£¬Ã»ÓĞ·À¶¶
+// ä¸»ç¼–ç å™¨ï¼Œæ²¡æœ‰é˜²æŠ–
 // R1 - line_2
 void EXTI2_IRQHandler(void)
 {
   if (EXTI_GetITStatus(EXTI_Line2) == SET)
   {
-    // Ëø¶¨×´Ì¬
+    // é”å®šçŠ¶æ€
     if ( ATT.val )
     {
       EXTI_ClearITPendingBit(EXTI_Line2);
       return;
     }
 
-    if (GPIO_ReadInputDataBit(KEY_23456R1A1BK2A2B_PORT, R1B) == 0) // A-ÏÂ½µÑØ B-¸ßµçÆ½ ÎªÕı
+    if ((((KEY_23456R1A1BK2A2B_PORT->IDR) & (R1B)) != 0u) == 0) // A-ä¸‹é™æ²¿ B-é«˜ç”µå¹³ ä¸ºæ­£
     {
-      // VFOºÍMEMÄ£Ê½ÏÂ£¬µ÷ÆµĞıÅ¥¶¼¿ÉÓÃ£¬µ«ÔÚMEMÄ£Ê½ÏÂ ²»¼ÇÒä
+      // VFOå’ŒMEMæ¨¡å¼ä¸‹ï¼Œè°ƒé¢‘æ—‹é’®éƒ½å¯ç”¨ï¼Œä½†åœ¨MEMæ¨¡å¼ä¸‹ ä¸è®°å¿†
       //if (AIMgr.item > 0)
       {
         if(AIMgr.item & MENUSETItem)
@@ -559,7 +559,7 @@ void EXTI2_IRQHandler(void)
         {
           MENU_SetDown(MENU.numOfmenu);
         }
-        else if ((FREQ.item & RITItem) && !(AIMgr.item))  // RITÑ¡ÖĞÊ±£¬ÇÒÔÚ·ÇÉèÖÃ×´Ì¬ÏÂ Æğ×÷ÓÃ
+        else if ((FREQ.item & RITItem) && !(AIMgr.item))  // RITé€‰ä¸­æ—¶ï¼Œä¸”åœ¨éè®¾ç½®çŠ¶æ€ä¸‹ èµ·ä½œç”¨
         {
           if (VFO.RIT <= LOWER_OF_RIT)
           {
@@ -639,9 +639,9 @@ static uint8_t volume_phases(uint16_t port)
 static void encoders_init(void)
 {
   encoder_init(&channel_encoder,
-               channel_phases(GPIO_ReadInputData(KEY_K1A1B_PORT)));
+               channel_phases(((KEY_K1A1B_PORT)->IDR)));
   encoder_init(&volume_encoder,
-               volume_phases(GPIO_ReadInputData(KEY_23456R1A1BK2A2B_PORT)));
+               volume_phases(((KEY_23456R1A1BK2A2B_PORT)->IDR)));
   key_scan_divider = 0;
 }
 
@@ -663,7 +663,7 @@ static void volume_encoder_step(int8_t step)
       }
       DRMgr.item |= WPMSETItem;
     }
-    else if (AIMgr.item & MEMSETItem)         //ĞÅµÀÄ£Ê½ÏÂ£¬K2ÓÃÓÚÑ¡Ôñ²¨¶Î
+    else if (AIMgr.item & MEMSETItem)         //ä¿¡é“æ¨¡å¼ä¸‹ï¼ŒK2ç”¨äºé€‰æ‹©æ³¢æ®µ
     {
       if (FREQ.numOfbaud >= SIZE_OF_BAUD-1)
       {
@@ -701,7 +701,7 @@ static void volume_encoder_step(int8_t step)
       }
       DRMgr.item |= WPMSETItem;
     }
-    else if (AIMgr.item & MEMSETItem)         //ĞÅµÀÄ£Ê½ÏÂ£¬K2ÓÃÓÚÑ¡Ôñ²¨¶Î
+    else if (AIMgr.item & MEMSETItem)         //ä¿¡é“æ¨¡å¼ä¸‹ï¼ŒK2ç”¨äºé€‰æ‹©æ³¢æ®µ
     {
       if (FREQ.numOfbaud == 0)
       {
@@ -844,8 +844,8 @@ static void channel_encoder_step(int8_t step)
 
 void key_timer_callback(void)
 {
-  uint8_t ch_phases = channel_phases(GPIO_ReadInputData(KEY_K1A1B_PORT));
-  uint8_t vol_phases = volume_phases(GPIO_ReadInputData(KEY_23456R1A1BK2A2B_PORT));
+  uint8_t ch_phases = channel_phases(((KEY_K1A1B_PORT)->IDR));
+  uint8_t vol_phases = volume_phases(((KEY_23456R1A1BK2A2B_PORT)->IDR));
 #ifdef FX9A_ENCODER_TRACE
   uint8_t raw = ch_phases | (vol_phases << 2);
   ++encoder_trace_tick;
