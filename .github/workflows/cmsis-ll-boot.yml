@@ -95,6 +95,10 @@ jobs:
         run: |
           gcc -std=c11 -Wall -Wextra -Werror -Icmsis_ll/board cmsis_ll/tests/cat_validation_test.c -o build-cmsis-ll/cat_validation_test
           ./build-cmsis-ll/cat_validation_test
+      - name: Optical VFO acceleration policy regression
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -Icmsis_ll/board cmsis_ll/tests/vfo_accel_test.c -o build-cmsis-ll/vfo_accel_test
+          ./build-cmsis-ll/vfo_accel_test
       - name: Inspect image sections
         run: |
           arm-none-eabi-size build-cmsis-ll/fx9a_boot.elf build-cmsis-ll/fx9a_full.elf
