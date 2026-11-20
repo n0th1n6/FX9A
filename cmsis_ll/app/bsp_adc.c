@@ -6,7 +6,7 @@
 /* PC0 supply, PC1 reflected power, PC2 forward power, PC3 receive level.
  * Preserve the original 4-channel x 4-sample DMA ring and meter indexing.
  */
-uint16_t ADC_Value[16];
+volatile uint16_t ADC_Value[16]; /* Written by DMA, sampled asynchronously by TIM2 ISR */
 
 void ADC_Config(void)
 {
