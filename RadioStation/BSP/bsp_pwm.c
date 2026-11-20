@@ -1,8 +1,8 @@
 #include "bsp_pwm.h"
 
-//TIM3_CH4/PB1/36è„š   è¾“å‡ºéŸ³é¢‘ä¿¡å·ï¼ŒéŸ³é¢‘é¢‘ç‡åœ¨500HZ-1KHZä¹‹é—´å¯è°ƒï¼ˆä¿¡å·éšKEY1/KEY2é•¿çŸ­å˜åŒ–ï¼ŒåŒæ­¥äºCWï¼‰
+//TIM3_CH4/PB1/36½Å   Êä³öÒôÆµĞÅºÅ£¬ÒôÆµÆµÂÊÔÚ500HZ-1KHZÖ®¼ä¿Éµ÷£¨ĞÅºÅËæKEY1/KEY2³¤¶Ì±ä»¯£¬Í¬²½ÓÚCW£©
 
-//å ç©ºæ¯”ï¼Œå–å€¼èŒƒå›´ä¸º0-100
+//Õ¼¿Õ±È£¬È¡Öµ·¶Î§Îª0-100
 int dutyfactor = 50;
 
 // F = 128 + 127sin(2*pi*n/N)
@@ -21,69 +21,69 @@ uint16_t pwm_period = 0;
 uint8_t BuzzerIsRunning = 0;
 void pwm_init()
 {
-  // GPIOé…ç½®
-  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
+  // GPIOÅäÖÃ
+  GPIO_InitTypeDef GPIO_InitStructure;
   
-  GPIO_InitStructure.Pin = (((uint32_t)(GPIO_Pin_1) << GPIO_PIN_MASK_POS) | (GPIO_Pin_1));
-  GPIO_InitStructure.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_HIGH;
-  LL_GPIO_Init(GPIOB, &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_1;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
   
   uint32_t prescaler;
-  // TIM3é…ç½®
+  // TIM3ÅäÖÃ
   TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
   
   //prescaler = PWM_CLK_FREQ / (hz * period); // 5.859375
   prescaler = 4;
   pwm_period = PWM_CLK_FREQ / 8000 / prescaler;
-  //é‡æ–°å°†Timerè®¾ç½®ä¸ºç¼ºçœå€¼
+  //ÖØĞÂ½«TimerÉèÖÃÎªÈ±Ê¡Öµ
   TIM_DeInit(TIM3);
   
-  //é‡‡ç”¨å†…éƒ¨æ—¶é’Ÿç»™TIM3æä¾›æ—¶é’Ÿæº
+  //²ÉÓÃÄÚ²¿Ê±ÖÓ¸øTIM3Ìá¹©Ê±ÖÓÔ´
   //TIM_InternalClockConfig(TIM3);
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
   
-  //é¢„åˆ†é¢‘ç³»æ•°ä¸º0ï¼Œå³ä¸è¿›è¡Œé¢„åˆ†é¢‘ï¼Œæ­¤æ—¶TIMERçš„é¢‘ç‡ä¸º72MHz
+  //Ô¤·ÖÆµÏµÊıÎª0£¬¼´²»½øĞĞÔ¤·ÖÆµ£¬´ËÊ±TIMERµÄÆµÂÊÎª72MHz
   TIM_TimeBaseStructure.TIM_Prescaler = prescaler - 1;
   
-  //è®¾ç½®æ—¶é’Ÿåˆ†å‰²
+  //ÉèÖÃÊ±ÖÓ·Ö¸î
   TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
   
-  //è®¾ç½®è®¡æ•°å™¨æ¨¡å¼ä¸ºå‘ä¸Šè®¡æ•°æ¨¡å¼
+  //ÉèÖÃ¼ÆÊıÆ÷Ä£Ê½ÎªÏòÉÏ¼ÆÊıÄ£Ê½
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
   
-  //è®¾ç½®è®¡æ•°æº¢å‡ºå¤§å°ï¼Œæ¯è®¡7200ä¸ªæ•°å°±äº§ç”Ÿä¸€ä¸ªæ›´æ–°äº‹ä»¶ï¼Œå³PWMçš„è¾“å‡ºé¢‘ç‡ä¸º10kHz
+  //ÉèÖÃ¼ÆÊıÒç³ö´óĞ¡£¬Ã¿¼Æ7200¸öÊı¾Í²úÉúÒ»¸ö¸üĞÂÊÂ¼ş£¬¼´PWMµÄÊä³öÆµÂÊÎª10kHz
   TIM_TimeBaseStructure.TIM_Period = pwm_period - 1;
   
-  //å°†é…ç½®åº”ç”¨åˆ°TIM3ä¸­
+  //½«ÅäÖÃÓ¦ÓÃµ½TIM3ÖĞ
   TIM_TimeBaseInit(TIM3,&TIM_TimeBaseStructure);
 
   
-  // PWMé…ç½®
+  // PWMÅäÖÃ
   TIM_OCInitTypeDef TimOCInitStructure;
   
-  //è®¾ç½®ç¼ºçœå€¼
+  //ÉèÖÃÈ±Ê¡Öµ
   TIM_OCStructInit(&TimOCInitStructure);
   
-  //PWMæ¨¡å¼1è¾“å‡º
+  //PWMÄ£Ê½1Êä³ö
   TimOCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
   
-  //è®¾ç½®å ç©ºæ¯”ï¼Œå ç©ºæ¯”=(CCRx/ARR)*100%æˆ–(TIM_Pulse/TIM_Period)*100%
+  //ÉèÖÃÕ¼¿Õ±È£¬Õ¼¿Õ±È=(CCRx/ARR)*100%»ò(TIM_Pulse/TIM_Period)*100%
   TimOCInitStructure.TIM_Pulse = dutyfactor * pwm_period / 100;
   
-  //TIMè¾“å‡ºæ¯”è¾ƒææ€§é«˜
+  //TIMÊä³ö±È½Ï¼«ĞÔ¸ß
   TimOCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
   
-  //ä½¿èƒ½è¾“å‡ºçŠ¶æ€
+  //Ê¹ÄÜÊä³ö×´Ì¬
   TimOCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
   
-  //TIM3çš„CH4è¾“å‡º
+  //TIM3µÄCH4Êä³ö
   TIM_OC4Init(TIM3, &TimOCInitStructure);
   
-  TIM_OC4PreloadConfig(TIM3,TIM_OCPreload_Enable);			// å°†CCRé¢„è£…è½½åŠŸèƒ½æ‰“å¼€
-  TIM_ARRPreloadConfig(TIM3, ENABLE);	  				// å°†APRé¢„è£…è½½åŠŸèƒ½æ‰“å¼€
-  //è®¾ç½®TIM3çš„PWMè¾“å‡ºä¸ºç¦æ­¢
-  //TIM_CtrlPWMOutputs(TIM3,DISABLE);           //åªç”¨äºTIM1å’ŒTIM8  BG6RDF
+  TIM_OC4PreloadConfig(TIM3,TIM_OCPreload_Enable);			// ½«CCRÔ¤×°ÔØ¹¦ÄÜ´ò¿ª
+  TIM_ARRPreloadConfig(TIM3, ENABLE);	  				// ½«APRÔ¤×°ÔØ¹¦ÄÜ´ò¿ª
+  //ÉèÖÃTIM3µÄPWMÊä³öÎª½ûÖ¹
+  //TIM_CtrlPWMOutputs(TIM3,DISABLE);           //Ö»ÓÃÓÚTIM1ºÍTIM8  BG6RDF
   
   TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);
 }
@@ -92,27 +92,27 @@ void pwm_init()
 void pwm_freq_set(uint32_t hz)
 {
   uint32_t prescaler;
-  // TIM3é…ç½®
+  // TIM3ÅäÖÃ
   TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
   
-  hz = hz * 32; // é‡‡æ ·é¢‘ç‡ Fsample = Fpwm * 32;
+  hz = hz * 32; // ²ÉÑùÆµÂÊ Fsample = Fpwm * 32;
   //prescaler = PWM_CLK_FREQ / (hz * period); // 5.859375
   prescaler = 2;
   pwm_period = PWM_CLK_FREQ / hz / prescaler;
   
-  //é¢„åˆ†é¢‘ç³»æ•°ä¸º0ï¼Œå³ä¸è¿›è¡Œé¢„åˆ†é¢‘ï¼Œæ­¤æ—¶TIMERçš„é¢‘ç‡ä¸º72MHz
+  //Ô¤·ÖÆµÏµÊıÎª0£¬¼´²»½øĞĞÔ¤·ÖÆµ£¬´ËÊ±TIMERµÄÆµÂÊÎª72MHz
   TIM_TimeBaseStructure.TIM_Prescaler = prescaler - 1;
   
-  //è®¾ç½®æ—¶é’Ÿåˆ†å‰²
+  //ÉèÖÃÊ±ÖÓ·Ö¸î
   TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
   
-  //è®¾ç½®è®¡æ•°å™¨æ¨¡å¼ä¸ºå‘ä¸Šè®¡æ•°æ¨¡å¼
+  //ÉèÖÃ¼ÆÊıÆ÷Ä£Ê½ÎªÏòÉÏ¼ÆÊıÄ£Ê½
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
   
-  //è®¾ç½®è®¡æ•°æº¢å‡ºå¤§å°ï¼Œæ¯è®¡7200ä¸ªæ•°å°±äº§ç”Ÿä¸€ä¸ªæ›´æ–°äº‹ä»¶ï¼Œå³PWMçš„è¾“å‡ºé¢‘ç‡ä¸º10kHz
+  //ÉèÖÃ¼ÆÊıÒç³ö´óĞ¡£¬Ã¿¼Æ7200¸öÊı¾Í²úÉúÒ»¸ö¸üĞÂÊÂ¼ş£¬¼´PWMµÄÊä³öÆµÂÊÎª10kHz
   TIM_TimeBaseStructure.TIM_Period = pwm_period - 1;
   
-  //å°†é…ç½®åº”ç”¨åˆ°TIM3ä¸­
+  //½«ÅäÖÃÓ¦ÓÃµ½TIM3ÖĞ
   TIM_TimeBaseInit(TIM3,&TIM_TimeBaseStructure);
 }
 
@@ -120,23 +120,23 @@ void sin_para_get()
 {
   for(uint8_t i=0; i<32; i++)
   {
-    SinPara[i] = SinTable[i] * pwm_period / 256;        //é™¤ä»¥256æ˜¯å½’ä¸€åŒ–ï¼Œ
+    SinPara[i] = SinTable[i] * pwm_period / 256;        //³ıÒÔ256ÊÇ¹éÒ»»¯£¬
     SinPara[i] = SinPara[i] * MENU.dutyOfbuzzer / 10;
   }
 }
 
 void pwm_start()
 {
-  TIM3->CCER |=0x1000;                  //channel 4æ‰“å¼€BG6RDF
+  TIM3->CCER |=0x1000;                  //channel 4´ò¿ªBG6RDF
   TIM_Cmd(TIM3, ENABLE);	
-  //TIM_CtrlPWMOutputs(TIM3,ENABLE);    //åªç”¨äºTIM1å’ŒTIM8  BG6RDF
+  //TIM_CtrlPWMOutputs(TIM3,ENABLE);    //Ö»ÓÃÓÚTIM1ºÍTIM8  BG6RDF
 }
 
 void pwm_stop()
 {
-  //TIM_CtrlPWMOutputs(TIM3,DISABLE);   //åªç”¨äºTIM1å’ŒTIM8  BG6RDF
+  //TIM_CtrlPWMOutputs(TIM3,DISABLE);   //Ö»ÓÃÓÚTIM1ºÍTIM8  BG6RDF
   TIM_Cmd(TIM3, DISABLE);
-  TIM3->CCER &=0xefff;                  //channel 4å…³é—­ BG6RDF
+  TIM3->CCER &=0xefff;                  //channel 4¹Ø±Õ BG6RDF
   TIM_SetCompare4(TIM3,  0);            //BG6RDF
   SampleTimes = 15;                     //BG6RDF
 }
@@ -163,9 +163,9 @@ void buzzer_stop()
 
 void TIM3_IRQHandler(void)
 {
-  if(TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET)     //æ£€æµ‹æ˜¯å¦å‘ç”Ÿæº¢å‡ºæ›´æ–°äº‹ä»¶  
+  if(TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET)     //¼ì²âÊÇ·ñ·¢ÉúÒç³ö¸üĞÂÊÂ¼ş  
   {
-    TIM_ClearITPendingBit(TIM3 , TIM_FLAG_Update);      //æ¸…é™¤TIM3çš„ä¸­æ–­å¾…å¤„ç†ä½ 
+    TIM_ClearITPendingBit(TIM3 , TIM_FLAG_Update);      //Çå³ıTIM3µÄÖĞ¶Ï´ı´¦ÀíÎ» 
     SampleTimes = (SampleTimes + 1) % 32;
     TIM_SetCompare4(TIM3,  SinPara[SampleTimes]);
   }

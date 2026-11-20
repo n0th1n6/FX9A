@@ -1,7 +1,7 @@
 #include "bsp_oled.h"
 
 
-//ÏÔÊ¾Æ÷¿ØÖÆ½Ó¿Ú  PB7/93/DSIN  PB8/95/SCLK  PB9/96/D/C  PE0/97/RES  PE1/98/CS 
+//��ʾ�����ƽӿ�  PB7/93/DSIN  PB8/95/SCLK  PB9/96/D/C  PE0/97/RES  PE1/98/CS 
 #define OLED_DSIN GPIO_Pin_7
 #define OLED_SCLK GPIO_Pin_8
 #define OLED_DC GPIO_Pin_9
@@ -13,90 +13,90 @@
 
 void spi_io_init()
 {
-  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
-  GPIO_InitStructure.Pin = (((uint32_t)(OLED_DSIN) << GPIO_PIN_MASK_POS) | (OLED_DSIN));
-  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  LL_GPIO_Init(OLED_DSIN_SCLK_DC_PORT, &GPIO_InitStructure);
+  GPIO_InitTypeDef GPIO_InitStructure;
+  GPIO_InitStructure.GPIO_Pin =  OLED_DSIN;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(OLED_DSIN_SCLK_DC_PORT, &GPIO_InitStructure);
   
-  GPIO_InitStructure.Pin = (((uint32_t)(OLED_SCLK) << GPIO_PIN_MASK_POS) | (OLED_SCLK));
-  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  LL_GPIO_Init(OLED_DSIN_SCLK_DC_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Pin =  OLED_SCLK;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(OLED_DSIN_SCLK_DC_PORT, &GPIO_InitStructure);
   
-  GPIO_InitStructure.Pin = (((uint32_t)(OLED_DC) << GPIO_PIN_MASK_POS) | (OLED_DC));
-  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  LL_GPIO_Init(OLED_DSIN_SCLK_DC_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Pin =  OLED_DC;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(OLED_DSIN_SCLK_DC_PORT, &GPIO_InitStructure);
   
-  GPIO_InitStructure.Pin = (((uint32_t)(OLED_RES) << GPIO_PIN_MASK_POS) | (OLED_RES));
-  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  LL_GPIO_Init(OLED_RES_CS_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Pin =  OLED_RES;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(OLED_RES_CS_PORT, &GPIO_InitStructure);
   
-  GPIO_InitStructure.Pin = (((uint32_t)(OLED_CS) << GPIO_PIN_MASK_POS) | (OLED_CS));
-  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  LL_GPIO_Init(OLED_RES_CS_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Pin =  OLED_CS;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(OLED_RES_CS_PORT, &GPIO_InitStructure);
   
   
-  (OLED_RES_CS_PORT->BRR = (OLED_RES));
+  GPIO_ResetBits(OLED_RES_CS_PORT, OLED_RES);
   for(uint8_t i=0;i<200;i++)
   {
     delay_us(200);
   }
-  (OLED_RES_CS_PORT->BSRR = (OLED_RES)); 
+  GPIO_SetBits(OLED_RES_CS_PORT, OLED_RES); 
 }
 
 void spi_write_command(uint8_t cmd)
 {
-  (OLED_RES_CS_PORT->BRR = (OLED_CS));
-  (OLED_DSIN_SCLK_DC_PORT->BRR = (OLED_DC));
+  GPIO_ResetBits(OLED_RES_CS_PORT, OLED_CS);
+  GPIO_ResetBits(OLED_DSIN_SCLK_DC_PORT, OLED_DC);
   for(uint8_t i=0; i<8; i++)
   {
-    (OLED_DSIN_SCLK_DC_PORT->BRR = (OLED_SCLK)); 
+    GPIO_ResetBits(OLED_DSIN_SCLK_DC_PORT, OLED_SCLK); 
     
     if(cmd & 0x80)
     {
-      (OLED_DSIN_SCLK_DC_PORT->BSRR = (OLED_DSIN));  
+      GPIO_SetBits(OLED_DSIN_SCLK_DC_PORT, OLED_DSIN);  
     }else
     {
-      (OLED_DSIN_SCLK_DC_PORT->BRR = (OLED_DSIN));  
+      GPIO_ResetBits(OLED_DSIN_SCLK_DC_PORT, OLED_DSIN);  
     }
     cmd <<= 1;
     //delay_us(1);
-    (OLED_DSIN_SCLK_DC_PORT->BSRR = (OLED_SCLK)); 
+    GPIO_SetBits(OLED_DSIN_SCLK_DC_PORT, OLED_SCLK); 
     //delay_us(1);
   }
   
-  (OLED_DSIN_SCLK_DC_PORT->BSRR = (OLED_DC)); 
-  (OLED_RES_CS_PORT->BSRR = (OLED_CS)); 
+  GPIO_SetBits(OLED_DSIN_SCLK_DC_PORT, OLED_DC); 
+  GPIO_SetBits(OLED_RES_CS_PORT, OLED_CS); 
 }
 
 void spi_write_data(uint8_t data)
 {
-  (OLED_RES_CS_PORT->BRR = (OLED_CS));
-  (OLED_DSIN_SCLK_DC_PORT->BSRR = (OLED_DC));
+  GPIO_ResetBits(OLED_RES_CS_PORT, OLED_CS);
+  GPIO_SetBits(OLED_DSIN_SCLK_DC_PORT, OLED_DC);
   for(uint8_t i=0; i<8; i++)
   {
-    (OLED_DSIN_SCLK_DC_PORT->BRR = (OLED_SCLK)); 
+    GPIO_ResetBits(OLED_DSIN_SCLK_DC_PORT, OLED_SCLK); 
     
     if(data & 0x80)
     {
-      (OLED_DSIN_SCLK_DC_PORT->BSRR = (OLED_DSIN));  
+      GPIO_SetBits(OLED_DSIN_SCLK_DC_PORT, OLED_DSIN);  
     }else
     {
-      (OLED_DSIN_SCLK_DC_PORT->BRR = (OLED_DSIN));  
+      GPIO_ResetBits(OLED_DSIN_SCLK_DC_PORT, OLED_DSIN);  
     }
     data <<= 1;
     
    // delay_us(1);
-    (OLED_DSIN_SCLK_DC_PORT->BSRR = (OLED_SCLK)); 
+    GPIO_SetBits(OLED_DSIN_SCLK_DC_PORT, OLED_SCLK); 
    // delay_us(1);
   }
   
-  (OLED_DSIN_SCLK_DC_PORT->BSRR = (OLED_DC)); 
-  (OLED_RES_CS_PORT->BSRR = (OLED_CS)); 
+  GPIO_SetBits(OLED_DSIN_SCLK_DC_PORT, OLED_DC); 
+  GPIO_SetBits(OLED_RES_CS_PORT, OLED_CS); 
 }
 
 void Set_Column_Address(unsigned char a, unsigned char b)

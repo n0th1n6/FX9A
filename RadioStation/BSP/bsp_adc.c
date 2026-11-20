@@ -1,10 +1,10 @@
 #include "bsp_adc.h"
 
 /*
-  15è„š  PC0-ADC12_IN10  ä¾›ç”µç”µå‹æ£€æµ‹è¾“å…¥ç«¯ï¼ˆæ˜¾ç¤ºä¾›ç”µç”µå‹ï¼Œç”±5Kå’Œ1Kç”µé˜»åˆ†å‹æ‰€å¾—ï¼‰
-  17è„š  PC1-ADC12_IN11  åå°„åŠŸç‡ç”µå‹æ£€æµ‹ç«¯ï¼ˆç”µå‹å€¼åœ¨0-3Vï¼Œä»…ä½œå‚è€ƒï¼‰
-  16è„š  PC2-ADC12_IN12  æ­£å‘åŠŸç‡ç”µå‹æ£€æµ‹æ®µï¼ˆç”µå‹å€¼åœ¨0-3Vï¼Œä»…ä½œå‚è€ƒï¼‰
-  18è„š  PC3-ADC12_IN13  æ¥æ”¶ç”µå¹³ç”µå‹æ£€æµ‹æ®µï¼ˆç”µå‹å€¼åœ¨0-3Vï¼Œä»…ä½œå‚è€ƒï¼‰
+  15½Å  PC0-ADC12_IN10  ¹©µçµçÑ¹¼ì²âÊäÈë¶Ë£¨ÏÔÊ¾¹©µçµçÑ¹£¬ÓÉ5KºÍ1Kµç×è·ÖÑ¹ËùµÃ£©
+  17½Å  PC1-ADC12_IN11  ·´Éä¹¦ÂÊµçÑ¹¼ì²â¶Ë£¨µçÑ¹ÖµÔÚ0-3V£¬½ö×÷²Î¿¼£©
+  16½Å  PC2-ADC12_IN12  ÕıÏò¹¦ÂÊµçÑ¹¼ì²â¶Î£¨µçÑ¹ÖµÔÚ0-3V£¬½ö×÷²Î¿¼£©
+  18½Å  PC3-ADC12_IN13  ½ÓÊÕµçÆ½µçÑ¹¼ì²â¶Î£¨µçÑ¹ÖµÔÚ0-3V£¬½ö×÷²Î¿¼£©
 */
 #define BATT_CHK GPIO_Pin_0
 #define SWR_CHK GPIO_Pin_1
@@ -19,56 +19,56 @@ void ADC_Config(void)
 {
   DMA_InitTypeDef DMA_InitStructure;
   DMA_DeInit(DMA1_Channel1);
-  DMA_InitStructure.DMA_PeripheralBaseAddr = ADC1_DR_Address;   //å®šä¹‰ DMAé€šé“å¤–è®¾åŸºåœ°å€=ADC1_DR_Address
-  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)&ADC_Value;       //å®šä¹‰DMAé€šé“å­˜å‚¨å™¨åœ°å€
-  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;            //æŒ‡å®šå¤–è®¾ä¸ºæºåœ°å€
-  DMA_InitStructure.DMA_BufferSize = 16;                        //å®šä¹‰DMAç¼“å†²åŒºå¤§å°
-  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;    //å½“å‰å¤–è®¾å¯„å­˜å™¨åœ°å€ä¸å˜
-  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;       //å½“å‰å­˜å‚¨å™¨åœ°å€ä¸å˜
-  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord; //å®šä¹‰å¤–è®¾æ•°æ®å®½åº¦16ä½
-  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord; //å®šä¹‰å­˜å‚¨å™¨æ•°æ®å®½åº¦16ä½
-  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;               //DMAé€šé“æ“ä½œæ¨¡å¼ä¸ºç¯å½¢ç¼“å†²æ¨¡å¼
-  DMA_InitStructure.DMA_Priority = DMA_Priority_High;           //DMAé€šé“ä¼˜å…ˆçº§é«˜
-  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;                  //ç¦æ­¢DMAé€šé“å­˜å‚¨å™¨åˆ°å­˜å‚¨å™¨ä¼ è¾“
+  DMA_InitStructure.DMA_PeripheralBaseAddr = ADC1_DR_Address;   //¶¨Òå DMAÍ¨µÀÍâÉè»ùµØÖ·=ADC1_DR_Address
+  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)&ADC_Value;       //¶¨ÒåDMAÍ¨µÀ´æ´¢Æ÷µØÖ·
+  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;            //Ö¸¶¨ÍâÉèÎªÔ´µØÖ·
+  DMA_InitStructure.DMA_BufferSize = 16;                        //¶¨ÒåDMA»º³åÇø´óĞ¡
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;    //µ±Ç°ÍâÉè¼Ä´æÆ÷µØÖ·²»±ä
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;       //µ±Ç°´æ´¢Æ÷µØÖ·²»±ä
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord; //¶¨ÒåÍâÉèÊı¾İ¿í¶È16Î»
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord; //¶¨Òå´æ´¢Æ÷Êı¾İ¿í¶È16Î»
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;               //DMAÍ¨µÀ²Ù×÷Ä£Ê½Îª»·ĞÎ»º³åÄ£Ê½
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;           //DMAÍ¨µÀÓÅÏÈ¼¶¸ß
+  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;                  //½ûÖ¹DMAÍ¨µÀ´æ´¢Æ÷µ½´æ´¢Æ÷´«Êä
   DMA_Init(DMA1_Channel1, &DMA_InitStructure);
   DMA_Cmd(DMA1_Channel1, ENABLE);
   
-  ADC_InitTypeDef ADC_InitStructure;                  //å®šä¹‰ADCåˆå§‹åŒ–ç»“æ„ä½“å˜é‡
+  ADC_InitTypeDef ADC_InitStructure;                  //¶¨ÒåADC³õÊ¼»¯½á¹¹Ìå±äÁ¿
   ADC_DeInit(ADC1);
-  ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;  //ADC1å’ŒADC2å·¥ä½œåœ¨ç‹¬ç«‹æ¨¡å¼
-  ADC_InitStructure.ADC_ScanConvMode = ENABLE;        //ä½¿èƒ½æ‰«æ
-  ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;  //ADCè½¬æ¢å·¥ä½œåœ¨å•æ¬¡æ¨¡å¼
-  ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None; //è½¯ä»¶æ§åˆ¶è½¬æ¢
-  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;//è½¬æ¢æ•°æ®å³å¯¹é½
-  ADC_InitStructure.ADC_NbrOfChannel = 4;//æ‰«æé€šé“æ•° 
-  ADC_Init(ADC1, &ADC_InitStructure); //åˆå§‹åŒ–ADC
+  ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;  //ADC1ºÍADC2¹¤×÷ÔÚ¶ÀÁ¢Ä£Ê½
+  ADC_InitStructure.ADC_ScanConvMode = ENABLE;        //Ê¹ÄÜÉ¨Ãè
+  ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;  //ADC×ª»»¹¤×÷ÔÚµ¥´ÎÄ£Ê½
+  ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None; //Èí¼ş¿ØÖÆ×ª»»
+  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;//×ª»»Êı¾İÓÒ¶ÔÆë
+  ADC_InitStructure.ADC_NbrOfChannel = 4;//É¨ÃèÍ¨µÀÊı 
+  ADC_Init(ADC1, &ADC_InitStructure); //³õÊ¼»¯ADC
   
   ADC_RegularChannelConfig(ADC1, ADC_Channel_10,  1, ADC_SampleTime_239Cycles5); //BATT
   ADC_RegularChannelConfig(ADC1, ADC_Channel_11, 2, ADC_SampleTime_239Cycles5); 
   ADC_RegularChannelConfig(ADC1, ADC_Channel_12, 3, ADC_SampleTime_239Cycles5);
   ADC_RegularChannelConfig(ADC1, ADC_Channel_13, 4, ADC_SampleTime_239Cycles5);
-  //ADC1é€‰æ‹©ä¿¡é“14,éŸ³åºå™¨ç­‰çº§1,é‡‡æ ·æ—¶é—´239.5ä¸ªå‘¨æœŸ
-  ADC_DMACmd(ADC1, ENABLE);//ä½¿èƒ½ADC1æ¨¡å—DMA
-  ADC_Cmd(ADC1, ENABLE);//ä½¿èƒ½ADC1
+  //ADC1Ñ¡ÔñĞÅµÀ14,ÒôĞòÆ÷µÈ¼¶1,²ÉÑùÊ±¼ä239.5¸öÖÜÆÚ
+  ADC_DMACmd(ADC1, ENABLE);//Ê¹ÄÜADC1Ä£¿éDMA
+  ADC_Cmd(ADC1, ENABLE);//Ê¹ÄÜADC1
   
-  ADC_ResetCalibration(ADC1); //é‡ç½®ADC1æ ¡å‡†å¯„å­˜å™¨
-  while(ADC_GetResetCalibrationStatus(ADC1));//ç­‰å¾…ADC1æ ¡å‡†é‡ç½®å®Œæˆ
-  ADC_StartCalibration(ADC1);//å¼€å§‹ADC1æ ¡å‡†
-  while(ADC_GetCalibrationStatus(ADC1));//ç­‰å¾…ADC1æ ¡å‡†å®Œæˆ
-  ADC_SoftwareStartConvCmd(ADC1, ENABLE); //ä½¿èƒ½ADC1è½¯ä»¶å¼€å§‹è½¬æ¢
+  ADC_ResetCalibration(ADC1); //ÖØÖÃADC1Ğ£×¼¼Ä´æÆ÷
+  while(ADC_GetResetCalibrationStatus(ADC1));//µÈ´ıADC1Ğ£×¼ÖØÖÃÍê³É
+  ADC_StartCalibration(ADC1);//¿ªÊ¼ADC1Ğ£×¼
+  while(ADC_GetCalibrationStatus(ADC1));//µÈ´ıADC1Ğ£×¼Íê³É
+  ADC_SoftwareStartConvCmd(ADC1, ENABLE); //Ê¹ÄÜADC1Èí¼ş¿ªÊ¼×ª»»
 }
 
 //PC0/15/ADC12_IN10
 void adc_init()
 {
-  LL_GPIO_InitTypeDef GPIO_InitStructure = {0}; //å®šä¹‰GPIOåˆå§‹åŒ–ç»“æ„ä½“
+  GPIO_InitTypeDef GPIO_InitStructure; //¶¨ÒåGPIO³õÊ¼»¯½á¹¹Ìå
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 | RCC_APB2Periph_GPIOC, ENABLE);
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);	//ä½¿èƒ½DMAä¼ è¾“
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);	//Ê¹ÄÜDMA´«Êä
   
-  //é…ç½®PC0ä¸ºæ¨¡æ‹Ÿè¾“å…¥
-  GPIO_InitStructure.Pin = (((uint32_t)(BATT_CHK | SWR_CHK | RF_CHK | RX_CHK) << GPIO_PIN_MASK_POS) | (BATT_CHK | SWR_CHK | RF_CHK | RX_CHK));
-  GPIO_InitStructure.Mode = LL_GPIO_MODE_ANALOG;
-  LL_GPIO_Init(GPIOC, &GPIO_InitStructure);
+  //ÅäÖÃPC0ÎªÄ£ÄâÊäÈë
+  GPIO_InitStructure.GPIO_Pin = BATT_CHK | SWR_CHK | RF_CHK | RX_CHK;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+  GPIO_Init(GPIOC, &GPIO_InitStructure);
   
 //  NVIC_InitTypeDef NVIC_InitStructure;  
 //  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); 
@@ -106,7 +106,7 @@ uint16_t adc_rx()
 
 void adc_start()
 {
-  ADC_SoftwareStartConvCmd(ADC1, ENABLE); //ä½¿èƒ½ADC1è½¯ä»¶å¼€å§‹è½¬æ¢
+  ADC_SoftwareStartConvCmd(ADC1, ENABLE); //Ê¹ÄÜADC1Èí¼ş¿ªÊ¼×ª»»
 }
 void ADC1_2_IRQHandler()
 {

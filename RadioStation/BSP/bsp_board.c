@@ -22,7 +22,7 @@ DispRefreshMgr DRMgr;
 AdjustItemMgr AIMgr;
 FREQ_AttrDef FREQ;
 RADIO_ModeDef CWMode;
-// VFOæ°¸ä¹…ä¿å­˜
+// VFOÓÀ¾Ã±£´æ
 VFO_SaveDef VFO;
 VOL_AttrDef VOL;
 ATT_AttrDef ATT;
@@ -50,7 +50,7 @@ uint16_t hswr_timeout= 0;
 FIL_AttrDef CWFilter; 
 uint8_t MemSetMaxIndex;
 
-#define BFO_DEFAULT_VAL 8999570         //new: RADIO_USB  old: 8998070 LSB
+#define BFO_DEFAULT_VAL 8999570         //new: USB  old: 8998070 LSB
 
 uint32_t BAUD[SIZE_OF_BAUD][3] = {
   {179900, 190500, 200099},//160M:      1.799.00MHZ-2.000 .99MHZ
@@ -70,15 +70,15 @@ uint8_t CALL_BUF[] = {
   'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '/', '0', '9', '8', '7', '6', '5', 
   '4', '3', '2', '1', '-'};
 
-//ç”¨äºä¿¡å·å¹³æ»‘
-#define RF_ALPHA 0.9    //å‘å°„å¹³æ»‘ç³»æ•°
-#define RX_ALPHA 0.9    //æ¥æ”¶å¹³æ»‘ç³»æ•°
+//ÓÃÓÚĞÅºÅÆ½»¬
+#define RF_ALPHA 0.9    //·¢ÉäÆ½»¬ÏµÊı
+#define RX_ALPHA 0.9    //½ÓÊÕÆ½»¬ÏµÊı
 volatile static float last_rf_grid=0;
 volatile static float last_rx_grid=0;
 
 void vfo_init()
 {
-  // éœ€æ£€æµ‹E2P
+  // Ğè¼ì²âE2P
   for(uint8_t i=0; i<SIZE_OF_BAUD; i++)
   {
     if( i <= 2 )
@@ -88,8 +88,8 @@ void vfo_init()
     }
     else
     {
-      VFO.VFOA[i].mode = RADIO_USB;
-      VFO.VFOB[i].mode = RADIO_USB;
+      VFO.VFOA[i].mode = USB;
+      VFO.VFOB[i].mode = USB;
     }
     VFO.VFOA[i].freq = BAUD[i][1];
     VFO.VFOB[i].freq = BAUD[i][1]; 
@@ -103,13 +103,13 @@ void vfo_init()
 
 void gpio_init()
 {
-      // GPIO enable clock and release Reset ,å¤–éƒ¨ä¸­æ–­ è¾…åŠ©æ—¶é’Ÿå¿…é¡»æ‰“å¼€
+      // GPIO enable clock and release Reset ,Íâ²¿ÖĞ¶Ï ¸¨ÖúÊ±ÖÓ±ØĞë´ò¿ª
   RCC_APB2PeriphResetCmd(  RCC_APB2Periph_GPIOA, DISABLE);
   RCC_APB2PeriphClockCmd(  RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, ENABLE);
       // GPIO enable clock and release Reset
   RCC_APB2PeriphResetCmd(  RCC_APB2Periph_GPIOB, DISABLE);
   RCC_APB2PeriphClockCmd(  RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
-  LL_GPIO_AF_Remap_SWJ_NOJTAG();      /*ä½¿èƒ½SWD ç¦ç”¨JTAG*/
+  GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);      /*Ê¹ÄÜSWD ½ûÓÃJTAG*/
   
       // GPIO enable clock and release Reset
   RCC_APB2PeriphResetCmd(  RCC_APB2Periph_GPIOC, DISABLE);
@@ -126,55 +126,55 @@ void gpio_init()
 
 void power_key_init()
 {
-  // 34è„š-PC5  ç”µæºæ§åˆ¶è„š é€šç”µä¸ºé«˜ç”µå¹³ï¼Œ æ–­ç”µä¸ºä½ç”µå¹³
-  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
+  // 34½Å-PC5  µçÔ´¿ØÖÆ½Å Í¨µçÎª¸ßµçÆ½£¬ ¶ÏµçÎªµÍµçÆ½
+  GPIO_InitTypeDef GPIO_InitStructure;
   
-  GPIO_InitStructure.Pin = (((uint32_t)(GPIO_Pin_5) << GPIO_PIN_MASK_POS) | (GPIO_Pin_5));
-  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  LL_GPIO_Init(GPIOC, &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_5;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(GPIOC, &GPIO_InitStructure);
   
-  // PE15/46 VoiceControl : å¯åŠ¨ä¸ºé«˜  åœæ­¢ä¸ºä½
-  GPIO_InitStructure.Pin = (((uint32_t)(GPIO_Pin_15) << GPIO_PIN_MASK_POS) | (GPIO_Pin_15));
-  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  LL_GPIO_Init(GPIOE, &GPIO_InitStructure);
+  // PE15/46 VoiceControl : Æô¶¯Îª¸ß  Í£Ö¹ÎªµÍ
+  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_15;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(GPIOE, &GPIO_InitStructure);
   
-  // PB10/47 H/L : å¯åŠ¨ä¸ºé«˜  åœæ­¢ä¸ºä½
-  GPIO_InitStructure.Pin = (((uint32_t)(GPIO_Pin_10) << GPIO_PIN_MASK_POS) | (GPIO_Pin_10));
-  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  LL_GPIO_Init(GPIOB, &GPIO_InitStructure);
+  // PB10/47 H/L : Æô¶¯Îª¸ß  Í£Ö¹ÎªµÍ
+  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
 }
 
 void voice_control_stop()
 {
-  (GPIOE->BSRR = (GPIO_Pin_15));  
+  GPIO_SetBits(GPIOE, GPIO_Pin_15);  
 }
 
 void voice_control_start()
 {
-  (GPIOE->BRR = (GPIO_Pin_15));
+  GPIO_ResetBits(GPIOE, GPIO_Pin_15);
 }
 
 void power_high_on()
 {
-  (GPIOB->BSRR = (GPIO_Pin_10));  
+  GPIO_SetBits(GPIOB, GPIO_Pin_10);  
 }
 
 void power_high_off()
 {
-  (GPIOB->BRR = (GPIO_Pin_10));
+  GPIO_ResetBits(GPIOB, GPIO_Pin_10);
 }
 
 void power_on()
 {
-  (GPIOC->BSRR = (GPIO_Pin_5));  
+  GPIO_SetBits(GPIOC, GPIO_Pin_5);  
 }
 
 void power_off()
 {
-  (GPIOC->BRR = (GPIO_Pin_5)); 
+  GPIO_ResetBits(GPIOC, GPIO_Pin_5); 
 }
 
 uint8_t save;
@@ -200,7 +200,7 @@ static int16_t RX_AlignmentOffset(void)
 {
   if (!RF_IsRx())
     return 0;
-  if (RADIO.mode == RADIO_USB)
+  if (RADIO.mode == USB)
     return MENU.rxUsbOffset;
   if (RADIO.mode == LSB)
     return MENU.rxLsbOffset;
@@ -237,7 +237,7 @@ void ResetToDefault()
 //    MENU.lsbbfo = 8998500;
     MENU.ref = 50000000;
     WPM.val = 15;
-    MENU.cwnloOffset = -1130;       //CWçª„å¸¦æ¨¡å¼æœ¬æŒ¯åç§»åˆå€¼  BG6RDF
+    MENU.cwnloOffset = -1130;       //CWÕ­´øÄ£Ê½±¾ÕñÆ«ÒÆ³õÖµ  BG6RDF
 
     vfo_init();
     RADIO.mode = LSB;
@@ -250,7 +250,7 @@ void ResetToDefault()
     {
       MEM[i].freq = 705000;
       MEM[i].baud = 3;
-      MEM[i].mode = RADIO_USB;
+      MEM[i].mode = USB;
     }
     
     VOL.val = 2;
@@ -277,7 +277,7 @@ void software_init()
     WPM.val = e2p_pwm_read();
     MENU = e2p_menu_read();
   }
-  else  // ä¿å­˜é»˜è®¤é…ç½®
+  else  // ±£´æÄ¬ÈÏÅäÖÃ
   {
     ResetToDefault();
   }
@@ -290,25 +290,25 @@ void software_init()
   FREQ.numOfbaud = VFO.CurrBaudOfVfoA;
   VFO_Get();
   
-  // å…¨éƒ¨åˆ·æ–°
+  // È«²¿Ë¢ĞÂ
   DRMgr.item |= ALLItem;
 }
 
 #define POWER_ON_WAIT_COUNT 3000000
-//ç­‰å¾…ç”µæºæŒ‰é’®æŒ‰ä¸‹ä¸€æ®µæ—¶é—´  BG6RDF
+//µÈ´ıµçÔ´°´Å¥°´ÏÂÒ»¶ÎÊ±¼ä  BG6RDF
 void WaitForPowerOn()
 {
-  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
-  //å…ˆæŠŠç”µæºæŒ‰é’®å¼•è„šè®¾ç½®ä¸ºè¾“å…¥ï¼Œ90è„š-PB4
-  GPIO_InitStructure.Pin = (((uint32_t)(GPIO_Pin_4) << GPIO_PIN_MASK_POS) | (GPIO_Pin_4));
-  GPIO_InitStructure.Mode = LL_GPIO_MODE_FLOATING;
-  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  LL_GPIO_Init(GPIOB, &GPIO_InitStructure);
+  GPIO_InitTypeDef GPIO_InitStructure;
+  //ÏÈ°ÑµçÔ´°´Å¥Òı½ÅÉèÖÃÎªÊäÈë£¬90½Å-PB4
+  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_4;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
   
   uint32_t cnt=0;
   while(1)
   {
-   if (!(((GPIOB->IDR) & (GPIO_Pin_4)) != 0u))
+   if (!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_4))
      cnt++;
    else
      cnt=0;
@@ -319,17 +319,17 @@ void WaitForPowerOn()
 
 void board_init()
 {
-  gpio_init();          //å¯åŠ¨GPIO
-  tp_init();            //ä¸€äº›GPIOå¼•è„šçš„è®¾ç½®
-  QuietModeOn();        //é™éŸ³
+  gpio_init();          //Æô¶¯GPIO
+  tp_init();            //Ò»Ğ©GPIOÒı½ÅµÄÉèÖÃ
+  QuietModeOn();        //¾²Òô
   
   /* Match the original radio image: assert PC5 power hold without a
    * second button-wait loop while the supply is still momentary. */
   
-  vol_init();           //è®¾ç½®éŸ³é‡æ§åˆ¶å¼•è„š
+  vol_init();           //ÉèÖÃÒôÁ¿¿ØÖÆÒı½Å
   
-  power_key_init();     //è®¾ç½®ç”µæºï¼Œé«˜ä½åŠŸç‡æ§åˆ¶å¼•è„š
-  power_on();           //PC5è®¾ç½®é«˜ç”µå¹³ï¼Œå¯åŠ¨ä¸»ç”µæº
+  power_key_init();     //ÉèÖÃµçÔ´£¬¸ßµÍ¹¦ÂÊ¿ØÖÆÒı½Å
+  power_on();           //PC5ÉèÖÃ¸ßµçÆ½£¬Æô¶¯Ö÷µçÔ´
   i2c_init();
   
   delay_ms(50);
@@ -337,17 +337,17 @@ void board_init()
   e2p_reset();
   
   software_init();
-  key_init();           //åˆå§‹åŒ–æŒ‰é’®ã€ç¼–ç å™¨å’Œç”µé”®çš„GPIOï¼Œåˆå§‹åŒ–GPIOä¸­æ–­å’Œä¸­æ–­å‘é‡è¡¨ï¼Œæ£€æµ‹æ‰‹é”®è¿˜æ˜¯è‡ªåŠ¨é”®
+  key_init();           //³õÊ¼»¯°´Å¥¡¢±àÂëÆ÷ºÍµç¼üµÄGPIO£¬³õÊ¼»¯GPIOÖĞ¶ÏºÍÖĞ¶ÏÏòÁ¿±í£¬¼ì²âÊÖ¼ü»¹ÊÇ×Ô¶¯¼ü
   
-  //å¦‚æœK4,K6è¢«æŒ‰ä¸‹ï¼Œåˆ™æ¢å¤åˆ°é»˜è®¤å€¼
-  uint16_t portValue=((GPIOD)->IDR);
-  if (!(portValue & GPIO_Pin_4) &&  !(portValue & GPIO_Pin_1))  //K4, K6ä¹Ÿè¢«æŒ‰ä¸‹
+  //Èç¹ûK4,K6±»°´ÏÂ£¬Ôò»Ö¸´µ½Ä¬ÈÏÖµ
+  uint16_t portValue=GPIO_ReadInputData(GPIOD);
+  if (!(portValue & GPIO_Pin_4) &&  !(portValue & GPIO_Pin_1))  //K4, K6Ò²±»°´ÏÂ
     ResetToDefault();
 
   oled_init();
   adc_init();
   baud_init();
-  pwm_init();           //è®¾ç½®PWMï¼Œç”¨äºä¾§éŸ³
+  pwm_init();           //ÉèÖÃPWM£¬ÓÃÓÚ²àÒô
   keyer_init();
   
     
@@ -406,7 +406,7 @@ void MODE_Refresh(uint8_t all)
   if(Mode != RADIO.mode || all)
   {
     Mode = RADIO.mode;
-    if(Mode == RADIO_USB)
+    if(Mode == USB)
     {
       voice_control_start();
       oled_lsb_usb("USB ");
@@ -436,7 +436,7 @@ void MEM_SetModeRefresh(uint8_t all)
   if(MemSetMode != RADIO.mode || all)
   {
     MemSetMode = RADIO.mode;
-    if(MemSetMode == RADIO_USB)
+    if(MemSetMode == USB)
     {
       voice_control_start();
       oled_lsb_usb_mem("USB ");
@@ -515,7 +515,7 @@ void MENU_SetUp(uint8_t pos)
     {
       if (FREQ.item & TSItem)
       {
-        MENU.rbfo += 100; // æ­¥è¿›100HZ
+        MENU.rbfo += 100; // ²½½ø100HZ
       }
       else
       {
@@ -542,7 +542,7 @@ void MENU_SetUp(uint8_t pos)
     {
       if (FREQ.item & TSItem)
       {
-        MENU.ref += 100; // æ­¥è¿›100HZ
+        MENU.ref += 100; // ²½½ø100HZ
       }
       else
       {
@@ -639,7 +639,7 @@ void MENU_SetDown(uint8_t pos)
       {
         if( MENU.rbfo >= 100)
         {
-          MENU.rbfo -= 100; // æ­¥è¿›100HZ
+          MENU.rbfo -= 100; // ²½½ø100HZ
         }
       }
       else
@@ -669,7 +669,7 @@ void MENU_SetDown(uint8_t pos)
       {
         if( MENU.ref >= 100)
         {
-          MENU.ref -= 100; // æ­¥è¿›100HZ
+          MENU.ref -= 100; // ²½½ø100HZ
         }
       }
       else
@@ -692,7 +692,7 @@ void MENU_SetDown(uint8_t pos)
     break;
   default:
     if (pos < 9 || pos >= RX_USB_MENU) break;
-    if(MENU.callSign[pos - 9] == MORSE_CODE_COUNT)      // posä¸­åŒ…å«äº†å‰é¢çš„èœå•
+    if(MENU.callSign[pos - 9] == MORSE_CODE_COUNT)      // posÖĞ°üº¬ÁËÇ°ÃæµÄ²Ëµ¥
     {
       MENU.numOfcall = MORSE_CODE_COUNT - 1;
     }
@@ -709,7 +709,7 @@ void MENU_SetDown(uint8_t pos)
   }
 }
 
-//åœ¨è®¾ç½®èœå•æ¨¡å¼ä¸‹æŒ‰ä¸‹TSæŒ‰é’®ï¼Œè°ƒç”¨æœ¬å‡½æ•°
+//ÔÚÉèÖÃ²Ëµ¥Ä£Ê½ÏÂ°´ÏÂTS°´Å¥£¬µ÷ÓÃ±¾º¯Êı
 void MENU_Ts(uint8_t pos)
 {
   switch(pos)
@@ -762,9 +762,9 @@ void MENU_Ts(uint8_t pos)
 uint32_t Get_DDSLO(uint32_t freq)
 {
   int32_t tmp;
-  if( RADIO.mode == RADIO_USB)
+  if( RADIO.mode == USB)
   {
-    tmp = freq * 10 + 1500; // ä¸»é¢‘é¢‘ç‡ å€10
+    tmp = freq * 10 + 1500; // Ö÷ÆµÆµÂÊ ±¶10
   }
   else if(RADIO.mode == LSB)
   {
@@ -780,7 +780,7 @@ uint32_t Get_DDSLO(uint32_t freq)
     {
       if( FIL.func == N )
       {
-        //CWçª„å¸¦æ¨¡å¼ä¸‹åŠ ä¸Šæœ¬æŒ¯åç§»é‡ï¼Œç”¨äºè¡¥å¿æ™¶ä½“æ»¤æ³¢å™¨ä¸­å¿ƒé¢‘ç‡åç§»
+        //CWÕ­´øÄ£Ê½ÏÂ¼ÓÉÏ±¾ÕñÆ«ÒÆÁ¿£¬ÓÃÓÚ²¹³¥¾§ÌåÂË²¨Æ÷ÖĞĞÄÆµÂÊÆ«ÒÆ
         tmp = freq * 10 + MENU.cwnloOffset;     //BG6RDF
       }
       else
@@ -798,7 +798,7 @@ uint32_t Get_DDSLO(uint32_t freq)
 uint32_t Get_DDSBFO()
 {
   uint32_t tmp;
-  if( RADIO.mode == RADIO_USB)
+  if( RADIO.mode == USB)
   {
     //tmp = MENU.usbbfo; 
     tmp = 9001500 + RX_AlignmentOffset();
@@ -823,7 +823,7 @@ uint32_t Get_DDSBFO()
     }
     else
     {
-      tmp = 0;  // TBFO å›ºå®šä¸ºé›¶ 
+      tmp = 0;  // TBFO ¹Ì¶¨ÎªÁã 
     }
   }
   
@@ -838,7 +838,7 @@ void board_refresh_manager()
   {
     if( RADIO.mode == CWA || RADIO.mode == CWB )
     {
-      // SSBä¸CWåˆ‡æ¢åï¼Œå­˜å‚¨æ»¤æ³¢å™¨çŠ¶æ€
+      // SSBÓëCWÇĞ»»ºó£¬´æ´¢ÂË²¨Æ÷×´Ì¬
       if( CWFilter.func == N )  
       {
         FIL.func = N;
@@ -850,7 +850,7 @@ void board_refresh_manager()
     }
     else
     {
-      // ä»CWåˆ‡æ¢åˆ°SSBæ¨¡å¼ï¼Œå…³é—­æ»¤æ³¢å™¨
+      // ´ÓCWÇĞ»»µ½SSBÄ£Ê½£¬¹Ø±ÕÂË²¨Æ÷
       FIL.func = W;
     } 
       
@@ -858,7 +858,7 @@ void board_refresh_manager()
     {
       DRMgr.item &= ~FREQItem;  
       
-      // ä»è®¾ç½®çŠ¶æ€é€€å‡ºæ—¶ï¼Œæ›´æ–°VFOæ˜¾ç¤º
+      // ´ÓÉèÖÃ×´Ì¬ÍË³öÊ±£¬¸üĞÂVFOÏÔÊ¾
       if (FREQ.item & VFOItem && DRMgr.item & ALLItem)
       {
         if(FREQ.item & VFOAItem)
@@ -870,14 +870,14 @@ void board_refresh_manager()
           oled_vfo("VFO/B ");
         }
       }
-      else if (FREQ.item & MEMItem)   // æ— è®ºæ˜¯è®¾ç½®é€€å‡ºæ—¶ï¼Œè¿˜æ˜¯ä¿¡é“åˆ‡æ¢æ—¶ï¼Œåªè¦æ˜¯MEMæ¨¡å¼ï¼Œæ›´æ–°ä¿¡é“å·
+      else if (FREQ.item & MEMItem)   // ÎŞÂÛÊÇÉèÖÃÍË³öÊ±£¬»¹ÊÇĞÅµÀÇĞ»»Ê±£¬Ö»ÒªÊÇMEMÄ£Ê½£¬¸üĞÂĞÅµÀºÅ
       {
         oled_update_mem(FREQ.numOfmem);
       }
       
       
       
-      if( DRMgr.item & ALLItem )  // é€€å‡ºè®¾ç½®èœå•åï¼Œé‡æ–°åˆ·æ–°å±å¹•ä¸»é¢‘ç‡
+      if( DRMgr.item & ALLItem )  // ÍË³öÉèÖÃ²Ëµ¥ºó£¬ÖØĞÂË¢ĞÂÆÁÄ»Ö÷ÆµÂÊ
       {
         if(FREQ.item & MEMItem)
         {
@@ -893,15 +893,15 @@ void board_refresh_manager()
           {
             FREQ.numOfbaud = VFO.CurrBaudOfVfoB;
           }
-          VFO_Get();  // æ­¤æ—¶æ³¢æ®µå˜é‡æ²¡æœ‰å˜åŠ¨ï¼Œä¸éœ€è¦é‡æ–°è¯»å–ï¼Œ
+          VFO_Get();  // ´ËÊ±²¨¶Î±äÁ¿Ã»ÓĞ±ä¶¯£¬²»ĞèÒªÖØĞÂ¶ÁÈ¡£¬
         }
       }
-      else if(!(FREQ.item & MEMItem)) // MEMæ˜¾ç¤ºé€€å‡ºåï¼Œä¸è¿›è¡Œé¢‘ç‡å­˜å‚¨
+      else if(!(FREQ.item & MEMItem)) // MEMÏÔÊ¾ÍË³öºó£¬²»½øĞĞÆµÂÊ´æ´¢
       {
         VFO_Save();
       }
       
-      // ä»è®¾ç½®çŠ¶æ€é€€å‡ºæ—¶ï¼Œæ›´æ–°TSæ˜¾ç¤º
+      // ´ÓÉèÖÃ×´Ì¬ÍË³öÊ±£¬¸üĞÂTSÏÔÊ¾
       if (FREQ.item & TSItem)
       {
         if( DRMgr.item & ALLItem )
@@ -912,7 +912,7 @@ void board_refresh_manager()
         FREQ.val *= 100;
       }
       
-      if (FREQ.item & RITItem && !(FREQ.item & MEMItem))  // RITä½¿èƒ½æ—¶ï¼Œæ˜¾ç¤ºé¢‘ç‡=RIT + FREQ
+      if (FREQ.item & RITItem && !(FREQ.item & MEMItem))  // RITÊ¹ÄÜÊ±£¬ÏÔÊ¾ÆµÂÊ=RIT + FREQ
       {
         if (DRMgr.item & ALLItem)
         {
@@ -924,7 +924,7 @@ void board_refresh_manager()
         lo_update(Get_DDSLO(FREQ.val+VFO.RIT), MENU.ref);
         bfo_update(Get_DDSBFO(), MENU.ref);
       }
-      else if (FREQ.item & XITItem && !(FREQ.item & MEMItem))   //XITï¼Œæ˜¾ç¤ºé¢‘ç‡=FREQ+XIT BG6RDF
+      else if (FREQ.item & XITItem && !(FREQ.item & MEMItem))   //XIT£¬ÏÔÊ¾ÆµÂÊ=FREQ+XIT BG6RDF
       {
         if (DRMgr.item & ALLItem)
         {
@@ -933,7 +933,7 @@ void board_refresh_manager()
         oled_rit_txfreq(FREQ.val);
         
         oled_update_frequency(FREQ.val+VFO.XIT, (DRMgr.item & ALLItem)?1:0); 
-        //XITæ¨¡å¼ä¹Ÿå¿…é¡»åˆ·æ–°æœ¬æŒ¯ï¼Œå› ä¸ºVFOA/VFOBåˆ‡æ¢æ—¶ï¼Œæœ¬æŒ¯ä¹Ÿåœ¨è¿™åˆ‡æ¢
+        //XITÄ£Ê½Ò²±ØĞëË¢ĞÂ±¾Õñ£¬ÒòÎªVFOA/VFOBÇĞ»»Ê±£¬±¾ÕñÒ²ÔÚÕâÇĞ»»
         lo_update(Get_DDSLO(FREQ.val), MENU.ref);
         bfo_update(Get_DDSBFO(), MENU.ref);
       }
@@ -943,7 +943,7 @@ void board_refresh_manager()
         lo_update(Get_DDSLO(FREQ.val), MENU.ref);
         bfo_update(Get_DDSBFO(), MENU.ref);
       }
-      baud_chn_ctrl(FREQ.numOfbaud);  // ç¡¬ä»¶æ³¢æ®µæ§åˆ¶
+      baud_chn_ctrl(FREQ.numOfbaud);  // Ó²¼ş²¨¶Î¿ØÖÆ
       
       if (DRMgr.item == 0)
       {
@@ -963,7 +963,7 @@ void board_refresh_manager()
       {
         MODE_Refresh((DRMgr.item & ALLItem)?1:0);
       
-        // ä¿¡é“æ¨¡å¼ä¸‹ï¼Œæ¨¡å¼å¯è°ƒï¼Œä½†ä¸è®°å¿†æ¨¡å¼
+        // ĞÅµÀÄ£Ê½ÏÂ£¬Ä£Ê½¿Éµ÷£¬µ«²»¼ÇÒäÄ£Ê½
         if(!(FREQ.item & MEMItem))
         {
           VFO_Save();
@@ -980,7 +980,7 @@ void board_refresh_manager()
     {
       DRMgr.item &= ~FILItem;
       
-      if (FIL.func == N) // æ˜¾ç¤ºæ—¶ï¼Œåªæ˜¾ç¤ºNï¼Œ Wä¸æ˜¾ç¤ºï¼› åŠŸç‡æ˜¾ç¤ºï¼Œæ˜¯æ˜¾ç¤ºL
+      if (FIL.func == N) // ÏÔÊ¾Ê±£¬Ö»ÏÔÊ¾N£¬ W²»ÏÔÊ¾£» ¹¦ÂÊÏÔÊ¾£¬ÊÇÏÔÊ¾L
       {
         CW_FilterControl(1);
       }
@@ -1005,7 +1005,7 @@ void board_refresh_manager()
         DRMgr.item &= ~DCItem;
         //4095-0: 2.5v-0
         // 4095 / adc = 2.5 / x => x = 2.5 * adc / 4096 
-        // åˆ†å‹ç”µé˜» 10K 1K
+        // ·ÖÑ¹µç×è 10K 1K
         adc_val = 2500 * adc_batt();
         adc_val /= 4096;
         adc_val = adc_val * 11;
@@ -1084,8 +1084,8 @@ void board_refresh_manager()
         }*/
         
         /**
-        *   2016å¹´9æœˆ9æ—¥ ä¿®æ”¹é‡10W
-        *       10Wç”µå‹0.66V   5ç“¦ç”µå‹0.47V
+        *   2016Äê9ÔÂ9ÈÕ ĞŞ¸ÄÁ¿10W
+        *       10WµçÑ¹0.66V   5ÍßµçÑ¹0.47V
         *       4096-0: 2.5v-0
         *       10W:0.66V(1081.3)  5W:0.47V(770.04)
         */
@@ -1107,7 +1107,7 @@ void board_refresh_manager()
           grid = 0;
         }
         
-        //å¹³æ»‘ï¼Œå¿«èµ·æ…¢è½       BG6RDF
+        //Æ½»¬£¬¿ìÆğÂıÂä       BG6RDF
         float rf_grid=(float)grid;
         if (rf_grid<last_rf_grid)
         {
@@ -1157,7 +1157,7 @@ void board_refresh_manager()
           grid = 0;
         }
 
-        //å¹³æ»‘ï¼Œå¿«èµ·æ…¢è½
+        //Æ½»¬£¬¿ìÆğÂıÂä
         float rx_grid=(float)grid;
         if (rx_grid<last_rx_grid)
         {
@@ -1187,12 +1187,12 @@ void board_refresh_manager()
         }
       }
       
-      // ATTåŠŸèƒ½å»æ‰ï¼Œ LOCKé¢‘ç‡æ—‹é’®é”å®šåŠŸèƒ½ä»£æ›¿
+      // ATT¹¦ÄÜÈ¥µô£¬ LOCKÆµÂÊĞıÅ¥Ëø¶¨¹¦ÄÜ´úÌæ
       if (DRMgr.item & ATTItem  || DRMgr.item & ALLItem)
       {
         DRMgr.item &= ~ATTItem;
-        //oled_update_att(ATT.val);   // 46-ATT : å¯åŠ¨ä¸ºé«˜  åœæ­¢ä¸ºä½
-        oled_button_lock(ATT.val);   // 1: LOCKé”å®šçŠ¶æ€ï¼ˆå¼€æœºé»˜è®¤ï¼‰ 0: è§£é”çŠ¶æ€
+        //oled_update_att(ATT.val);   // 46-ATT : Æô¶¯Îª¸ß  Í£Ö¹ÎªµÍ
+        oled_button_lock(ATT.val);   // 1: LOCKËø¶¨×´Ì¬£¨¿ª»úÄ¬ÈÏ£© 0: ½âËø×´Ì¬
 //
 //        if (ATT.val >= 1)
 //        {
@@ -1211,7 +1211,7 @@ void board_refresh_manager()
       if (DRMgr.item & TPItem || DRMgr.item & ALLItem)
       {
         DRMgr.item &= ~TPItem;
-        TP_Refresh((DRMgr.item & ALLItem)?1:0); // 47è„šï¼š H-1 L-0
+        TP_Refresh((DRMgr.item & ALLItem)?1:0); // 47½Å£º H-1 L-0
         if (TP.level == L)
         {
           power_high_off();
@@ -1267,7 +1267,7 @@ void board_refresh_manager()
             bfo_update(Get_DDSBFO(), MENU.ref);
           }
         }
-        oled_txrx_clear_grid();  // TXå’ŒRXçŠ¶æ€åˆ‡æ¢åï¼Œæ¸…é™¤æ‰€æœ‰æ˜¾ç¤ºæ ¼å­
+        oled_txrx_clear_grid();  // TXºÍRX×´Ì¬ÇĞ»»ºó£¬Çå³ıËùÓĞÏÔÊ¾¸ñ×Ó
         if (DRMgr.item == 0)
         {
           return;
@@ -1296,7 +1296,7 @@ void board_refresh_manager()
         MemSetAll = 0;
         MEM_Save();
         baud_chn_ctrl(FREQ.numOfbaud);
-        lo_update(Get_DDSLO(FREQ.val), MENU.ref);       //æ›´æ–°æœ¬æŒ¯å’ŒBFOï¼Œè¿™æ ·åœ¨è®¾ç½®é¢‘é“æ—¶æ¥æ”¶å¯ä»¥åŒæ­¥
+        lo_update(Get_DDSLO(FREQ.val), MENU.ref);       //¸üĞÂ±¾ÕñºÍBFO£¬ÕâÑùÔÚÉèÖÃÆµµÀÊ±½ÓÊÕ¿ÉÒÔÍ¬²½
         bfo_update(Get_DDSBFO(), MENU.ref);
         if (DRMgr.item == 0)
         {
@@ -1343,7 +1343,7 @@ void board_refresh_manager()
 
 void key_task()
 {
-  if( RADIO.mode == RADIO_USB || RADIO.mode == LSB )
+  if( RADIO.mode == USB || RADIO.mode == LSB )
   {
     if( PttPressed && !PttFinish )
     {
@@ -1366,7 +1366,7 @@ void key_task()
   {
     switch(key.val)
     {
-    case 1:   // K1:  ç”µæºå¼€å…³æœºæŒ‰é”®
+    case 1:   // K1:  µçÔ´¿ª¹Ø»ú°´¼ü
       if ((AIMgr.item & MENUSETItem) || RF_IsTx())
       {
         break;
@@ -1398,7 +1398,7 @@ void key_task()
       }
       
       break;
-    case 2:   // V/M ä¿¡é“/VFOè½¬æ¢é”®ï¼Œé•¿æŒ‰å‚¨å­˜ä¿¡é“åŠŸèƒ½ï¼ˆä¹Ÿæ˜¯èœå•é€€å‡ºé”®ï¼‰
+    case 2:   // V/M ĞÅµÀ/VFO×ª»»¼ü£¬³¤°´´¢´æĞÅµÀ¹¦ÄÜ£¨Ò²ÊÇ²Ëµ¥ÍË³ö¼ü£©
       if ((AIMgr.item & MENUSETItem) || RF_IsTx())
       {
         
@@ -1438,8 +1438,8 @@ void key_task()
             }
             VFO_Get();
           }
-          DRMgr.item |= RADIOItem;  // æ›´æ–°æ¨¡å¼
-          DRMgr.item |= FREQItem;   // æ›´æ–°ä¸»é¢‘å’Œæ³¢æ®µ
+          DRMgr.item |= RADIOItem;  // ¸üĞÂÄ£Ê½
+          DRMgr.item |= FREQItem;   // ¸üĞÂÖ÷ÆµºÍ²¨¶Î
           DRMgr.item |= FILItem;
         }
       }
@@ -1451,10 +1451,10 @@ void key_task()
           oled_set_screen(0x00);
           
           AIMgr.item |= MEMSETItem;
-          DRMgr.item |= MEMSETItem;   // æ›´æ–°MEMè®¾ç½®ä¸»é¢‘
-          DRMgr.item |= RADIOItem;    // æ›´æ–°MEMè®¾ç½®æ¨¡å¼
+          DRMgr.item |= MEMSETItem;   // ¸üĞÂMEMÉèÖÃÖ÷Æµ
+          DRMgr.item |= RADIOItem;    // ¸üĞÂMEMÉèÖÃÄ£Ê½
           DRMgr.item |= FILItem;
-          MemSetAll = 1;              // å¼ºåˆ¶æ›´æ–°è®¾ç½®æ¨¡å¼ CH: HZ
+          MemSetAll = 1;              // Ç¿ÖÆ¸üĞÂÉèÖÃÄ£Ê½ CH: HZ
           if (FREQ.item & TSItem)
           {
             oled_ts("TS");
@@ -1463,7 +1463,7 @@ void key_task()
       }
       
       break;
-    case 3:   // MODEé”®ï¼ˆæ¯æŒ‰ä¸€æ¬¡åœ¨LSB,RADIO_USB,CWä¹‹é—´è½¬æ¢ï¼‰é•¿æŒ‰åˆ‡æ¢æ»¤æ³¢å™¨W/N
+    case 3:   // MODE¼ü£¨Ã¿°´Ò»´ÎÔÚLSB,USB,CWÖ®¼ä×ª»»£©³¤°´ÇĞ»»ÂË²¨Æ÷W/N
       if ((AIMgr.item & MENUSETItem) || RF_IsTx())
       {
         
@@ -1481,13 +1481,13 @@ void key_task()
             RADIO.mode = CWB;
           }
         }
-        else if (RADIO.mode == RADIO_USB)
+        else if (RADIO.mode == USB)
         {
           RADIO.mode = LSB;         
         }
         else
         {
-          RADIO.mode = RADIO_USB;
+          RADIO.mode = USB;
         }
         
         if( AIMgr.item & MEMSETItem)
@@ -1496,7 +1496,7 @@ void key_task()
         }
         else
         {
-          DRMgr.item |= FREQItem;   // æ›´æ–°ä¸»é¢‘
+          DRMgr.item |= FREQItem;   // ¸üĞÂÖ÷Æµ
         }
         DRMgr.item |= RADIOItem;
         DRMgr.item |= FILItem;
@@ -1517,15 +1517,15 @@ void key_task()
             CWFilter.func = W;
           }
           DRMgr.item |= FILItem;
-          if( !(AIMgr.item & MEMSETItem) )  // MEMSETä¸‹æŒ‰ N å‡ºç°å°CH:09
+          if( !(AIMgr.item & MEMSETItem) )  // MEMSETÏÂ°´ N ³öÏÖĞ¡CH:09
           {
-            DRMgr.item |= FREQItem; // æ›´æ–°BFOå’ŒLO
+            DRMgr.item |= FREQItem; // ¸üĞÂBFOºÍLO
           }
         }
         
       }
       break;
-    case 4:   // A/Bé”®ï¼Œåœ¨VFOæ¨¡å¼ä¸‹çŸ­æŒ‰æ˜¯VFOA/VFOBä¹‹é—´è½¬æ¢ã€‚é•¿æŒ‰æ˜¯CWA/CWBä¹‹é—´è½¬æ¢ï¼ˆåªåœ¨CWæ¨¡å¼ä¸‹ï¼‰
+    case 4:   // A/B¼ü£¬ÔÚVFOÄ£Ê½ÏÂ¶Ì°´ÊÇVFOA/VFOBÖ®¼ä×ª»»¡£³¤°´ÊÇCWA/CWBÖ®¼ä×ª»»£¨Ö»ÔÚCWÄ£Ê½ÏÂ£©
       if ((AIMgr.item & MENUSETItem) || RF_IsTx())
       {
         
@@ -1574,39 +1574,39 @@ void key_task()
         }
       }
       break;
-    case 5:   // æ³¢æ®µæŒ‰é”®ï¼Œæ¯çŸ­æŒ‰ä¸€æ¬¡åœ¨æ‰€æœ‰æ³¢æ®µä¹‹é—´è½¬æ¢ã€‚é•¿æŒ‰è¿›å…¥èœå•
+    case 5:   // ²¨¶Î°´¼ü£¬Ã¿¶Ì°´Ò»´ÎÔÚËùÓĞ²¨¶ÎÖ®¼ä×ª»»¡£³¤°´½øÈë²Ëµ¥
       if ( RF_IsTx())
       {
         
       }
       else if( key.state == keyShot)
       {     
-        if( AIMgr.item & MENUSETItem)           //å¦‚æœæ˜¯åœ¨è®¾ç½®æ¨¡å¼ï¼Œåˆ™é€€å‡ºè®¾ç½®æ¨¡å¼
+        if( AIMgr.item & MENUSETItem)           //Èç¹ûÊÇÔÚÉèÖÃÄ£Ê½£¬ÔòÍË³öÉèÖÃÄ£Ê½
         {
           AIMgr.item &= ~MENUSETItem;
           DRMgr.item |= ALLItem;
           buzzer_stop();
           QuietModeOff();
-          oled_set_screen(0x00);                //æ¸…å±
+          oled_set_screen(0x00);                //ÇåÆÁ
         }
         else
         // XIT BG6RDF
         if((FREQ.item & VFOItem) && (AIMgr.item <= 0) && !(FREQ.item & XITItem))
         {
-          FREQ.item |= XITItem;         //è¿›å…¥XIT
-          FREQ.item &= ~RITItem;        //XITä¸RITäº’æ–¥
+          FREQ.item |= XITItem;         //½øÈëXIT
+          FREQ.item &= ~RITItem;        //XITÓëRIT»¥³â
           oled_rit("XIT");
           
           DRMgr.item |= FREQItem;
         }
         else if (FREQ.item & XITItem)
         {
-          FREQ.item &= ~XITItem;        //é€€å‡ºXIT
+          FREQ.item &= ~XITItem;        //ÍË³öXIT
           oled_rit("   ");
           oled_rit_txfreq_clear();
           DRMgr.item |= FREQItem;
         } 
-        /*      //åŸæ¥è¿™é‡Œæ˜¯æ³¢æ®µåˆ‡æ¢æŒ‰é’®ï¼Œç°æ”¹ä¸ºXITæŒ‰é’®  BG6RDF
+        /*      //Ô­À´ÕâÀïÊÇ²¨¶ÎÇĞ»»°´Å¥£¬ÏÖ¸ÄÎªXIT°´Å¥  BG6RDF
         else if (!(FREQ.item & MEMItem) || AIMgr.item & MEMSETItem)
         {
           if (FREQ.numOfbaud >= SIZE_OF_BAUD-1)
@@ -1640,14 +1640,14 @@ void key_task()
         
         AIMgr.item |= MENUSETItem;
         DRMgr.item |= MENUSETItem;
-        MENU.numOfmenu = 0; // è®©èœå•å…¨éƒ¨æ˜¾ç¤ºæ›´æ–°
+        MENU.numOfmenu = 0; // ÈÃ²Ëµ¥È«²¿ÏÔÊ¾¸üĞÂ
         if (FREQ.item & TSItem)
         {
           oled_ts("TS");
         }
       }
       break;
-    case 6:   // RITæŒ‰é”®ï¼ŒçŸ­æŒ‰æ˜¯å¿«é€Ÿè°ƒTSé”®ï¼Œé•¿æŒ‰è¿›å…¥RITï¼Œé€€å‡ºä¹Ÿé•¿æŒ‰
+    case 6:   // RIT°´¼ü£¬¶Ì°´ÊÇ¿ìËÙµ÷TS¼ü£¬³¤°´½øÈëRIT£¬ÍË³öÒ²³¤°´
       if (RF_IsTx())
       {
         
@@ -1660,8 +1660,8 @@ void key_task()
           
           oled_ts("   ");
         }
-        else  // 3ç§çŠ¶æ€ä¸‹ï¼šä¿¡é“è®¾ç½®,èœå•è®¾ç½®,VFO/MEM
-        {     // ä½œç”¨ï¼šæ¸…é›¶åŠåˆ·æ–°TSæ˜¾ç¤º
+        else  // 3ÖÖ×´Ì¬ÏÂ£ºĞÅµÀÉèÖÃ,²Ëµ¥ÉèÖÃ,VFO/MEM
+        {     // ×÷ÓÃ£ºÇåÁã¼°Ë¢ĞÂTSÏÔÊ¾
           FREQ.item |= TSItem;          
           oled_ts("TS");
           
@@ -1681,11 +1681,11 @@ void key_task()
       }
       else if( key.state == keyLong)
       {
-        // åªåœ¨VFOæ¨¡å¼ä¸‹èµ·ä½œç”¨
+        // Ö»ÔÚVFOÄ£Ê½ÏÂÆğ×÷ÓÃ
         if((FREQ.item & VFOItem) && (AIMgr.item <= 0) && !(FREQ.item & RITItem))
         {
           FREQ.item |= RITItem;
-          FREQ.item &= ~XITItem;        //XITä¸RITäº’æ–¥     BG6RDF
+          FREQ.item &= ~XITItem;        //XITÓëRIT»¥³â     BG6RDF
           oled_rit("RIT");
           
           DRMgr.item |= FREQItem;
@@ -1701,7 +1701,7 @@ void key_task()
       
       break;
 
-    case 7:   // CHä¿¡é“æ—‹é’®ï¼Œ	çŸ­æŒ‰ATTè®¾ç½®ï¼Œé•¿æŒ‰è¿›å…¥CALLå‘¼å«ï¼Œåœ¨å‘¼å«è¿‡ç¨‹ä¸­çŸ­æŒ‰ä¸€ä¸‹åœæ­¢ï¼ˆä¸­æ–­ï¼‰å‘¼å«
+    case 7:   // CHĞÅµÀĞıÅ¥£¬	¶Ì°´ATTÉèÖÃ£¬³¤°´½øÈëCALLºô½Ğ£¬ÔÚºô½Ğ¹ı³ÌÖĞ¶Ì°´Ò»ÏÂÍ£Ö¹£¨ÖĞ¶Ï£©ºô½Ğ
       if (AIMgr.item & MENUSETItem)
       {
         
@@ -1712,7 +1712,7 @@ void key_task()
         {
           FREQ.item &= ~CALLItem;
           call_exit();
-          // è½¬åˆ°RXæ¨¡å¼
+          // ×ªµ½RXÄ£Ê½
           RF_ToRx();
         }
         else
@@ -1736,7 +1736,7 @@ void key_task()
         DRMgr.item |= ATTItem;
       }
       break;
-    case 8:   // VOLéŸ³é‡è°ƒæ•´ï¼ŒçŸ­æŒ‰åŠŸç‡è®¾ç½®H/M/Lé•¿æŒ‰è¿›å…¥CWé€Ÿåº¦è°ƒæ•´ï¼Œè½¬åŠ¨éŸ³é‡ç¼–ç å™¨è°ƒæ•´WPM
+    case 8:   // VOLÒôÁ¿µ÷Õû£¬¶Ì°´¹¦ÂÊÉèÖÃH/M/L³¤°´½øÈëCWËÙ¶Èµ÷Õû£¬×ª¶¯ÒôÁ¿±àÂëÆ÷µ÷ÕûWPM
       if ((AIMgr.item & MENUSETItem) || (AIMgr.item & MEMSETItem) || RF_IsTx())
       {
         
@@ -1753,7 +1753,7 @@ void key_task()
         }
         else
         {
-          //if (RADIO.mode == CWA || RADIO.mode == CWB) // åŠŸç‡è°ƒæ•´ åªæœ‰åœ¨CWæ¨¡å¼ä¸‹æ‰ç”Ÿæ•ˆ
+          //if (RADIO.mode == CWA || RADIO.mode == CWB) // ¹¦ÂÊµ÷Õû Ö»ÓĞÔÚCWÄ£Ê½ÏÂ²ÅÉúĞ§
           {
             if (TP.level == L)
             {
@@ -1788,7 +1788,7 @@ void UART_Task()
   {
     size = UART_TxBufSize(); 
     if(size > 0){
-      // ä¸²å£å‘é€å¤„ç†
+      // ´®¿Ú·¢ËÍ´¦Àí
       CopyTBufToDMA();
       UART_DMAStart( size );	
     }
@@ -1842,7 +1842,7 @@ void Frequency_Tune(int32_t step)
                               BAUD[0][0], BAUD[SIZE_OF_BAUD-1][2]));
 }
 
-// åœ¨W/Våˆ‡æ¢ã€VFOA/Båˆ‡æ¢ã€æ³¢æ®µåˆ‡æ¢åŠèœå•é€€å‡ºæƒ…å†µä¸‹ï¼Œè¢«è°ƒç”¨
+// ÔÚW/VÇĞ»»¡¢VFOA/BÇĞ»»¡¢²¨¶ÎÇĞ»»¼°²Ëµ¥ÍË³öÇé¿öÏÂ£¬±»µ÷ÓÃ
 void VFO_Get()
 {
   if(FREQ.item & VFOBItem)
@@ -1859,7 +1859,7 @@ void VFO_Get()
   FREQ.numOfbaud = frequency_band(FREQ.val, BAUD, SIZE_OF_BAUD);
 }
 
-// åœ¨é¢‘ç‡å’Œæ¨¡å¼æ›´æ–°çš„æƒ…å†µä¸‹ï¼Œè¢«è°ƒç”¨
+// ÔÚÆµÂÊºÍÄ£Ê½¸üĞÂµÄÇé¿öÏÂ£¬±»µ÷ÓÃ
 void VFO_Save()
 {
   if(FREQ.item & VFOAItem)
@@ -1896,24 +1896,24 @@ void MEM_Save()
 
 void RF_Tx()
 {
-  // TXå‘å°„æ§åˆ¶ç«¯ï¼ˆä¸ç®¡æ˜¯SSBæ¨¡å¼è¿˜æ˜¯CWæ¨¡å¼ï¼Œåœ¨å‘å°„æ—¶è¾“å‡ºé«˜ç”µå¹³ï¼‰
+  // TX·¢Éä¿ØÖÆ¶Ë£¨²»¹ÜÊÇSSBÄ£Ê½»¹ÊÇCWÄ£Ê½£¬ÔÚ·¢ÉäÊ±Êä³ö¸ßµçÆ½£©
   tx_control_on();
   
-  // é™éŸ³æ§åˆ¶ï¼Œåœ¨å‘å°„æ—¶è¾“å‡ºé«˜ç”µå¹³
+  // ¾²Òô¿ØÖÆ£¬ÔÚ·¢ÉäÊ±Êä³ö¸ßµçÆ½
   QuietModeOn();
   
-  //  CWæ»¤æ³¢å™¨åˆ‡æ¢æ§åˆ¶ï¼Œåœ¨SSBæ¨¡å¼ä¸‹é»˜è®¤ä½ç”µå¹³ï¼Œåœ¨CWæ¨¡å¼ä¸‹ RXæ—¶é»˜è®¤é«˜ç”µå¹³ï¼ˆN çª„å¸¦ï¼‰ã€‚
-  //         åœ¨CMæ¨¡å¼ å‘å°„æ—¶ ä¸ºä½ç”µå¹³ï¼ˆW å®½å¸¦ï¼‰
+  //  CWÂË²¨Æ÷ÇĞ»»¿ØÖÆ£¬ÔÚSSBÄ£Ê½ÏÂÄ¬ÈÏµÍµçÆ½£¬ÔÚCWÄ£Ê½ÏÂ RXÊ±Ä¬ÈÏ¸ßµçÆ½£¨N Õ­´ø£©¡£
+  //         ÔÚCMÄ£Ê½ ·¢ÉäÊ± ÎªµÍµçÆ½£¨W ¿í´ø£©
   CW_FilterControl(0);
   
-  // MICæ§åˆ¶ï¼Œåœ¨CWæ¨¡å¼ä¸‹å‘å°„æ—¶è¾“å‡ºä½ç”µå¹³ï¼ŒRXæ—¶ä¹Ÿè¾“å‡ºä½ç”µå¹³ï¼Œåªæœ‰åœ¨SSBæ¨¡å¼ï¼Œè¾“å‡ºé«˜ç”µå¹³
+  // MIC¿ØÖÆ£¬ÔÚCWÄ£Ê½ÏÂ·¢ÉäÊ±Êä³öµÍµçÆ½£¬RXÊ±Ò²Êä³öµÍµçÆ½£¬Ö»ÓĞÔÚSSBÄ£Ê½£¬Êä³ö¸ßµçÆ½
   if( RADIO.mode == CWA || RADIO.mode == CWB )
   {
     MICControlOff();
-    // BFOåˆ‡æ¢ CWå‘å°„çŠ¶æ€ä¸‹ï¼Œè¾“å‡ºé«˜ç”µå¹³; å…¶ä»–æƒ…å†µå…¨ä¸ºä½ç”µå¹³
+    // BFOÇĞ»» CW·¢Éä×´Ì¬ÏÂ£¬Êä³ö¸ßµçÆ½; ÆäËûÇé¿öÈ«ÎªµÍµçÆ½
     CW_BFOControl(1);
     
-    TMR_Start(TIM4); // å¯åŠ¨1ms æ—¶é’Ÿå®šæ—¶å™¨ï¼Œ
+    TMR_Start(TIM4); // Æô¶¯1ms Ê±ÖÓ¶¨Ê±Æ÷£¬
   }
   else
   {
@@ -1935,7 +1935,7 @@ void RF_Rx()
   
   if( RADIO.mode == CWA || RADIO.mode == CWB )
   {
-    if (FIL.func == N) // æ˜¾ç¤ºæ—¶ï¼Œåªæ˜¾ç¤ºNï¼Œ Wä¸æ˜¾ç¤ºï¼› åŠŸç‡æ˜¾ç¤ºï¼Œæ˜¯æ˜¾ç¤ºL
+    if (FIL.func == N) // ÏÔÊ¾Ê±£¬Ö»ÏÔÊ¾N£¬ W²»ÏÔÊ¾£» ¹¦ÂÊÏÔÊ¾£¬ÊÇÏÔÊ¾L
     {
       CW_FilterControl(1);
     }
@@ -1946,20 +1946,20 @@ void RF_Rx()
   }
 }
 
-//åˆ‡æ¢æ¥æ”¶åï¼Œé¢‘ç‡åœ¨board_refresh_managerä¸­å¤„ç†TXRXItemäº‹ä»¶å¤„ç†æ—¶è®¾ç½® BG6RDF
+//ÇĞ»»½ÓÊÕºó£¬ÆµÂÊÔÚboard_refresh_managerÖĞ´¦ÀíTXRXItemÊÂ¼ş´¦ÀíÊ±ÉèÖÃ BG6RDF
 void RF_ToRx()
 {
   RfIsTx = false;
   RF_Rx();
-  DRMgr.item |= TXRXItem;       //æ”¶å‘è½¬æ¢äº‹ä»¶
+  DRMgr.item |= TXRXItem;       //ÊÕ·¢×ª»»ÊÂ¼ş
 }
 
-//åˆ‡æ¢å‘å°„å‰åº”è®¾ç½®å‘å°„é¢‘ç‡ï¼Œä¸åº”ç­‰åˆ°board_refresh_managerä¸­å¤„ç† BG6RDF
+//ÇĞ»»·¢ÉäÇ°Ó¦ÉèÖÃ·¢ÉäÆµÂÊ£¬²»Ó¦µÈµ½board_refresh_managerÖĞ´¦Àí BG6RDF
 void RF_ToTx()
 {
   RfIsTx = true;
   RF_Tx();
-  DRMgr.item |= TXRXItem;       //æ”¶å‘è½¬æ¢äº‹ä»¶
+  DRMgr.item |= TXRXItem;       //ÊÕ·¢×ª»»ÊÂ¼ş
 }
 
 bool RF_IsTx()

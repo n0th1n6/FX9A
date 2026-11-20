@@ -1,6 +1,6 @@
 #include "bsp_receive_att.h"
 
-// æ¥æ”¶è¡°å‡æ§åˆ¶æ•°å­—ç”µä½å™¨  PD10/57/CLK   PD11/58/SDI    PD12/59/CSã€‚ åˆ†3æ¡£ æ¯æ¡£0-60
+// ½ÓÊÕË¥¼õ¿ØÖÆÊı×ÖµçÎ»Æ÷  PD10/57/CLK   PD11/58/SDI    PD12/59/CS¡£ ·Ö3µµ Ã¿µµ0-60
 #define RATT_CS   GPIO_Pin_12
 #define RATT_SDI  GPIO_Pin_11
 #define RATT_CLK  GPIO_Pin_10
@@ -8,12 +8,12 @@
 
 void ratt_init()
 {
-  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
+  GPIO_InitTypeDef GPIO_InitStructure;
   
-  GPIO_InitStructure.Pin = (((uint32_t)(RATT_CLK | RATT_SDI | RATT_CS) << GPIO_PIN_MASK_POS) | (RATT_CLK | RATT_SDI | RATT_CS));
-  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  LL_GPIO_Init(RATT_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Pin =  RATT_CLK | RATT_SDI | RATT_CS;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_Init(RATT_PORT, &GPIO_InitStructure);
 }
 
 void ratt_control(uint8_t data)
@@ -22,31 +22,31 @@ void ratt_control(uint8_t data)
   {
     return;
   }
-  (RATT_PORT->BRR = (RATT_CLK));  
-  (RATT_PORT->BSRR = (RATT_CLK)); 
+  GPIO_ResetBits(RATT_PORT, RATT_CLK);  
+  GPIO_SetBits(RATT_PORT, RATT_CLK); 
   
-  (RATT_PORT->BRR = (RATT_CS));
+  GPIO_ResetBits(RATT_PORT, RATT_CS);
 
   for(uint8_t i=0; i<8; i++)
   {
-    (RATT_PORT->BRR = (RATT_CLK)); 
+    GPIO_ResetBits(RATT_PORT, RATT_CLK); 
     
     if(data & 0x80)
     {
-      (RATT_PORT->BSRR = (RATT_SDI));  
+      GPIO_SetBits(RATT_PORT, RATT_SDI);  
     }else
     {
-      (RATT_PORT->BRR = (RATT_SDI));  
+      GPIO_ResetBits(RATT_PORT, RATT_SDI);  
     }
     data <<= 1;
     
    // delay_us(1);
-    (RATT_PORT->BSRR = (RATT_CLK)); 
+    GPIO_SetBits(RATT_PORT, RATT_CLK); 
    // delay_us(1);
   }
   
-  (RATT_PORT->BSRR = (RATT_CS)); 
-  (RATT_PORT->BRR = (RATT_CLK));  
-  (RATT_PORT->BSRR = (RATT_CLK)); 
-  (RATT_PORT->BRR = (RATT_CLK));  
+  GPIO_SetBits(RATT_PORT, RATT_CS); 
+  GPIO_ResetBits(RATT_PORT, RATT_CLK);  
+  GPIO_SetBits(RATT_PORT, RATT_CLK); 
+  GPIO_ResetBits(RATT_PORT, RATT_CLK);  
 }
