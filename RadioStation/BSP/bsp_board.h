@@ -230,6 +230,10 @@ void board_task();
 bool ContinuousTuning_Enabled(void);
 void RF_SwrSampleISR(void);
 void RF_SwrService(void);
+bool Tune_Start(void);
+void Tune_Stop(void);
+void Tune_Task(void);
+bool Tune_IsActive(void);
 
 bool Frequency_Set(uint32_t frequency);
 void Frequency_Tune(int32_t step);
