@@ -53,7 +53,8 @@ bool isRun = false;
 
 volatile bool RfIsTx = false;
 
-uint16_t hswr_timeout= 0;
+volatile uint16_t hswr_timeout = 0;
+static volatile uint8_t swr_trip_pending;
 FIL_AttrDef CWFilter; 
 uint8_t MemSetMaxIndex;
 
@@ -840,7 +841,7 @@ void MENU_Ts(uint8_t pos)
 extern volatile uint32_t fx9a_ticks_10ms;
 static Fx9aTuneLogic tune_logic;
 static TP_LevelDef tune_saved_power;
-static bool tune_active;
+static volatile bool tune_active;
 
 bool Tune_IsActive(void)
 {
@@ -849,7 +850,8 @@ bool Tune_IsActive(void)
 
 bool Tune_Start(void)
 {
-  if (tune_active || RfIsTx || !isRun || PttPressed || AIMgr.item)
+  if (tune_active || RfIsTx || hswr_timeout || swr_trip_pending ||
+      !isRun || PttPressed || AIMgr.item)
     return false;
   /* Physically select LOW power before asserting the transmitter.
    * Do not change RADIO.mode or the user's displayed RF frequency.
@@ -863,7 +865,16 @@ bool Tune_Start(void)
   CWT_Off();
   RF_ToTx();
   MICControlOff();
-  CWT_On(); /* Continuous CW carrier, never the iambic keyer. */
+  /* A trip during DDS settling must also inhibit the TUNE carrier. */
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  bool started = RfIsTx && !hswr_timeout && !swr_trip_pending;
+  if (started) CWT_On(); /* Continuous carrier, never the iambic keyer. */
+  __set_PRIMASK(primask);
+  if (!started || hswr_timeout || swr_trip_pending) {
+    Tune_Stop();
+    return false;
+  }
   oled_lsb_usb("TUNE");
   return true;
 }
@@ -1953,7 +1964,6 @@ void UART_Task()
 /* Called at 10 ms intervals by TIM2's 250 us sampling ISR.
  * Do not call OLED, DDS, delay, or EEPROM functions inside this ISR.
  */
-static volatile uint8_t swr_trip_pending;
 static uint8_t swr_high_samples;
 static uint16_t swr_trip_level(uint8_t level)
 {
@@ -2149,9 +2159,18 @@ void RF_Tx(void)
   }
   RF_ProgramSynth();
   delay_ms(2); /* First hardware gate must verify synthesizer settling. */
-  tx_control_on();
-  if (!Tune_IsActive() && RADIO.mode != CWA && RADIO.mode != CWB)
-    MICControlOn();
+  /* TIM2 can trip while the DDS settles. Commit the gate and MIC together
+   * only if no trip is latched; otherwise the ISR's shutdown must win.
+   * Keep the slow synthesizer/delay work outside this critical section.
+   */
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  if (RfIsTx && !hswr_timeout && !swr_trip_pending) {
+    tx_control_on();
+    if (!Tune_IsActive() && RADIO.mode != CWA && RADIO.mode != CWB)
+      MICControlOn();
+  }
+  __set_PRIMASK(primask);
 }
 
 void RF_Rx(void)
@@ -2183,7 +2202,7 @@ void RF_ToRx(void)
 
 void RF_ToTx(void)
 {
-  if (RfIsTx) return;
+  if (RfIsTx || hswr_timeout || swr_trip_pending) return;
   /* RfIsTx informs LO/BFO calculation, NOT the physical PA gate. */
   RfIsTx = true;
   RF_Tx();

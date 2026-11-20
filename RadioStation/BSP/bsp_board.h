@@ -223,6 +223,9 @@ extern MEM_AttrDef MEM[SIZE_OF_MEM];
 extern RADIO_AttrDef RADIO;
 extern RADIO_ModeDef CWMode;
 
+/* SWR trip latch shared with the keyer and, in the LL port, TIM2 ISR. */
+extern volatile uint16_t hswr_timeout;
+
 extern uint8_t rx_grid_old;
 extern uint8_t swr_grid_old;
 extern uint8_t rf_grid_old;

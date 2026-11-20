@@ -77,6 +77,8 @@ jobs:
         run: |
           gcc -std=c11 -Wall -Wextra -Werror -Icmsis_ll/board cmsis_ll/tests/tune_logic_test.c -o build-cmsis-ll/tune_logic_test
           ./build-cmsis-ll/tune_logic_test
+      - name: TX startup SWR interrupt regression
+        run: python3 cmsis_ll/tests/test_rf_protection.py
       - name: Board revision filter mapping regression
         run: |
           gcc -std=c11 -Wall -Wextra -Werror -Icmsis_ll/board cmsis_ll/tests/filter_map_test.c -o build-cmsis-ll/filter_new_test

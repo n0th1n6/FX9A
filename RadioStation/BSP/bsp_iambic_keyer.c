@@ -82,7 +82,6 @@ static bool both_paddles_released;
 static uint16_t milliseconds;
 
 bool keySwitch = false;
-extern uint8_t hswr_timeout;
 extern bool DitPaddle;
 extern bool DahPaddle;
 extern bool PaddleUpdate;

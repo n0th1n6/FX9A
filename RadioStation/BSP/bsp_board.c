@@ -46,7 +46,7 @@ bool isRun = false;
 
 bool RfIsTx = false;
 
-uint16_t hswr_timeout= 0;
+volatile uint16_t hswr_timeout = 0;
 FIL_AttrDef CWFilter; 
 uint8_t MemSetMaxIndex;
 

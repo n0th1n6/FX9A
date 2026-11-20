@@ -122,6 +122,11 @@ on the physical radio yet.
 - **TX/RX state:** LO/BFO programmed synchronously before asserting physical
   TX control; on RX return the RF gate drops before restoring receive DDS.
   A provisional 2 ms settling delay is not yet verified with a scope.
+  TX gate/MIC enable and TUNE carrier enable each check the SWR latch with
+  interrupts briefly masked, preserving the caller's PRIMASK. A trip during
+  startup keeps TX inhibited until the existing input-release path clears
+  the latch. The production transitions and SWR ISR are exercised with
+  injected interrupts by `python3 cmsis_ll/tests/test_rf_protection.py`.
 - **Board revisions:** `-DFX9A_BOARD_REVISION=2016_03` (default) or
   `-DFX9A_BOARD_REVISION=ORIGINAL`. Filter select GPIO maps are table driven
   and have per-band host tests. Confirm the *physical* board revision first.
