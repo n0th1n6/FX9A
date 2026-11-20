@@ -68,8 +68,7 @@ void usart_init(void)
   USART1->CR1 = USART_CR1_TE | USART_CR1_RE;
   USART1->CR2 = 0u;
   USART1->CR3 = USART_CR3_DMAT;
-  LL_USART_SetBaudRate(USART1, 72000000u,
-                       LL_USART_OVERSAMPLING_16, 115200u);
+  LL_USART_SetBaudRate(USART1, 72000000u, 115200u);
   NVIC_SetPriorityGrouping(5u);
   NVIC_SetPriority(USART1_IRQn, NVIC_EncodePriority(5u, 1u, 1u));
   NVIC_EnableIRQ(USART1_IRQn);
