@@ -1921,72 +1921,79 @@ void MEM_Save()
   }
 }
 
-void RF_Tx()
+/* Update synthesizers synchronously during TX/RX transitions.
+ * Display refresh must not be responsible for RF safety sequencing.
+ */
+static void RF_ProgramSynth(void)
 {
-  // TX发射控制端（不管是SSB模式还是CW模式，在发射时输出高电平）
-  tx_control_on();
-  
-  // 静音控制，在发射时输出高电平
-  QuietModeOn();
-  
-  //  CW滤波器切换控制，在SSB模式下默认低电平，在CW模式下 RX时默认高电平（N 窄带）。
-  //         在CM模式 发射时 为低电平（W 宽带）
-  CW_FilterControl(0);
-  
-  // MIC控制，在CW模式下发射时输出低电平，RX时也输出低电平，只有在SSB模式，输出高电平
-  if( RADIO.mode == CWA || RADIO.mode == CWB )
-  {
-    MICControlOff();
-    // BFO切换 CW发射状态下，输出高电平; 其他情况全为低电平
-    CW_BFOControl(1);
-    
-    TMR_Start(TIM4); // 启动1ms 时钟定时器，
+  uint32_t freq = FREQ.val;
+  if (!(FREQ.item & MEMItem)) {
+    if (RfIsTx && (FREQ.item & XITItem)) {
+      int64_t adjusted = (int64_t)freq + VFO.XIT;
+      if (adjusted > 0) freq = (uint32_t)adjusted;
+    } else if (!RfIsTx && (FREQ.item & RITItem)) {
+      int64_t adjusted = (int64_t)freq + VFO.RIT;
+      if (adjusted > 0) freq = (uint32_t)adjusted;
+    }
   }
-  else
-  {
-    MICControlOn();
+  lo_update(Get_DDSLO(freq), MENU.ref);
+  bfo_update(Get_DDSBFO(), MENU.ref);
+}
+
+void RF_Tx(void)
+{
+  /* Prepare a silent path; RF control stays OFF until the DDS has settled. */
+  MICControlOff();
+  QuietModeOn();
+  CW_FilterControl(0);
+  if (RADIO.mode == CWA || RADIO.mode == CWB) {
+    CW_BFOControl(1);
+    TMR_Start(TIM4);
+  } else {
     CW_BFOControl(0);
     TMR_Stop(TIM4);
   }
+  RF_ProgramSynth();
+  delay_ms(2); /* First hardware gate must verify synthesizer settling. */
+  tx_control_on();
+  if (RADIO.mode != CWA && RADIO.mode != CWB)
+    MICControlOn();
 }
 
-void RF_Rx()
+void RF_Rx(void)
 {
-  tx_control_off();
-  
-  QuietModeOff();
-  
+  /* Remove RF and microphone drive before changing any DDS or filters. */
   MICControlOff();
-
+  tx_control_off();
+  QuietModeOn();
   CW_BFOControl(0);
-  
-  if( RADIO.mode == CWA || RADIO.mode == CWB )
-  {
-    if (FIL.func == N) // 显示时，只显示N， W不显示； 功率显示，是显示L
-    {
-      CW_FilterControl(1);
-    }
-    else
-    {
-      CW_FilterControl(0);
-    }
-  }
+  if (RADIO.mode == CWA || RADIO.mode == CWB)
+    CW_FilterControl(FIL.func == N ? 1 : 0);
+  RF_ProgramSynth();
+  delay_ms(2);
+  QuietModeOff();
 }
 
-//切换接收后，频率在board_refresh_manager中处理TXRXItem事件处理时设置 BG6RDF
-void RF_ToRx()
+void RF_ToRx(void)
 {
+  /* RF_Rx must operate with RfIsTx already cleared so Get_DDSLO()
+   * restores the receive offset instead of the transmit LO.
+   * Drop the physical TX control first, with the microphone muted.
+   */
+  MICControlOff();
+  tx_control_off();
   RfIsTx = false;
   RF_Rx();
-  DRMgr.item |= TXRXItem;       //收发转换事件
+  DRMgr.item |= TXRXItem;
 }
 
-//切换发射前应设置发射频率，不应等到board_refresh_manager中处理 BG6RDF
-void RF_ToTx()
+void RF_ToTx(void)
 {
+  if (RfIsTx) return;
+  /* RfIsTx informs LO/BFO calculation, NOT the physical PA gate. */
   RfIsTx = true;
   RF_Tx();
-  DRMgr.item |= TXRXItem;       //收发转换事件
+  DRMgr.item |= TXRXItem;
 }
 
 bool RF_IsTx()
