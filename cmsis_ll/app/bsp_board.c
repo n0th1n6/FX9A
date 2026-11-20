@@ -1,5 +1,6 @@
 #include "bsp_board.h"
 #include "tune_logic.h"
+#include "tuning_policy.h"
 #include "ll_pins.h"
 #include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_exti.h"
@@ -227,7 +228,7 @@ bool ContinuousTuning_Enabled(void)
   /* Existing EEPROM images contain an unspecified value in MENU.null.
    * Only explicit OFF disables the continuous tuning behavior.
    */
-  return MENU.null != CONT_TUNE_OFF;
+  return fx9a_continuous_on(MENU.null);
 }
 
 void ResetToDefault()
@@ -1973,11 +1974,8 @@ void board_task()
  * recalling another band's saved frequency when tuning across a boundary. */
 bool Frequency_Set(uint32_t frequency)
 {
-  if (frequency < BAUD[0][0] || frequency > BAUD[SIZE_OF_BAUD-1][2])
-    return false;
-  if (!ContinuousTuning_Enabled() &&
-      (frequency < BAUD[FREQ.numOfbaud][0] ||
-       frequency > BAUD[FREQ.numOfbaud][2]))
+  if (!fx9a_tuning_allowed(ContinuousTuning_Enabled(), FREQ.numOfbaud,
+                           frequency, BAUD, SIZE_OF_BAUD))
     return false;
 
   uint8_t band = frequency_band(frequency, BAUD, SIZE_OF_BAUD);
@@ -1991,13 +1989,13 @@ bool Frequency_Set(uint32_t frequency)
 
 void Frequency_Tune(int32_t step)
 {
-  uint8_t band = FREQ.numOfbaud;
-  if (ContinuousTuning_Enabled())
-    Frequency_Set(frequency_step(FREQ.val, step,
-                                BAUD[0][0], BAUD[SIZE_OF_BAUD-1][2]));
-  else
-    Frequency_Set(frequency_step(FREQ.val, step,
-                                BAUD[band][0], BAUD[band][2]));
+  bool continuous = ContinuousTuning_Enabled();
+  uint32_t lower = fx9a_tuning_lower(continuous, FREQ.numOfbaud,
+                                     BAUD, SIZE_OF_BAUD);
+  uint32_t upper = fx9a_tuning_upper(continuous, FREQ.numOfbaud,
+                                     BAUD, SIZE_OF_BAUD);
+  if (upper >= lower && lower != 0u)
+    Frequency_Set(frequency_step(FREQ.val, step, lower, upper));
 }
 
 // 在W/V切换、VFOA/B切换、波段切换及菜单退出情况下，被调用
