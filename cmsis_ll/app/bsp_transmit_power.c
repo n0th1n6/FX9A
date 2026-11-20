@@ -4,24 +4,24 @@
 //发射功率控制，分3档，大功率，中功率，小功率（在菜单里分3项：H/M/L   H/0-60  M/0-60  L/0-60) 
 //PE14/45/CS   PE15/46/SDI   PB10/47/CLK
 
-#define TP_CS   GPIO_Pin_14
-#define TP_SDI  GPIO_Pin_15
-#define TP_CLK  GPIO_Pin_10
+#define TP_CS   GPIO_BSRR_BS14
+#define TP_SDI  GPIO_BSRR_BS15
+#define TP_CLK  GPIO_BSRR_BS10
 #define TP_CS_SDI_PORT GPIOE
 #define TP_CLK_PORT GPIOB
 
 // PE11/42脚  TX发射控制端（不管是SSB模式还是CW模式，在发射时输出高电平）
-#define TX_CONTROL   GPIO_Pin_11
+#define TX_CONTROL   GPIO_BSRR_BS11
 // PB11/48脚    静音控制，在发射时输出高电平
 // PB12/51脚    MIC控制，在CW模式下发射时输出低电平，RX时也输出低电平，只有在SSB模式，发射时输出高电平
-#define Quiet GPIO_Pin_11
-#define MIC GPIO_Pin_12
+#define Quiet GPIO_BSRR_BS11
+#define MIC GPIO_BSRR_BS12
 
 //PB13/52脚    CW滤波器切换控制，在SSB模式下默认低电平，在CW模式下 RX时默认高电平（N 窄带）。
 //         在CM模式 发射时 为低电平（W 宽带）
 //PB14/53脚    BFO切换 CW发射状态下，输出高电平; 其他情况全为低电平
-#define CW_FIL_CONTROL GPIO_Pin_13
-#define CW_BFO_CONTROL GPIO_Pin_14
+#define CW_FIL_CONTROL GPIO_BSRR_BS13
+#define CW_BFO_CONTROL GPIO_BSRR_BS14
 
 void tp_init()
 {
