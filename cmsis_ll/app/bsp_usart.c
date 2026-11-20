@@ -12,6 +12,9 @@ unsigned char UartRxLen = 0;
 unsigned char UartRxBuf[32];
 static bool UartRxDiscard = false;
 volatile uint32_t UartRxOverflowCount = 0;
+volatile uint32_t UartCatQueueDropCount = 0;
+static uint8_t CatPending[32];
+static volatile uint8_t CatPendingLen;
 
 static UartTxBufDef UTBuffer;
 static bool DMA_IsReady = true;
@@ -126,8 +129,13 @@ void usart_rx_analysis(uint8_t wdat)
    */
   if (wdat == ';')
   {
-    if (!UartRxDiscard && UartRxLen >= 2)
-      Kenwood_CmdParser(UartRxBuf, UartRxLen);
+    if (!UartRxDiscard && UartRxLen >= 2) {
+      if (CatPendingLen == 0) {
+        memcpy(CatPending, UartRxBuf, UartRxLen);
+        __DMB();
+        CatPendingLen = UartRxLen;
+      } else ++UartCatQueueDropCount;
+    }
     UartRxLen = 0;
     UartRxDiscard = false;
   }
@@ -142,6 +150,25 @@ void usart_rx_analysis(uint8_t wdat)
       ++UartRxOverflowCount;
     }
   }
+}
+
+/* Execute CAT commands only from the main loop. An ISR must never
+ * invoke a time-consuming DDS update or RF control transition.
+ * This single-entry mailbox drops excess frames rather than overwriting
+ * an unfinished command; UartCatQueueDropCount tracks such drops.
+ */
+void usart_process_rx_commands(void)
+{
+  uint8_t command[32];
+  uint8_t len = 0;
+  __disable_irq();
+  if (CatPendingLen) {
+    len = CatPendingLen;
+    memcpy(command, CatPending, len);
+    CatPendingLen = 0;
+  }
+  __enable_irq();
+  if (len) Kenwood_CmdParser(command, len);
 }
 
 bool DMA_IsTxComplete()
