@@ -1,0 +1,4 @@
+# Official vendor packages are fetched at pinned tags by fetch_vendor.sh.
+cmsis-core/
+cmsis-device-f1/
+stm32f1xx-hal-driver/
