@@ -42,17 +42,23 @@ void GPIO_Init(GPIO_TypeDef *port, GPIO_InitTypeDef *config)
 
 void GPIO_SetBits(GPIO_TypeDef *port, uint16_t pins)
 {
-    LL_GPIO_SetOutputPin(port, pins);
+    /* LL_GPIO_PIN_x encodes the pin mask shifted by GPIO_PIN_MASK_POS;
+     * original StdPeriph GPIO_Pin_x is an unshifted 16-bit mask. */
+    const uint32_t llmask = ((uint32_t)pins << GPIO_PIN_MASK_POS) | pins;
+    LL_GPIO_SetOutputPin(port, llmask);
 }
 
 void GPIO_ResetBits(GPIO_TypeDef *port, uint16_t pins)
 {
-    LL_GPIO_ResetOutputPin(port, pins);
+    const uint32_t llmask = ((uint32_t)pins << GPIO_PIN_MASK_POS) | pins;
+    LL_GPIO_ResetOutputPin(port, llmask);
 }
 
 uint8_t GPIO_ReadInputDataBit(GPIO_TypeDef *port, uint16_t pins)
 {
-    return LL_GPIO_IsInputPinSet(port, pins) ? (uint8_t)Bit_SET : (uint8_t)Bit_RESET;
+    /* Legacy ReadInputDataBit checks whether ANY masked input is high;
+     * LL_GPIO_IsInputPinSet requires ALL requested bits high. */
+    return (LL_GPIO_ReadInputPort(port) & pins) ? (uint8_t)Bit_SET : (uint8_t)Bit_RESET;
 }
 
 uint16_t GPIO_ReadInputData(GPIO_TypeDef *port)
