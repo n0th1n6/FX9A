@@ -1898,17 +1898,33 @@ static uint16_t swr_trip_level(uint8_t level)
 
 void RF_SwrSampleISR(void)
 {
-  if (!RfIsTx || MENU.vswr == 0u || swr_trip_pending) {
+  if (!RfIsTx || swr_trip_pending) {
     swr_high_samples = 0u;
     return;
   }
-  /* Severe mismatch: hard RF abort without waiting for another sample.
-   * The ~10 ms sample interval and ADC threshold need hardware validation.
-   */
   uint16_t reflected = adc_swr();
+  bool tune = Tune_IsActive();
+  /* Severe reflected power cuts the RF gate on the first 10 ms sample,
+   * irrespective of the user's ordinary SWR protection setting.
+   */
+  if (reflected >= FX9A_TUNE_SEVERE_REFLECTED_ADC) {
+    MICControlOff();
+    tx_control_off();
+    swr_trip_pending = 1u;
+    hswr_timeout = 1u;
+    return;
+  }
+  if (MENU.vswr == 0u ||
+      (tune && (uint32_t)(fx9a_ticks_10ms - tune_logic.started_at) <
+               FX9A_TUNE_SETTLE_TICKS)) {
+    swr_high_samples = 0u;
+    return;
+  }
   uint16_t limit = swr_trip_level(MENU.vswr > 9u ? 9u : MENU.vswr);
-  if (reflected >= 800u || reflected >= limit) {
-    if (reflected >= 800u || ++swr_high_samples >= 3u) {
+  if (reflected >= limit) {
+    /* Normal TX: 3 samples / 30 ms. TUNE: 30 / 300 ms to allow match-up. */
+    uint8_t required = tune ? 30u : 3u;
+    if (++swr_high_samples >= required) {
       MICControlOff();
       tx_control_off();
       swr_trip_pending = 1u;
