@@ -29,6 +29,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi ninja-build
+      - name: Fetch pinned official STM32F1 CMSIS and LL packages
+        run: bash cmsis_ll/vendor/fetch_vendor.sh
       - name: Configure independent build
         run: |
           cmake -S cmsis_ll -B build-cmsis-ll -G Ninja \
