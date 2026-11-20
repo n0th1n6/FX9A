@@ -139,6 +139,33 @@ During port bring-up:
 
 Build verification: https://github.com/n0th1n6/FX9A/actions/runs/44695123236
 
+## Full application build (software-first migration)
+
+The independent CMake project now has two targets:
+
+- `fx9a_boot.elf`: safe minimal diagnostic image.
+- `fx9a_full.elf`: **experimental full radio application**, including the
+  existing DDS, OLED, CAT, EEPROM, encoder, keyer, meter and TX/RX application
+  code, compiled and linked using the standalone startup/runtime **without Mbed**.
+
+The full target is a **transitional** port. It uses the 2009 CMSIS and STM32
+Standard Peripheral Library bundled under `RadioStation/` until the STM32 LL
+replacement is implemented. It is not yet a full CMSIS + LL conversion and
+is **not cleared for hardware or RF use**.
+
+The full source build passed in GitHub Actions as part of run
+44697083112. This is compile/link evidence only and does not establish that
+the GPIO, interrupt timing, clock assumptions, RF sequencing or startup
+behavior is correct on hardware.
+
+This lets subsequent improvements be made against the complete software rather
+than waiting for each device driver to be rewritten. `master` retains the
+known-working Mbed CE application.
+
+Implementation is in progress, not feature complete. In particular,
+TUNE mode, the continuous-tuning setting, full LL driver migration,
+fast SWR protection and other roadmap features remain outstanding.
+
 ## v0.1.0 release binary reference
 
 The public v0.1.0 release contains a 53,808-byte Mbed CE firmware image
