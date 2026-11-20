@@ -66,8 +66,8 @@ option(FX9A_BUILD_FULL "Build the full radio application without Mbed" ON)
 if(FX9A_BUILD_FULL)
     set(FX9A_BSP_SOURCES
         bsp_24lc16.c   bsp_adc.c 
-        bsp_board.c bsp_dac.c bsp_debug.c  bsp_kenwood.c
-        bsp_key.c  bsp_oled_api.c 
+         bsp_dac.c bsp_debug.c  bsp_kenwood.c
+          bsp_oled_api.c 
         bsp_transmit_power.c bsp_usart.c bsp_vol.c 
     )
     list(TRANSFORM FX9A_BSP_SOURCES PREPEND
@@ -83,6 +83,8 @@ if(FX9A_BUILD_FULL)
         drivers/fx9a_exti_ll.c
         app/bsp_timer.c
         app/bsp_pwm.c
+        app/bsp_key.c
+        app/bsp_board.c
         app/i2c.c
         app/bsp_receive_att.c
         app/bsp_oled.c
