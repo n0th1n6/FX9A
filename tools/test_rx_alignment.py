@@ -20,7 +20,7 @@ def extract(source, name):
     return source[match.start():end]
 
 constants = '\n'.join(re.search(r'^#define ' + name + r'\s+\S+', header, re.M).group()
-    for name in ('RX_USB_MENU', 'RX_LSB_MENU', 'RX_ALIGNMENT_LIMIT', 'RX_ALIGNMENT_MAGIC'))
+    for name in ('RX_USB_MENU', 'RX_LSB_MENU', 'CONT_TUNE_MENU', 'CONT_TUNE_OFF', 'CONT_TUNE_ON', 'RX_ALIGNMENT_LIMIT', 'RX_ALIGNMENT_MAGIC'))
 functions = '\n'.join(extract(board, name) for name in (
     'RX_AlignmentInit', 'RX_AlignmentOffset', 'RX_AlignmentAdjust',
     'MENU_SetUp', 'MENU_SetDown', 'MENU_Ts', 'Get_DDSLO', 'Get_DDSBFO'))
@@ -41,6 +41,7 @@ program = r'''
 ''' + constants + '\n' + '\n'.join(typedef(n) for n in (
     'FREQ_ItemDef', 'FREQ_AttrDef', 'RADIO_ModeDef', 'RADIO_AttrDef')) + '\n#pragma pack(push, 1)\n' + typedef('MENU_AttrDef') + '\n#pragma pack(pop)\n' + r'''
 MENU_AttrDef MENU;
+static bool ContinuousTuning_Enabled(void) { return MENU.null != CONT_TUNE_OFF; }
 FREQ_AttrDef FREQ;
 RADIO_AttrDef RADIO;
 static struct { unsigned func; } FIL;
