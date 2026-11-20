@@ -138,3 +138,23 @@ During port bring-up:
       and introduce STM32F1 LL drivers for subsequent peripheral migrations.
 
 Build verification: https://github.com/n0th1n6/FX9A/actions/runs/44695123236
+
+## v0.1.0 release binary reference
+
+The public v0.1.0 release contains a 53,808-byte Mbed CE firmware image
+(`fx9a-v0.1.0.bin`), described in the release notes as matching the image
+flashed and read back from the tested radio.
+
+The `cmsis_ll/tests/compare_release.py` utility compares the authenticated
+release binary to the standalone boot image. CI downloads the release, verifies
+its SHA-256 against the GitHub release digest, checks both initial stack pointers
+and Thumb reset vectors, and prints all 76 vector-table entries side by side.
+The comparison **passed** in GitHub Actions run 44695773339.
+
+This is a structural check only. It does not prove identical interrupts,
+correct PLL setup, bootloader preservation, analog/RF behavior or readiness to
+flash the standalone boot image. The source code of the port still uses
+transitional 2009 CMSIS headers; STM32 LL peripheral integration is pending.
+
+Reference: https://github.com/n0th1n6/FX9A/releases/tag/v0.1.0
+Comparison run: https://github.com/n0th1n6/FX9A/actions/runs/44695773339
