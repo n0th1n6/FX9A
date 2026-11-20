@@ -87,6 +87,7 @@ if(FX9A_BUILD_FULL)
         app/bsp_transmit_power.c
         app/bsp_usart.c
         app/bsp_adc.c
+        app/meter_cal.c
         app/bsp_key.c
         app/bsp_board.c
         app/i2c.c
