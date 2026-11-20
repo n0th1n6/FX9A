@@ -193,6 +193,7 @@ void RX_AlignmentInit(void)
       MENU.rxUsbOffset < -RX_ALIGNMENT_LIMIT || MENU.rxUsbOffset > RX_ALIGNMENT_LIMIT ||
       MENU.rxLsbOffset < -RX_ALIGNMENT_LIMIT || MENU.rxLsbOffset > RX_ALIGNMENT_LIMIT)
   {
+    MENU.null = CONT_TUNE_ON;
     MENU.rxUsbOffset = 0;
     MENU.rxLsbOffset = 0;
     MENU.rxAlignmentMagic = RX_ALIGNMENT_MAGIC;
@@ -218,6 +219,14 @@ static void RX_AlignmentAdjust(uint8_t pos, int16_t step)
   if (value < -RX_ALIGNMENT_LIMIT) value = -RX_ALIGNMENT_LIMIT;
   if (pos == RX_USB_MENU) MENU.rxUsbOffset = value;
   else MENU.rxLsbOffset = value;
+}
+
+bool ContinuousTuning_Enabled(void)
+{
+  /* Existing EEPROM images contain an unspecified value in MENU.null.
+   * Only explicit OFF disables the continuous tuning behavior.
+   */
+  return MENU.null != CONT_TUNE_OFF;
 }
 
 void ResetToDefault()
@@ -561,6 +570,9 @@ void MENU_SetUp(uint8_t pos)
     if (MENU.cwnloOffset>MAX_CWN_LO_OFFSET)
       MENU.cwnloOffset=MAX_CWN_LO_OFFSET;
     break;
+  case CONT_TUNE_MENU:
+    MENU.null = CONT_TUNE_ON;
+    break;
   case RX_USB_MENU:
   case RX_LSB_MENU:
     RX_AlignmentAdjust(pos, (FREQ.item & TSItem) ? 100 : 10);
@@ -688,6 +700,9 @@ void MENU_SetDown(uint8_t pos)
       MENU.cwnloOffset--;
     if (MENU.cwnloOffset<(-MAX_CWN_LO_OFFSET))
       MENU.cwnloOffset=-MAX_CWN_LO_OFFSET;
+    break;
+  case CONT_TUNE_MENU:
+    MENU.null = CONT_TUNE_OFF;
     break;
   case RX_USB_MENU:
   case RX_LSB_MENU:
@@ -1829,6 +1844,10 @@ bool Frequency_Set(uint32_t frequency)
 {
   if (frequency < BAUD[0][0] || frequency > BAUD[SIZE_OF_BAUD-1][2])
     return false;
+  if (!ContinuousTuning_Enabled() &&
+      (frequency < BAUD[FREQ.numOfbaud][0] ||
+       frequency > BAUD[FREQ.numOfbaud][2]))
+    return false;
 
   uint8_t band = frequency_band(frequency, BAUD, SIZE_OF_BAUD);
   if (band != FREQ.numOfbaud && (FREQ.item & VFOItem) &&
@@ -1841,8 +1860,13 @@ bool Frequency_Set(uint32_t frequency)
 
 void Frequency_Tune(int32_t step)
 {
-  Frequency_Set(frequency_step(FREQ.val, step,
-                              BAUD[0][0], BAUD[SIZE_OF_BAUD-1][2]));
+  uint8_t band = FREQ.numOfbaud;
+  if (ContinuousTuning_Enabled())
+    Frequency_Set(frequency_step(FREQ.val, step,
+                                BAUD[0][0], BAUD[SIZE_OF_BAUD-1][2]));
+  else
+    Frequency_Set(frequency_step(FREQ.val, step,
+                                BAUD[band][0], BAUD[band][2]));
 }
 
 // 在W/V切换、VFOA/B切换、波段切换及菜单退出情况下，被调用
