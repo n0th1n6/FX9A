@@ -81,6 +81,7 @@ if(FX9A_BUILD_FULL)
         ${FX9A_STDPERIPH_SOURCES}
     )
     target_include_directories(fx9a_full.elf PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/compat
         ${FX9A_ROOT}/port
         ${FX9A_ROOT}/RadioStation/BSP
         ${FX9A_ROOT}/RadioStation/CMSIS
