@@ -2,6 +2,7 @@
  * Only the APIs needed by the FX-9A radio are implemented.
  */
 #include "fx9a_legacy_types.h"
+#include "stm32f1xx_ll_exti.h"
 
 
 void NVIC_PriorityGroupConfig(uint32_t group)
@@ -33,13 +34,13 @@ void EXTI_Init(EXTI_InitTypeDef *cfg)
 {
     const uint32_t bits = cfg->EXTI_Line;
     if (cfg->EXTI_LineCmd == DISABLE) {
-        if (cfg->EXTI_Mode == EXTI_Mode_Interrupt) EXTI->IMR &= ~bits;
+        if (cfg->EXTI_Mode == EXTI_Mode_Interrupt) LL_EXTI_DisableIT_0_31(bits);
         else EXTI->EMR &= ~bits;
         return;
     }
     EXTI->IMR &= ~bits;
     EXTI->EMR &= ~bits;
-    if (cfg->EXTI_Mode == EXTI_Mode_Interrupt) EXTI->IMR |= bits;
+    if (cfg->EXTI_Mode == EXTI_Mode_Interrupt) LL_EXTI_EnableIT_0_31(bits);
     else EXTI->EMR |= bits;
     EXTI->RTSR &= ~bits;
     EXTI->FTSR &= ~bits;
@@ -55,5 +56,5 @@ ITStatus EXTI_GetITStatus(uint32_t line)
 }
 void EXTI_ClearITPendingBit(uint32_t line)
 {
-    EXTI->PR = line; /* Write-one-to-clear. */
+    LL_EXTI_ClearFlag_0_31(line); /* Write-one-to-clear. */
 }
