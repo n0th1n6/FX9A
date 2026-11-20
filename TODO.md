@@ -117,8 +117,10 @@ continuous-tuning setting reuses an existing reserved menu byte and defaults ON
 when old EEPROM contents have no explicit OFF signature.
 
 Remaining software improvements include exhaustive CAT compatibility and
-recovery tests, robust EEPROM transaction error propagation/validation, optional
-main VFO encoder acceleration, and gradual source organization. Those items
+recovery tests, stronger EEPROM transaction error propagation and integrity
+checks for the original settings format, and gradual source organization.
+Optical VFO acceleration is implemented but disabled by default until verified
+on the actual encoder. Those items
 remain unchecked below.
 
 ## Priority 1 — Robustness and safety
@@ -142,7 +144,7 @@ remain unchecked below.
 - [x] Preserve the first error rather than allowing a later successful page write to make the overall operation appear successful.
 - [x] Ensure I2C STOP / bus recovery is performed on NACK/error paths.
 - [ ] Consider adding a configuration version and CRC/checksum in unused EEPROM space while retaining compatibility with existing FX-9A EEPROM layouts.
-- [ ] Validate saved settings before applying them.
+- [x] Validate saved settings before applying them.
 
 ## Priority 2 — RF behavior
 
@@ -264,12 +266,12 @@ The current fork allows continuous tuning through the gaps between amateur bands
 The RES20D-50-201-1 main VFO encoder is a 50 PPR optical quadrature encoder and the existing falling-edge direction scheme is simple and appropriate.
 
 - [ ] Keep the present main encoder decoder unless hardware testing shows missed pulses.
-- [ ] Consider optional velocity-based tuning acceleration:
+- [x] Consider optional velocity-based tuning acceleration:
   - slow rotation: fine step,
   - medium rotation: larger step,
   - fast rotation: 1 kHz or greater step.
 - [x] Preserve TS as the explicit coarse-step control.
-- [ ] Make acceleration optional or conservative so the radio remains predictable.
+- [x] Make acceleration optional or conservative so the radio remains predictable.
 
 ### Mechanical encoder handling
 - [ ] Continue hardware testing of the newer CH/VOL quadrature decoder.
