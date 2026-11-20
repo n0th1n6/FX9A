@@ -185,7 +185,7 @@ tuning enable/disable features are separate TODO items and are not yet included.
 - [x] GPIO/RCC/IRQ/TIM/DMA/ADC/USART register-level replacements compile/link.
 - [x] Separate standalone `main()` and original TIM4 ownership.
 - [x] Full image vector checks and existing host radio logic tests.
-- [ ] Finish CI enforcement of required radio symbols and no StdPeriph source.
+- [x] CI enforces required radio symbols and rejects linked StdPeriph source.
 - [ ] Integrate official ST STM32F1 LL headers/drivers with modern CMSIS device.
 - [ ] Remove the 2009 compatibility headers and old API aliases.
 - [ ] Add register-level host simulation or emulated-peripheral tests for
