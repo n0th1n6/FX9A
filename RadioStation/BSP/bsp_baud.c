@@ -1,13 +1,13 @@
 #include "bsp_baud.h"
 
-//NE5090²¨¶Î¿ØÖÆ¶Ë£¬PB15/54/A0  PD8/55/A1  PD9/56/A2
+//NE5090æ³¢æ®µæŽ§åˆ¶ç«¯ï¼ŒPB15/54/A0  PD8/55/A1  PD9/56/A2
 #define A0 GPIO_Pin_15
 #define A1 GPIO_Pin_8
 #define A2 GPIO_Pin_9
 #define NE5090_A0_PORT GPIOB
 #define NE5090_A12_PORT GPIOD
 
-//HC4028²¨¶Î¿ØÖÆ¶Ë£¬PC7/64-10(A)  PC8/65-13(B)   PC9/66-12(C)   PA8/67-11(D)
+//HC4028æ³¢æ®µæŽ§åˆ¶ç«¯ï¼ŒPC7/64-10(A)  PC8/65-13(B)   PC9/66-12(C)   PA8/67-11(D)
 #define A GPIO_Pin_7
 #define B GPIO_Pin_8
 #define C GPIO_Pin_9
@@ -17,136 +17,136 @@
 
 void baud_init()
 {
-  GPIO_InitTypeDef GPIO_InitStructure;
+  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
   
-  GPIO_InitStructure.GPIO_Pin =  A0;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(NE5090_A0_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(A0) << GPIO_PIN_MASK_POS) | (A0));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(NE5090_A0_PORT, &GPIO_InitStructure);
   
-  GPIO_InitStructure.GPIO_Pin =  A1 | A2;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(NE5090_A12_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(A1 | A2) << GPIO_PIN_MASK_POS) | (A1 | A2));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(NE5090_A12_PORT, &GPIO_InitStructure);
   
-  GPIO_InitStructure.GPIO_Pin =  A | B | C;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(HC4028_ABC_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(A | B | C) << GPIO_PIN_MASK_POS) | (A | B | C));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(HC4028_ABC_PORT, &GPIO_InitStructure);
   
-  GPIO_InitStructure.GPIO_Pin =  D;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(HC4028_D_PORT, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(D) << GPIO_PIN_MASK_POS) | (D));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(HC4028_D_PORT, &GPIO_InitStructure);
 }
 
 void baud_chn_ctrl(uint8_t numOfbaud)
 {
   /*
-  *      Ô­°æ   EN5090Òý½ÅÐÞ¸Ä£º160M µÚ4½Å/Q0     80MµÚ5½Å/Q1    60M/40MµÚ6½Å/Q2    30MµÚ9½Å/Q4   20MµÚ7½Å/Q3  17M/15MµÚ11½Å/Q6   12M/10MµÚ10½Å/Q5
-  * 2016.03.09  EN5090Òý½ÅÐÞ¸Ä£º160M µÚ11½Å/Q6    80MµÚ10½Å/Q5   60M/40MµÚ9½Å/Q4    30MµÚ7½Å/Q3   20MµÚ6½Å/Q2  17M/15MµÚ5½Å/Q1    12M/10MµÚ4½Å/Q0
+  *      åŽŸç‰ˆ   EN5090å¼•è„šä¿®æ”¹ï¼š160M ç¬¬4è„š/Q0     80Mç¬¬5è„š/Q1    60M/40Mç¬¬6è„š/Q2    30Mç¬¬9è„š/Q4   20Mç¬¬7è„š/Q3  17M/15Mç¬¬11è„š/Q6   12M/10Mç¬¬10è„š/Q5
+  * 2016.03.09  EN5090å¼•è„šä¿®æ”¹ï¼š160M ç¬¬11è„š/Q6    80Mç¬¬10è„š/Q5   60M/40Mç¬¬9è„š/Q4    30Mç¬¬7è„š/Q3   20Mç¬¬6è„š/Q2  17M/15Mç¬¬5è„š/Q1    12M/10Mç¬¬4è„š/Q0
   */
   switch(numOfbaud)
   {
-  case 0: // 160M   EN5090:Q6-Êä³öµÍµçÆ½    HC4028:Y0-Êä³ö¸ßµçÆ½
-    GPIO_SetBits(NE5090_A12_PORT, A2);
-    GPIO_SetBits(NE5090_A12_PORT, A1);
-    GPIO_ResetBits(NE5090_A0_PORT, A0);
+  case 0: // 160M   EN5090:Q6-è¾“å‡ºä½Žç”µå¹³    HC4028:Y0-è¾“å‡ºé«˜ç”µå¹³
+    (NE5090_A12_PORT->BSRR = (A2));
+    (NE5090_A12_PORT->BSRR = (A1));
+    (NE5090_A0_PORT->BRR = (A0));
     
-    GPIO_ResetBits(HC4028_D_PORT, D);
-    GPIO_ResetBits(HC4028_ABC_PORT, C);
-    GPIO_ResetBits(HC4028_ABC_PORT, B); 
-    GPIO_ResetBits(HC4028_ABC_PORT, A); 
+    (HC4028_D_PORT->BRR = (D));
+    (HC4028_ABC_PORT->BRR = (C));
+    (HC4028_ABC_PORT->BRR = (B)); 
+    (HC4028_ABC_PORT->BRR = (A)); 
     break;
-  case 1: // 80M      EN5090:Q5-Êä³öµÍµçÆ½    HC4028:Y1-Êä³ö¸ßµçÆ½
-    GPIO_SetBits(NE5090_A12_PORT, A2);
-    GPIO_ResetBits(NE5090_A12_PORT, A1);
-    GPIO_SetBits(NE5090_A0_PORT, A0);
+  case 1: // 80M      EN5090:Q5-è¾“å‡ºä½Žç”µå¹³    HC4028:Y1-è¾“å‡ºé«˜ç”µå¹³
+    (NE5090_A12_PORT->BSRR = (A2));
+    (NE5090_A12_PORT->BRR = (A1));
+    (NE5090_A0_PORT->BSRR = (A0));
     
-    GPIO_ResetBits(HC4028_D_PORT, D);
-    GPIO_ResetBits(HC4028_ABC_PORT, C);
-    GPIO_ResetBits(HC4028_ABC_PORT, B); 
-    GPIO_SetBits(HC4028_ABC_PORT, A);
+    (HC4028_D_PORT->BRR = (D));
+    (HC4028_ABC_PORT->BRR = (C));
+    (HC4028_ABC_PORT->BRR = (B)); 
+    (HC4028_ABC_PORT->BSRR = (A));
     break;
-  case 2: // 60M      EN5090:Q4-Êä³öµÍµçÆ½    HC4028:Y8-Êä³ö¸ßµçÆ½
-    GPIO_SetBits(NE5090_A12_PORT, A2);
-    GPIO_ResetBits(NE5090_A12_PORT, A1);
-    GPIO_ResetBits(NE5090_A0_PORT, A0);
+  case 2: // 60M      EN5090:Q4-è¾“å‡ºä½Žç”µå¹³    HC4028:Y8-è¾“å‡ºé«˜ç”µå¹³
+    (NE5090_A12_PORT->BSRR = (A2));
+    (NE5090_A12_PORT->BRR = (A1));
+    (NE5090_A0_PORT->BRR = (A0));
      
-    GPIO_SetBits(HC4028_D_PORT, D);
-    GPIO_ResetBits(HC4028_ABC_PORT, C);
-    GPIO_ResetBits(HC4028_ABC_PORT, B); 
-    GPIO_ResetBits(HC4028_ABC_PORT, A);
+    (HC4028_D_PORT->BSRR = (D));
+    (HC4028_ABC_PORT->BRR = (C));
+    (HC4028_ABC_PORT->BRR = (B)); 
+    (HC4028_ABC_PORT->BRR = (A));
     break;
-  case 3: // 40M      EN5090:Q4-Êä³öµÍµçÆ½    HC4028:Y2-Êä³ö¸ßµçÆ½
-    GPIO_SetBits(NE5090_A12_PORT, A2);
-    GPIO_ResetBits(NE5090_A12_PORT, A1);
-    GPIO_ResetBits(NE5090_A0_PORT, A0);
+  case 3: // 40M      EN5090:Q4-è¾“å‡ºä½Žç”µå¹³    HC4028:Y2-è¾“å‡ºé«˜ç”µå¹³
+    (NE5090_A12_PORT->BSRR = (A2));
+    (NE5090_A12_PORT->BRR = (A1));
+    (NE5090_A0_PORT->BRR = (A0));
     
-    GPIO_ResetBits(HC4028_D_PORT, D);
-    GPIO_ResetBits(HC4028_ABC_PORT, C);
-    GPIO_SetBits(HC4028_ABC_PORT, B); 
-    GPIO_ResetBits(HC4028_ABC_PORT, A); 
+    (HC4028_D_PORT->BRR = (D));
+    (HC4028_ABC_PORT->BRR = (C));
+    (HC4028_ABC_PORT->BSRR = (B)); 
+    (HC4028_ABC_PORT->BRR = (A)); 
     break;
-  case 4: // 30M    EN5090:Q3-Êä³öµÍµçÆ½    HC4028:Y3-Êä³ö¸ßµçÆ½
-    GPIO_ResetBits(NE5090_A12_PORT, A2);
-    GPIO_SetBits(NE5090_A12_PORT, A1);
-    GPIO_SetBits(NE5090_A0_PORT, A0);
+  case 4: // 30M    EN5090:Q3-è¾“å‡ºä½Žç”µå¹³    HC4028:Y3-è¾“å‡ºé«˜ç”µå¹³
+    (NE5090_A12_PORT->BRR = (A2));
+    (NE5090_A12_PORT->BSRR = (A1));
+    (NE5090_A0_PORT->BSRR = (A0));
     
-    GPIO_ResetBits(HC4028_D_PORT, D);
-    GPIO_ResetBits(HC4028_ABC_PORT, C);
-    GPIO_SetBits(HC4028_ABC_PORT, B); 
-    GPIO_SetBits(HC4028_ABC_PORT, A);
+    (HC4028_D_PORT->BRR = (D));
+    (HC4028_ABC_PORT->BRR = (C));
+    (HC4028_ABC_PORT->BSRR = (B)); 
+    (HC4028_ABC_PORT->BSRR = (A));
     break;
-  case 5: // 20M      EN5090:Q2-Êä³öµÍµçÆ½    HC4028:Y4-Êä³ö¸ßµçÆ½
-    GPIO_ResetBits(NE5090_A12_PORT, A2);
-    GPIO_SetBits(NE5090_A12_PORT, A1);
-    GPIO_ResetBits(NE5090_A0_PORT, A0);
+  case 5: // 20M      EN5090:Q2-è¾“å‡ºä½Žç”µå¹³    HC4028:Y4-è¾“å‡ºé«˜ç”µå¹³
+    (NE5090_A12_PORT->BRR = (A2));
+    (NE5090_A12_PORT->BSRR = (A1));
+    (NE5090_A0_PORT->BRR = (A0));
     
-    GPIO_ResetBits(HC4028_D_PORT, D);
-    GPIO_SetBits(HC4028_ABC_PORT, C);
-    GPIO_ResetBits(HC4028_ABC_PORT, B); 
-    GPIO_ResetBits(HC4028_ABC_PORT, A);
+    (HC4028_D_PORT->BRR = (D));
+    (HC4028_ABC_PORT->BSRR = (C));
+    (HC4028_ABC_PORT->BRR = (B)); 
+    (HC4028_ABC_PORT->BRR = (A));
     break;
-  case 6: // 17M    EN5090:Q1-Êä³öµÍµçÆ½    HC4028:Y5-Êä³ö¸ßµçÆ½
-    GPIO_ResetBits(NE5090_A12_PORT, A2);
-    GPIO_ResetBits(NE5090_A12_PORT, A1);
-    GPIO_SetBits(NE5090_A0_PORT, A0); 
+  case 6: // 17M    EN5090:Q1-è¾“å‡ºä½Žç”µå¹³    HC4028:Y5-è¾“å‡ºé«˜ç”µå¹³
+    (NE5090_A12_PORT->BRR = (A2));
+    (NE5090_A12_PORT->BRR = (A1));
+    (NE5090_A0_PORT->BSRR = (A0)); 
     
-    GPIO_ResetBits(HC4028_D_PORT, D);
-    GPIO_SetBits(HC4028_ABC_PORT, C);
-    GPIO_ResetBits(HC4028_ABC_PORT, B); 
-    GPIO_SetBits(HC4028_ABC_PORT, A);
+    (HC4028_D_PORT->BRR = (D));
+    (HC4028_ABC_PORT->BSRR = (C));
+    (HC4028_ABC_PORT->BRR = (B)); 
+    (HC4028_ABC_PORT->BSRR = (A));
     break;
-  case 7: // 15M    EN5090:Q1-Êä³öµÍµçÆ½    HC4028:Y6-Êä³ö¸ßµçÆ½
-    GPIO_ResetBits(NE5090_A12_PORT, A2);
-    GPIO_ResetBits(NE5090_A12_PORT, A1);
-    GPIO_SetBits(NE5090_A0_PORT, A0); 
+  case 7: // 15M    EN5090:Q1-è¾“å‡ºä½Žç”µå¹³    HC4028:Y6-è¾“å‡ºé«˜ç”µå¹³
+    (NE5090_A12_PORT->BRR = (A2));
+    (NE5090_A12_PORT->BRR = (A1));
+    (NE5090_A0_PORT->BSRR = (A0)); 
     
-    GPIO_ResetBits(HC4028_D_PORT, D);
-    GPIO_SetBits(HC4028_ABC_PORT, C);
-    GPIO_SetBits(HC4028_ABC_PORT, B); 
-    GPIO_ResetBits(HC4028_ABC_PORT, A);
+    (HC4028_D_PORT->BRR = (D));
+    (HC4028_ABC_PORT->BSRR = (C));
+    (HC4028_ABC_PORT->BSRR = (B)); 
+    (HC4028_ABC_PORT->BRR = (A));
     break;
-  case 8: // 12M      EN5090:Q0-Êä³öµÍµçÆ½    HC4028:Y7-Êä³ö¸ßµçÆ½
-    GPIO_ResetBits(NE5090_A12_PORT, A2);
-    GPIO_ResetBits(NE5090_A12_PORT, A1);
-    GPIO_ResetBits(NE5090_A0_PORT, A0);
+  case 8: // 12M      EN5090:Q0-è¾“å‡ºä½Žç”µå¹³    HC4028:Y7-è¾“å‡ºé«˜ç”µå¹³
+    (NE5090_A12_PORT->BRR = (A2));
+    (NE5090_A12_PORT->BRR = (A1));
+    (NE5090_A0_PORT->BRR = (A0));
     
-    GPIO_ResetBits(HC4028_D_PORT, D);
-    GPIO_SetBits(HC4028_ABC_PORT, C);
-    GPIO_SetBits(HC4028_ABC_PORT, B); 
-    GPIO_SetBits(HC4028_ABC_PORT, A);
+    (HC4028_D_PORT->BRR = (D));
+    (HC4028_ABC_PORT->BSRR = (C));
+    (HC4028_ABC_PORT->BSRR = (B)); 
+    (HC4028_ABC_PORT->BSRR = (A));
     break;
-  case 9: // 10M      EN5090:Q0-Êä³öµÍµçÆ½    HC4028:Y8-Êä³ö¸ßµçÆ½
-    GPIO_ResetBits(NE5090_A12_PORT, A2);
-    GPIO_ResetBits(NE5090_A12_PORT, A1);
-    GPIO_ResetBits(NE5090_A0_PORT, A0);
+  case 9: // 10M      EN5090:Q0-è¾“å‡ºä½Žç”µå¹³    HC4028:Y8-è¾“å‡ºé«˜ç”µå¹³
+    (NE5090_A12_PORT->BRR = (A2));
+    (NE5090_A12_PORT->BRR = (A1));
+    (NE5090_A0_PORT->BRR = (A0));
     
-    GPIO_SetBits(HC4028_D_PORT, D);
-    GPIO_ResetBits(HC4028_ABC_PORT, C);
-    GPIO_ResetBits(HC4028_ABC_PORT, B); 
-    GPIO_SetBits(HC4028_ABC_PORT, A);
+    (HC4028_D_PORT->BSRR = (D));
+    (HC4028_ABC_PORT->BRR = (C));
+    (HC4028_ABC_PORT->BRR = (B)); 
+    (HC4028_ABC_PORT->BSRR = (A));
     break;
   }
 }
