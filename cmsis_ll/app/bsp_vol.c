@@ -2,9 +2,9 @@
 #include "ll_pins.h"
 
 //数字音量电位器控制接口 PA6/31/CLK  PA7/32/SDI  PC4/33/CS
-#define VOL_CS   GPIO_Pin_4
-#define VOL_SDI  GPIO_Pin_7
-#define VOL_CLK  GPIO_Pin_6
+#define VOL_CS   GPIO_BSRR_BS4
+#define VOL_SDI  GPIO_BSRR_BS7
+#define VOL_CLK  GPIO_BSRR_BS6
 #define VOL_CLK_SDI_PORT GPIOA
 #define VOL_CS_PORT GPIOC
 
