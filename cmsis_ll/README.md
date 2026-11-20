@@ -139,32 +139,59 @@ During port bring-up:
 
 Build verification: https://github.com/n0th1n6/FX9A/actions/runs/44695123236
 
-## Full application build (software-first migration)
+## Full application — low-level driver migration status
 
-The independent CMake project now has two targets:
+The independent CMake project builds two targets:
 
-- `fx9a_boot.elf`: safe minimal diagnostic image.
-- `fx9a_full.elf`: **experimental full radio application**, including the
-  existing DDS, OLED, CAT, EEPROM, encoder, keyer, meter and TX/RX application
-  code, compiled and linked using the standalone startup/runtime **without Mbed**.
+- `fx9a_boot.elf`: minimal diagnostic image.
+- `fx9a_full.elf`: complete experimental radio application linked with
+  project-owned reset/clock code and no Mbed CE runtime.
 
-The full target is a **transitional** port. It uses the 2009 CMSIS and STM32
-Standard Peripheral Library bundled under `RadioStation/` until the STM32 LL
-replacement is implemented. It is not yet a full CMSIS + LL conversion and
-is **not cleared for hardware or RF use**.
+**First-stage peripheral replacement complete:** all compiled 2009
+StdPeriph driver source files have been removed from the standalone full
+target. Project-local register-level implementations now handle:
 
-The full source build passed in GitHub Actions as part of run
-44697083112. This is compile/link evidence only and does not establish that
-the GPIO, interrupt timing, clock assumptions, RF sequencing or startup
-behavior is correct on hardware.
+| Subsystem | Standalone low-layer file |
+| --- | --- |
+| GPIO + AFIO | `drivers/fx9a_gpio_ll.c` |
+| Clock enable/reset + bus clocks | `drivers/fx9a_rcc_ll.c` |
+| NVIC + EXTI | `drivers/fx9a_irq_ll.c` |
+| TIM2/TIM3/TIM4 | `drivers/fx9a_tim_ll.c` |
+| DMA1 | `drivers/fx9a_dma_ll.c` |
+| ADC1 | `drivers/fx9a_adc_ll.c` |
+| USART1 | `drivers/fx9a_usart_ll.c` |
 
-This lets subsequent improvements be made against the complete software rather
-than waiting for each device driver to be rewritten. `master` retains the
-known-working Mbed CE application.
+The full standalone image has its own `platform/radio_main.c` and uses TIM4
+for the CW keyer without Mbed's TIM4-to-TIM5 remapping. Its compile/link test
+and pre-existing radio logic regression tests have passed in GitHub Actions.
 
-Implementation is in progress, not feature complete. In particular,
-TUNE mode, the continuous-tuning setting, full LL driver migration,
-fast SWR protection and other roadmap features remain outstanding.
+**Do not confuse this stage with finished ST LL integration.** The new drivers
+are *direct-register / LL-style compatibility implementations* using
+the old `stm32f10x.h` CMSIS device header plus old declaration headers.
+Official modern `stm32f1xx_ll_*.h` API adoption, new CMSIS device headers,
+and complete removal of old compatibility declarations are still open.
+That work is required before calling the requested **full STM32 LL migration**
+complete.
+
+Also, compile/link and host-level tests cannot guarantee the UART, DMA, ADC,
+timer, GPIO alternate-function, boot, or RF hardware behavior; this build
+is not cleared to flash or transmit. The user-facing TUNE and continuous
+tuning enable/disable features are separate TODO items and are not yet included.
+
+## Port completion gates
+
+- [x] Full app builds independently of Mbed CE.
+- [x] All old STM32 StdPeriph driver `.c` files removed from standalone target.
+- [x] GPIO/RCC/IRQ/TIM/DMA/ADC/USART register-level replacements compile/link.
+- [x] Separate standalone `main()` and original TIM4 ownership.
+- [x] Full image vector checks and existing host radio logic tests.
+- [ ] Finish CI enforcement of required radio symbols and no StdPeriph source.
+- [ ] Integrate official ST STM32F1 LL headers/drivers with modern CMSIS device.
+- [ ] Remove the 2009 compatibility headers and old API aliases.
+- [ ] Add register-level host simulation or emulated-peripheral tests for
+      clock configuration, UART/DMA, ADC, EXTI, timers and GPIO pin mappings.
+- [ ] Verify the physical MCU marking and memory map.
+- [ ] Full RF-disabled hardware bring-up, followed by measured RX/TX tests.
 
 ## v0.1.0 release binary reference
 
