@@ -1,6 +1,7 @@
 #include "bsp_board.h"
 #include "tune_logic.h"
 #include "tuning_policy.h"
+#include "meter_cal.h"
 #include "ll_pins.h"
 #include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_exti.h"
@@ -351,6 +352,7 @@ void board_init()
   e2p_reset();
   
   software_init();
+  MeterCal_Init();
   key_init();           //初始化按钮、编码器和电键的GPIO，初始化GPIO中断和中断向量表，检测手键还是自动键
   
   //如果K4,K6被按下，则恢复到默认值
@@ -580,6 +582,10 @@ void MENU_SetUp(uint8_t pos)
     RX_AlignmentAdjust(pos, (FREQ.item & TSItem) ? 100 : 10);
     break;
   default:
+    if (pos >= METER_CAL_FIRST && pos <= METER_CAL_LAST) {
+      MeterCal_Adjust(pos, (FREQ.item & TSItem) ? 10 : 1);
+      break;
+    }
     if (pos < 9 || pos >= RX_USB_MENU) break;
     if(MENU.callSign[pos - 9] == MORSE_CODE_COUNT)
     {
@@ -711,6 +717,10 @@ void MENU_SetDown(uint8_t pos)
     RX_AlignmentAdjust(pos, (FREQ.item & TSItem) ? -100 : -10);
     break;
   default:
+    if (pos >= METER_CAL_FIRST && pos <= METER_CAL_LAST) {
+      MeterCal_Adjust(pos, (FREQ.item & TSItem) ? -10 : -1);
+      break;
+    }
     if (pos < 9 || pos >= RX_USB_MENU) break;
     if(MENU.callSign[pos - 9] == MORSE_CODE_COUNT)      // pos中包含了前面的菜单
     {
@@ -1122,6 +1132,7 @@ void board_refresh_manager()
         {
           grid = 0;
         }
+        if (MeterCal_Active()) grid = MeterCal_Grid(2u, adc_val);
         oled_swr_grid(grid);
         if( grid >= MENU.vswr && MENU.vswr > 0)
         {
@@ -1186,6 +1197,7 @@ void board_refresh_manager()
         }
         
         //平滑，快起慢落       BG6RDF
+        if (MeterCal_Active()) grid = MeterCal_Grid(1u, adc_val);
         float rf_grid=(float)grid;
         if (rf_grid<last_rf_grid)
         {
@@ -1236,6 +1248,7 @@ void board_refresh_manager()
         }
 
         //平滑，快起慢落
+        if (MeterCal_Active()) grid = MeterCal_Grid(0u, adc_val);
         float rx_grid=(float)grid;
         if (rx_grid<last_rx_grid)
         {
@@ -1672,8 +1685,9 @@ void key_task()
       }
       else if( key.state == keyShot)
       {     
-        if( AIMgr.item & MENUSETItem)           //如果是在设置模式，则退出设置模式
+        if( AIMgr.item & MENUSETItem)           // exit settings and save calibration
         {
+          MeterCal_Save();
           AIMgr.item &= ~MENUSETItem;
           DRMgr.item |= ALLItem;
           buzzer_stop();
