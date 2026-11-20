@@ -24,13 +24,14 @@ These files are fetched into the ignored `cmsis_ll/vendor/` directory.
 They are **not** copied into the repository. The selected MCU is
 `STM32F103xE`, with a 16 MHz HSE.
 
-The complete application uses seven low-level peripheral modules:
+The complete application uses eight low-level peripheral modules:
 
 | Module | Role |
 | --- | --- |
 | `drivers/fx9a_gpio_ll.c` | GPIO/AFIO; ST LL pin I/O with correct F1 LL mask encoding |
 | `drivers/fx9a_rcc_ll.c` | ST LL bus clock enable/reset, bus clock calculations |
-| `drivers/fx9a_irq_ll.c` | CMSIS NVIC; ST LL EXTI management |
+| `drivers/fx9a_irq_ll.c` | CMSIS NVIC priorities and IRQ ownership |
+| `drivers/fx9a_exti_ll.c` | ST LL EXTI masks, trigger selection and flags |
 | `drivers/fx9a_tim_ll.c` | TIM2 input scanning; TIM3 sidetone PWM; TIM4 keyer |
 | `drivers/fx9a_dma_ll.c` | DMA1 CH1 ADC sampling, CH4 USART1 TX |
 | `drivers/fx9a_adc_ll.c` | ADC1 scan/calibration, PC0–PC3 |
@@ -82,7 +83,7 @@ The GitHub Actions workflow `.github/workflows/cmsis-ll-boot.yml`:
    selected peripheral register offsets and compatibility structure layouts.
 7. Runs the existing encoder, frequency and RX-alignment regression scripts.
 8. Runs `tests/driver_smoke.c` on Linux against mapped, simulated STM32F1
-   peripheral registers (RCC, GPIO, TIM, DMA, ADC and USART).
+   peripheral registers (RCC, GPIO, TIM, DMA, ADC, USART and EXTI).
 9. Authenticates the reference v0.1.0 BIN by SHA-256 and compares boot vector
    structure. The 53,808-byte v0.1.0 image is the previous Mbed CE release,
    **not** functionally equivalent to the minimal boot image.
