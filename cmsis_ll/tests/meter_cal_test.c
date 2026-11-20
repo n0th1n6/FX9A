@@ -7,7 +7,8 @@
 int main(void)
 {
     Fx9aMeterCal cal = {0};
-    cal.magic = FX9A_CAL_MAGIC;
+    cal.magic_low = (uint16_t)FX9A_CAL_MAGIC;
+    cal.magic_high = (uint16_t)(FX9A_CAL_MAGIC >> 16);
     cal.version = FX9A_CAL_VERSION;
     const uint16_t s[5] = {32, 131, 819, 1098, 1311};
     const uint16_t rf[3] = {150, 770, 1081};
