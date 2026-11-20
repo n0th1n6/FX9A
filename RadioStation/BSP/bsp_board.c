@@ -109,7 +109,7 @@ void gpio_init()
       // GPIO enable clock and release Reset
   RCC_APB2PeriphResetCmd(  RCC_APB2Periph_GPIOB, DISABLE);
   RCC_APB2PeriphClockCmd(  RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
-  GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);      /*使能SWD 禁用JTAG*/
+  LL_GPIO_AF_Remap_SWJ_NOJTAG();      /*使能SWD 禁用JTAG*/
   
       // GPIO enable clock and release Reset
   RCC_APB2PeriphResetCmd(  RCC_APB2Periph_GPIOC, DISABLE);
@@ -127,54 +127,54 @@ void gpio_init()
 void power_key_init()
 {
   // 34脚-PC5  电源控制脚 通电为高电平， 断电为低电平
-  GPIO_InitTypeDef GPIO_InitStructure;
+  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
   
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_5;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(GPIO_Pin_5) << GPIO_PIN_MASK_POS) | (GPIO_Pin_5));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(GPIOC, &GPIO_InitStructure);
   
   // PE15/46 VoiceControl : 启动为高  停止为低
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_15;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(GPIOE, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(GPIO_Pin_15) << GPIO_PIN_MASK_POS) | (GPIO_Pin_15));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(GPIOE, &GPIO_InitStructure);
   
   // PB10/47 H/L : 启动为高  停止为低
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(GPIO_Pin_10) << GPIO_PIN_MASK_POS) | (GPIO_Pin_10));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(GPIOB, &GPIO_InitStructure);
 }
 
 void voice_control_stop()
 {
-  GPIO_SetBits(GPIOE, GPIO_Pin_15);  
+  (GPIOE->BSRR = (GPIO_Pin_15));  
 }
 
 void voice_control_start()
 {
-  GPIO_ResetBits(GPIOE, GPIO_Pin_15);
+  (GPIOE->BRR = (GPIO_Pin_15));
 }
 
 void power_high_on()
 {
-  GPIO_SetBits(GPIOB, GPIO_Pin_10);  
+  (GPIOB->BSRR = (GPIO_Pin_10));  
 }
 
 void power_high_off()
 {
-  GPIO_ResetBits(GPIOB, GPIO_Pin_10);
+  (GPIOB->BRR = (GPIO_Pin_10));
 }
 
 void power_on()
 {
-  GPIO_SetBits(GPIOC, GPIO_Pin_5);  
+  (GPIOC->BSRR = (GPIO_Pin_5));  
 }
 
 void power_off()
 {
-  GPIO_ResetBits(GPIOC, GPIO_Pin_5); 
+  (GPIOC->BRR = (GPIO_Pin_5)); 
 }
 
 uint8_t save;
@@ -298,17 +298,17 @@ void software_init()
 //等待电源按钮按下一段时间  BG6RDF
 void WaitForPowerOn()
 {
-  GPIO_InitTypeDef GPIO_InitStructure;
+  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
   //先把电源按钮引脚设置为输入，90脚-PB4
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_4;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
+  GPIO_InitStructure.Pin = (((uint32_t)(GPIO_Pin_4) << GPIO_PIN_MASK_POS) | (GPIO_Pin_4));
+  GPIO_InitStructure.Mode = LL_GPIO_MODE_FLOATING;
+  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  LL_GPIO_Init(GPIOB, &GPIO_InitStructure);
   
   uint32_t cnt=0;
   while(1)
   {
-   if (!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_4))
+   if (!(((GPIOB->IDR) & (GPIO_Pin_4)) != 0u))
      cnt++;
    else
      cnt=0;
@@ -340,7 +340,7 @@ void board_init()
   key_init();           //初始化按钮、编码器和电键的GPIO，初始化GPIO中断和中断向量表，检测手键还是自动键
   
   //如果K4,K6被按下，则恢复到默认值
-  uint16_t portValue=GPIO_ReadInputData(GPIOD);
+  uint16_t portValue=((GPIOD)->IDR);
   if (!(portValue & GPIO_Pin_4) &&  !(portValue & GPIO_Pin_1))  //K4, K6也被按下
     ResetToDefault();
 
