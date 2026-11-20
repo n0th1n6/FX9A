@@ -1,6 +1,6 @@
 #include "bsp_24lc16.h"
 
-// ½Ó24C16´¢´æÆ÷ PE2/1-7/WC   PE3/2-6/SCL   PE4/3-5/SDA
+// æ¥24C16å‚¨å­˜å™¨ PE2/1-7/WC   PE3/2-6/SCL   PE4/3-5/SDA
 
 void e2p_reset()
 {
@@ -41,7 +41,7 @@ uint8_t e2p_write_byte(uint16_t addr, uint8_t wdata)
         }
 	  	
 	i2c_stop();
-	delay_ms(8);//Ğ´Ê±ĞòµÄÓĞĞ§Í£Ö¹ĞÅºÅµ½ÄÚ²¿±à³Ì/²Á³ıÖÜÆÚ½áÊøµÄÕâÒ»¶ÎÊ±¼ä
+	delay_ms(8);//å†™æ—¶åºçš„æœ‰æ•ˆåœæ­¢ä¿¡å·åˆ°å†…éƒ¨ç¼–ç¨‹/æ“¦é™¤å‘¨æœŸç»“æŸçš„è¿™ä¸€æ®µæ—¶é—´
 	
 	return true;
 }
@@ -81,32 +81,29 @@ uint8_t e2p_write_mulbyte(uint16_t addr, uint8_t *wdata, uint8_t len)
           }
         } 	
 	i2c_stop();
-	delay_ms(8);//Ğ´Ê±ĞòµÄÓĞĞ§Í£Ö¹ĞÅºÅµ½ÄÚ²¿±à³Ì/²Á³ıÖÜÆÚ½áÊøµÄÕâÒ»¶ÎÊ±¼ä
+	delay_ms(8);//å†™æ—¶åºçš„æœ‰æ•ˆåœæ­¢ä¿¡å·åˆ°å†…éƒ¨ç¼–ç¨‹/æ“¦é™¤å‘¨æœŸç»“æŸçš„è¿™ä¸€æ®µæ—¶é—´
 	
 	return true;
 }
 
 bool e2p_write(uint16_t addr, uint8_t *data, uint16_t len)
 {
-  //uint16_t tlen = (len / 9) + 1;
-  uint16_t tlen = (len + 7) / 8;               //BG6RDF
-  bool ret = true;
-  
-  for(uint8_t j=0; j<tlen; j++)
+  /* Never allow a later successful page to mask an earlier I2C failure.
+   * Respect the 24LC16's eight-byte page boundaries, including unaligned
+   * callers, and avoid 8-bit page-loop counter wraparound.
+   */
+  uint16_t offset = 0;
+  while (offset < len)
   {
-    if( len <= 8)
-    {
-      ret = e2p_write_mulbyte(addr, &data[j*8], len);
-    }
-    else
-    {
-      ret = e2p_write_mulbyte(addr, &data[j*8], 8);
-      len -= 8;
-      addr += 8;
-    }
-    
+    uint8_t count = (uint8_t)(8u - (addr & 7u));
+    if (count > len - offset)
+      count = (uint8_t)(len - offset);
+    if (!e2p_write_mulbyte(addr, &data[offset], count))
+      return false;
+    addr += count;
+    offset += count;
   }
-  return ret;
+  return true;
 }
 
 uint8_t e2p_read_byte(uint16_t addr)
@@ -131,7 +128,7 @@ uint8_t e2p_read_byte(uint16_t addr)
 	  	return false;
 	
 	//ccode = E2P_CTLCODE | (wordh << 1) | E2P_INS_READ;
-        ccode = E2P_CTLCODE | E2P_INS_READ;
+        ccode = E2P_CTLCODE | (wordh << 1) | E2P_INS_READ;
 	i2c_start();
 	i2c_tx(ccode);	
 	if( i2c_getack() == NOACK )
@@ -146,6 +143,7 @@ uint8_t e2p_read_byte(uint16_t addr)
 
 bool e2p_read(uint16_t addr, uint8_t *rdata, uint16_t len)
 {
+      if (len == 0) return true;
       uint8_t ccode;
       uint8_t wordh;
 	uint8_t wordl;
@@ -159,19 +157,19 @@ bool e2p_read(uint16_t addr, uint8_t *rdata, uint16_t len)
 	
 	i2c_tx(ccode);	
 	if( i2c_getack() == NOACK )
-	  	return false;
+        { i2c_stop(); return false; }
 	
 	
 	i2c_tx(wordl);
 	if( i2c_getack() == NOACK )
-	  	return false;
+        { i2c_stop(); return false; }
 	
 	//ccode = E2P_CTLCODE | wordh << 1 | E2P_INS_READ;
         ccode = E2P_CTLCODE | E2P_INS_READ;
 	i2c_start();
 	i2c_tx(ccode);	
 	if( i2c_getack() == NOACK )
-	  	return false;
+        { i2c_stop(); return false; }
 	
         for(uint16_t i=0; i<len-1; i++)
         {
@@ -189,20 +187,20 @@ bool e2p_read(uint16_t addr, uint8_t *rdata, uint16_t len)
 void e2p_mem_write(uint8_t numOfmem, MEM_AttrDef *pMem, uint8_t len)
 {
   uint8_t step = 8;
-  uint8_t base = step * numOfmem;
+  uint16_t base = (uint16_t)step * numOfmem;
   for(uint8_t i=0; i<len; i++)
   {
-    e2p_write(E2P_ADDR_MEM+base+i*step, (uint8_t *)&pMem[i], sizeof(MEM_AttrDef));
+    e2p_write(E2P_ADDR_MEM+base+(uint16_t)i*step, (uint8_t *)&pMem[i], sizeof(MEM_AttrDef));
   }
 }
 
 void e2p_mem_read(uint8_t numOfmem, MEM_AttrDef *pMem, uint8_t len)
 {
   uint8_t step = 8;
-  uint8_t base = step * numOfmem;
+  uint16_t base = (uint16_t)step * numOfmem;
   for(uint8_t i=0; i<len; i++)
   {
-    e2p_read(E2P_ADDR_MEM+base+i*step, (uint8_t *)&pMem[i], sizeof(MEM_AttrDef));
+    e2p_read(E2P_ADDR_MEM+base+(uint16_t)i*step, (uint8_t *)&pMem[i], sizeof(MEM_AttrDef));
   }
 }
 
