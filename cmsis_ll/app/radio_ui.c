@@ -20,6 +20,7 @@ uint32_t adc_val;
 RADIO_ModeDef Mode;
 RADIO_ModeDef MemSetMode;
 TP_LevelDef TPLevel;
+static uint8_t FILFunc;
 #define RF_ALPHA 0.9    //发射平滑系数
 #define RX_ALPHA 0.9    //接收平滑系数
 volatile static float last_rf_grid=0;
