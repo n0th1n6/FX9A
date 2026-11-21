@@ -58,9 +58,9 @@ add_custom_command(TARGET fx9a_boot.elf POST_BUILD
     VERBATIM
 )
 
-# Transitional complete radio build: preserve the production application and
-# legacy peripherals while replacing the Mbed startup/runtime. The original
-# root CMake build remains untouched and continues to use Mbed CE.
+# Complete native CMSIS/STM32F1 LL radio build. The application BSP has
+# been split by ownership into independent modules; no Mbed or compiled
+# legacy peripheral drivers are linked. The root Mbed build is unchanged.
 option(FX9A_BUILD_FULL "Build the full radio application without Mbed" ON)
 option(FX9A_VFO_ACCEL "Enable experimental optical VFO encoder acceleration" OFF)
 set(FX9A_BOARD_REVISION "2016_03" CACHE STRING "FX-9A RF filter board revision: 2016_03 or ORIGINAL")
