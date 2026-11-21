@@ -1,5 +1,6 @@
 #include "bsp_board.h"
 #include "radio_ui.h"
+#include "radio_board_io.h"
 #include "radio_rf.h"
 #include "radio_controls.h"
 #include "radio_synth.h"
