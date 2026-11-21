@@ -20,118 +20,19 @@
 #include "bsp_timer.h"
 #include "bsp_usart.h"
 
-void gpio_init()
-{
-      // GPIO enable clock and release Reset ,Íâ²¿ÖĞ¶Ï ¸¨ÖúÊ±ÖÓ±ØĞë´ò¿ª
-  RCC_APB2PeriphResetCmd(  RCC_APB2Periph_GPIOA, DISABLE);
-  RCC_APB2PeriphClockCmd(  RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, ENABLE);
-      // GPIO enable clock and release Reset
-  RCC_APB2PeriphResetCmd(  RCC_APB2Periph_GPIOB, DISABLE);
-  RCC_APB2PeriphClockCmd(  RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
-  GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);      /*Ê¹ÄÜSWD ½ûÓÃJTAG*/
-  
-      // GPIO enable clock and release Reset
-  RCC_APB2PeriphResetCmd(  RCC_APB2Periph_GPIOC, DISABLE);
-  RCC_APB2PeriphClockCmd(  RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO, ENABLE);
-  
-      // GPIO enable clock and release Reset
-  RCC_APB2PeriphResetCmd(  RCC_APB2Periph_GPIOD, DISABLE);
-  RCC_APB2PeriphClockCmd(  RCC_APB2Periph_GPIOD | RCC_APB2Periph_AFIO, ENABLE);
-  
-    // GPIO enable clock and release Reset
-  RCC_APB2PeriphResetCmd(  RCC_APB2Periph_GPIOE, DISABLE);
-  RCC_APB2PeriphClockCmd(  RCC_APB2Periph_GPIOE, ENABLE);
-}
-
-void power_key_init()
-{
-  // 34½Å-PC5  µçÔ´¿ØÖÆ½Å Í¨µçÎª¸ßµçÆ½£¬ ¶ÏµçÎªµÍµçÆ½
-  GPIO_InitTypeDef GPIO_InitStructure;
-  
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_5;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-  
-  // PE15/46 VoiceControl : Æô¶¯Îª¸ß  Í£Ö¹ÎªµÍ
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_15;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(GPIOE, &GPIO_InitStructure);
-  
-  // PB10/47 H/L : Æô¶¯Îª¸ß  Í£Ö¹ÎªµÍ
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-}
-
-void voice_control_stop()
-{
-  GPIO_SetBits(GPIOE, GPIO_Pin_15);  
-}
-
-void voice_control_start()
-{
-  GPIO_ResetBits(GPIOE, GPIO_Pin_15);
-}
-
-void power_high_on()
-{
-  GPIO_SetBits(GPIOB, GPIO_Pin_10);  
-}
-
-void power_high_off()
-{
-  GPIO_ResetBits(GPIOB, GPIO_Pin_10);
-}
-
-void power_on()
-{
-  GPIO_SetBits(GPIOC, GPIO_Pin_5);  
-}
-
-void power_off()
-{
-  GPIO_ResetBits(GPIOC, GPIO_Pin_5); 
-}
-
-#define POWER_ON_WAIT_COUNT 3000000
-
-void WaitForPowerOn()
-{
-  GPIO_InitTypeDef GPIO_InitStructure;
-  //ÏÈ°ÑµçÔ´°´Å¥Òı½ÅÉèÖÃÎªÊäÈë£¬90½Å-PB4
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_4;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-  
-  uint32_t cnt=0;
-  while(1)
-  {
-   if (!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_4))
-     cnt++;
-   else
-     cnt=0;
-   if (cnt>POWER_ON_WAIT_COUNT)
-     return;
-  }
-}
-
 void board_init()
 {
-  gpio_init();          //Æô¶¯GPIO
-  tp_init();            //Ò»Ğ©GPIOÒı½ÅµÄÉèÖÃ
-  QuietModeOn();        //¾²Òô
+  gpio_init();          //å¯åŠ¨GPIO
+  tp_init();            //ä¸€äº›GPIOå¼•è„šçš„è®¾ç½®
+  QuietModeOn();        //é™éŸ³
   
   /* Match the original radio image: assert PC5 power hold without a
    * second button-wait loop while the supply is still momentary. */
   
-  vol_init();           //ÉèÖÃÒôÁ¿¿ØÖÆÒı½Å
+  vol_init();           //è®¾ç½®éŸ³é‡æ§åˆ¶å¼•è„š
   
-  power_key_init();     //ÉèÖÃµçÔ´£¬¸ßµÍ¹¦ÂÊ¿ØÖÆÒı½Å
-  power_on();           //PC5ÉèÖÃ¸ßµçÆ½£¬Æô¶¯Ö÷µçÔ´
+  power_key_init();     //è®¾ç½®ç”µæºï¼Œé«˜ä½åŠŸç‡æ§åˆ¶å¼•è„š
+  power_on();           //PC5è®¾ç½®é«˜ç”µå¹³ï¼Œå¯åŠ¨ä¸»ç”µæº
   i2c_init();
   
   delay_ms(50);
@@ -140,17 +41,17 @@ void board_init()
   
   RadioState_Load();
   MeterCal_Init();
-  key_init();           //³õÊ¼»¯°´Å¥¡¢±àÂëÆ÷ºÍµç¼üµÄGPIO£¬³õÊ¼»¯GPIOÖĞ¶ÏºÍÖĞ¶ÏÏòÁ¿±í£¬¼ì²âÊÖ¼ü»¹ÊÇ×Ô¶¯¼ü
+  key_init();           //åˆå§‹åŒ–æŒ‰é’®ã€ç¼–ç å™¨å’Œç”µé”®çš„GPIOï¼Œåˆå§‹åŒ–GPIOä¸­æ–­å’Œä¸­æ–­å‘é‡è¡¨ï¼Œæ£€æµ‹æ‰‹é”®è¿˜æ˜¯è‡ªåŠ¨é”®
   
-  //Èç¹ûK4,K6±»°´ÏÂ£¬Ôò»Ö¸´µ½Ä¬ÈÏÖµ
+  //å¦‚æœK4,K6è¢«æŒ‰ä¸‹ï¼Œåˆ™æ¢å¤åˆ°é»˜è®¤å€¼
   uint16_t portValue=GPIO_ReadInputData(GPIOD);
-  if (!(portValue & GPIO_BSRR_BS4) &&  !(portValue & GPIO_BSRR_BS1))  //K4, K6Ò²±»°´ÏÂ
+  if (!(portValue & GPIO_BSRR_BS4) &&  !(portValue & GPIO_BSRR_BS1))  //K4, K6ä¹Ÿè¢«æŒ‰ä¸‹
     RadioState_ResetDefaults();
 
   oled_init();
   adc_init();
   baud_init();
-  pwm_init();           //ÉèÖÃPWM£¬ÓÃÓÚ²àÒô
+  pwm_init();           //è®¾ç½®PWMï¼Œç”¨äºä¾§éŸ³
   keyer_init();
   
     
