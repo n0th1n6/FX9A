@@ -1,4 +1,4 @@
-name: BSP host regressions
+name: BSP validation
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - bsp-io-separation
       - master
   pull_request:
+  workflow_dispatch:
 
 jobs:
   feature-regressions:
@@ -20,3 +21,26 @@ jobs:
         env:
           CC: gcc
         run: python3 tools/test_features.py
+
+  mbed-firmware:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        board: [2016_03, ORIGINAL]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install ARM build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib ninja-build cmake python3 python3-venv
+          python3 -m venv .ci-venv
+          .ci-venv/bin/pip install -r mbed-os/requirements.txt
+          echo "$GITHUB_WORKSPACE/.ci-venv/bin" >> "$GITHUB_PATH"
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja -DMBED_TARGET=FX9A -DMBED_TOOLCHAIN=GCC_ARM -DCMAKE_BUILD_TYPE=Release -DFX9A_BOARD_REVISION=${{ matrix.board }}
+      - name: Build and verify firmware image
+        run: cmake --build build
