@@ -6,7 +6,7 @@
 #include "bsp_frequency.h"
 #include "tuning_policy.h"
 
-uint8_t MemSetMaxIndex;
+
 
 void vfo_init()
 {
@@ -111,8 +111,5 @@ void MEM_Save()
   MEM[FREQ.numOfmem].freq = FREQ.val;
   MEM[FREQ.numOfmem].baud = FREQ.numOfbaud;
   MEM[FREQ.numOfmem].mode = RADIO.mode;
-  if( MemSetMaxIndex < FREQ.numOfmem )
-  {
-    MemSetMaxIndex = FREQ.numOfmem;
-  }
+
 }

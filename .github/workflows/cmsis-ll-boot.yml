@@ -55,6 +55,8 @@ jobs:
           python3 tools/test_encoders.py
           python3 tools/test_frequency.py
           python3 tools/test_rx_alignment.py
+          python3 tools/test_settings_cat.py
+          python3 tools/test_transport.py
       - name: Simulated native STM32F1 LL peripheral tests
         run: |
           gcc -std=c11 -O0 -Wall -Wextra -Wno-pointer-to-int-cast \

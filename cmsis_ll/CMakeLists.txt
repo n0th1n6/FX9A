@@ -70,7 +70,7 @@ if(NOT FX9A_BOARD_REVISION STREQUAL "2016_03" AND NOT FX9A_BOARD_REVISION STREQU
 endif()
 if(FX9A_BUILD_FULL)
     set(FX9A_BSP_SOURCES
-        bsp_24lc16.c    
+        bsp_24lc16.c settings_store.c
          bsp_dac.c bsp_debug.c  bsp_kenwood.c
           bsp_oled_api.c 
            

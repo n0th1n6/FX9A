@@ -43,7 +43,7 @@ STM32F103
 - [x] Replace the 2009 STM32 Standard Peripheral Library usage with STM32 LL or small project-local register-level helpers.
 - [x] Avoid STM32 HAL unless a specific peripheral clearly benefits from it; prefer LL/direct access for deterministic radio control.
 - [x] Preserve the STM32F103 72 MHz clock behavior and the existing 16 MHz board crystal configuration.
-- [ ] Preserve interrupt ownership and timing contracts currently checked by `tools/verify_image.cmake`.
+- [x] Preserve interrupt ownership and timing contracts currently checked by `tools/verify_image.cmake`.
 - [x] Preserve the existing EEPROM binary layout unless an explicitly versioned migration is introduced.
 - [ ] Preserve radio behavior first; optimize/clean up only after each migrated subsystem is covered by tests or hardware checks.
 
@@ -94,7 +94,7 @@ Suggested subsystem order:
 
 ### Migration validation
 
-- [ ] Keep the current Mbed CE image buildable during migration for A/B comparison.
+- [x] Keep the Mbed CE image buildable on master for A/B comparison.
 - [x] Compare flash/vector layout and important data structure sizes between old and new builds.
 - [x] Extend host tests as logic is extracted from hardware-facing files.
 - [ ] Add small hardware smoke-test checkpoints after each peripheral group rather than waiting for the whole migration to finish.
@@ -131,20 +131,26 @@ remain unchecked below.
 - [x] Add malformed-command handling and optional diagnostic/error counters.
 
 ### CAT protocol correctness
-- [ ] Initialize all fields in CAT responses before transmission.
-- [x] Fix `IF` response RIT/XIT field so inactive RIT/XIT returns a defined value such as `00000` rather than uninitialized stack data.
+- [x] Initialize all fields in CAT responses before transmission.
+- [x] Audit CAT mutation interlocks: cancel conflicting TUNE writes, reject TX/setup mutations and allow queries.
+- [x] Fix `IF` response RIT/XIT field so inactive RIT/XIT returns a defined signed Hz value (`+0000` when inactive) rather than uninitialized stack data.
 - [x] Correct AF gain scaling:
   - CAT 0–255 -> internal volume 0–60.
   - Internal volume 0–60 -> CAT 0–255.
-- [ ] Review the rest of the Kenwood command implementation for incomplete or inconsistent responses.
-- [ ] Add host-side CAT regression tests, e.g. `tools/test_cat.py`.
+- [x] Review the rest of the Kenwood command implementation for incomplete or inconsistent responses.
+- [x] Add host-side CAT regressions: `tools/test_settings_cat.py` and `tools/test_transport.py` cover framing, replies, addressed VFOs, numeric limits and RF/TUNE interlocks.
+
+- [ ] Verify CAT interoperability with the connected radio and the operator's control software; unsupported features retain fixed compatibility replies.
 
 ### EEPROM / 24LC16 reliability
 - [x] Make multi-page EEPROM writes fail immediately if any page write fails.
 - [x] Preserve the first error rather than allowing a later successful page write to make the overall operation appear successful.
 - [x] Ensure I2C STOP / bus recovery is performed on NACK/error paths.
-- [ ] Consider adding a configuration version and CRC/checksum in unused EEPROM space while retaining compatibility with existing FX-9A EEPROM layouts.
+- [x] Consider adding a configuration version and CRC/checksum in unused EEPROM space while retaining compatibility with existing FX-9A EEPROM layouts.
 - [x] Validate saved settings before applying them.
+- [x] Verify shutdown writes/readback, detect incomplete saves and propagate errors to the power-button handler; preserve unreadable/corrupt EEPROM at boot.
+- [x] Add version 1 settings metadata with CRC32 at EEPROM 1152; preserve legacy offsets and keep calibration separate.
+- [ ] Check actual EEPROM shutdown duration, error display and recovery on the radio. See `SETTINGS_AND_CAT.md`.
 
 ## Priority 2 — RF behavior
 
@@ -197,18 +203,16 @@ Add a dedicated low-power TUNE state for driving an external automatic antenna t
 - [x] Show a clear OLED indication such as `TUNE` and keep the SWR bar live while tuning.
 - [x] Select a convenient front-panel long press or key combination for start/cancel without disturbing existing commonly used functions.
 - [x] Reuse the existing dormant Kenwood CAT `CA` (CW TUNE) command if practical, e.g. start/query/cancel support after local TUNE behavior is stable.
-- [ ] Add host-side tests for tune-state transitions, forced LOW power, timeout, SWR success, severe-SWR abort, cancel behavior, and restoration of the previous power setting.
+- [x] Add host-side tests for tune-state transitions, forced LOW power, timeout, SWR success, severe-SWR abort, cancel behavior, and restoration of the previous power setting.
 - [ ] Determine final SWR thresholds and timing experimentally on the real radio with a dummy load / controlled mismatch and the RF power stages operated conservatively.
 
 ## Priority 3 — Hardware compatibility
 
 ### FX-9A filter-switching revisions
-`bsp_baud.c` documents both the original filter-switching map and the later 2016-03-09 map, but only one mapping is currently implemented.
+`bsp_baud.c` documents both the original filter-switching map and the later 2016-03-09 map, and both mappings are selectable at build time.
 
 - [x] Convert band/filter GPIO selection to a table-driven implementation.
-- [ ] Add at least:
-  - `FX9A_BOARD_ORIGINAL`
-  - `FX9A_BOARD_2016_03`
+- [x] Select `FX9A_BOARD_REVISION=ORIGINAL` or `2016_03`; both maps have host tests.
 - [x] Start as a compile-time option.
 - [ ] Consider a service-menu setting only after both mappings are confirmed on hardware.
 - [ ] Document how to identify the applicable board revision.
@@ -233,7 +237,7 @@ Current meter conversion uses fixed ADC thresholds.
 - [x] Replace avoidable floating-point DDS calculations with explicit 64-bit integer arithmetic.
 - [x] Add rounding where appropriate.
 - [x] Verify generated tuning words against known frequencies.
-- [ ] Add host tests for LO/BFO calculation and tuning-word generation.
+- [x] Add host tests for LO/BFO calculation and tuning-word generation.
 
 ### Review dormant phase function
 - [x] Review `ad9834_tx_phase()`.
@@ -260,7 +264,7 @@ The current fork allows continuous tuning through the gaps between amateur bands
 - [x] Persist the setting in EEPROM while preserving compatibility with existing EEPROM images.
 - [x] Choose a safe migration/default rule for old EEPROM records; preferably retain the current fork's continuous-tuning behavior unless the user explicitly disables it.
 - [x] Make CAT frequency-setting behavior follow the same policy where practical, or clearly document if CAT is intentionally allowed to tune outside the front-panel band limits.
-- [ ] Extend `tools/test_frequency.py` to cover both ON and OFF modes, including lower/upper limits, band gaps, VFO recall, RIT/XIT interaction, and CAT frequency commands.
+- [x] Extend `tools/test_frequency.py` to cover both ON and OFF modes, including lower/upper limits, band gaps, VFO recall, RIT/XIT interaction, and CAT frequency commands.
 
 ### Main optical VFO encoder
 The RES20D-50-201-1 main VFO encoder is a 50 PPR optical quadrature encoder and the existing falling-edge direction scheme is simple and appropriate.
@@ -299,6 +303,7 @@ TX/RX verification remains outstanding.
   - meter conversion/calibration,
   - UI/display refresh,
   - CAT command handling.
+- [ ] Reduce remaining cross-module access to legacy shared globals in a later behavior-reviewed change.
 - [x] Preserve EEPROM record layout and mode values during refactoring (software checks only; hardware behavior remains to be verified).
 - [x] Keep host regression tests around every extracted subsystem.
 
@@ -331,4 +336,4 @@ The CMSIS-Core + STM32 LL migration is the umbrella workstream. Apply the other 
 11. Implement the automatic-tuner TUNE state.
 12. Add meter calibration and optional VFO acceleration.
 13. Remove Mbed CE / legacy StdPeriph only after the CMSIS/LL path is proven on hardware.
-14. Continue splitting `bsp_board.c` as the migrated subsystems acquire clear module boundaries.
+14. Reduce remaining direct access to shared radio globals after the module split; validate physical behavior before further RF changes.

@@ -7,6 +7,7 @@
 #include "meter_cal.h"
 #include "settings_validation.h"
 #include "radio_state.h"
+#include "radio_ui.h"
 #include "ll_pins.h"
 #include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_exti.h"
@@ -32,7 +33,7 @@
 #include "radio_board_io.h"
 
 static KEY_AttrDef key;
-uint8_t MemSetAll;
+
 
 static void RX_AlignmentAdjust(uint8_t pos, int16_t step)
 {
@@ -405,16 +406,11 @@ void key_task()
       {        
         if (isRun)
         {
+          if (!RadioState_Save()) {
+            oled_ts((uint8_t *)"ERR");
+            break; /* Keep power held so the operator can retry/recover. */
+          }
           isRun = false;
-          
-          
-          e2p_mem_write(0, MEM, MemSetMaxIndex+1);
-          e2p_vfo_write(&VFO);
-          e2p_fil_write(FIL.func);
-          e2p_vol_write(VOL.val);
-          e2p_att_write(ATT.val);
-          e2p_pwm_write(WPM.val);
-          e2p_menu_write(&MENU);
           oled_display_off();
           delay_ms(100);
           
@@ -482,7 +478,7 @@ void key_task()
           DRMgr.item |= MEMSETItem;   // 更新MEM设置主频
           DRMgr.item |= RADIOItem;    // 更新MEM设置模式
           DRMgr.item |= FILItem;
-          MemSetAll = 1;              // 强制更新设置模式 CH: HZ
+          RadioUI_ForceMemoryRedraw();              // 强制更新设置模式 CH: HZ
           if (FREQ.item & TSItem)
           {
             oled_ts("TS");

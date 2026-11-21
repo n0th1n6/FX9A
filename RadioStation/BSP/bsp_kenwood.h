@@ -1,5 +1,5 @@
 #ifndef __BSP_KENWOOD_H__
-#define __BSP_KENWODD_H__
+#define __BSP_KENWOOD_H__
 
 #include "bsp_board.h"
 

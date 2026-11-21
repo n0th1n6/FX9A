@@ -16,11 +16,12 @@
 
 extern volatile uint32_t fx9a_ticks_10ms;
 
-uint32_t adc_val;
-RADIO_ModeDef Mode;
-RADIO_ModeDef MemSetMode;
-TP_LevelDef TPLevel;
+static uint32_t adc_val;
+static RADIO_ModeDef Mode;
+static RADIO_ModeDef MemSetMode;
+static TP_LevelDef TPLevel;
 static uint8_t FILFunc;
+static uint8_t MemSetAll;
 #define RF_ALPHA 0.9    //发射平滑系数
 #define RX_ALPHA 0.9    //接收平滑系数
 volatile static float last_rf_grid=0;
@@ -687,4 +688,9 @@ void RadioUI_TuneStopped(bool had_carrier)
   tune_result_visible = had_carrier || RadioRF_HasSample();
   tune_result_tick = fx9a_ticks_10ms;
   tune_result_frequency = FREQ.val;
+}
+
+void RadioUI_ForceMemoryRedraw(void)
+{
+  MemSetAll = 1;
 }

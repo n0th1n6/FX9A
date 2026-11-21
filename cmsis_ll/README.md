@@ -57,7 +57,8 @@ implementation into the LL target**.
 | Native LL source | Ownership |
 | --- | --- |
 | `bsp_board.c` | GPIO/power bring-up, peripheral initialization, main-loop scheduler |
-| `radio_state.c` | Shared radio state, EEPROM defaults/restore and validation |
+| `radio_state.c` | Shared radio state, safe RAM defaults/restore and validation |
+| `RadioStation/BSP/settings_store.c` | Versioned CRC32 settings, fixed save snapshot, verified I2C and incomplete-save detection |
 | `frequency_state.c` | VFO and memory persistence, band bounds and tuning policy |
 | `radio_synth.c` | LO/BFO frequency computation and RX alignment offsets |
 | `radio_rf.c` | TX/RX sequencing, CW TUNE, SWR fast ISR and RF trip latch |
@@ -222,3 +223,6 @@ a new radio firmware release.
 
 Release reference:
 https://github.com/n0th1n6/FX9A/releases/tag/v0.1.0
+
+Settings metadata, legacy compatibility and save-failure recovery are described
+in [SETTINGS_AND_CAT.md](../SETTINGS_AND_CAT.md).

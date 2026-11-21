@@ -47,7 +47,7 @@ uint8_t NumOfMem;
 
 
 
-/* MemSetMaxIndex is owned by the frequency/persistence module. */
+/* Settings persistence is owned by settings_store. */
 
 
 

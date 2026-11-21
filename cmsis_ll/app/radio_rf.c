@@ -18,7 +18,7 @@
 #include "bsp_timer.h"
 #include "bsp_pwm.h"
 
-volatile bool RfIsTx = false;
+static volatile bool RfIsTx = false;
 volatile uint16_t hswr_timeout = 0;
 static volatile uint8_t swr_trip_pending;
 extern volatile uint32_t fx9a_ticks_10ms;

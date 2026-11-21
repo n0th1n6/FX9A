@@ -94,6 +94,7 @@ void UartTxBufWrite(unsigned char wdat)
 
 void UartTx(uint8_t *wdat, uint8_t len)
 {
+  if (!wdat || len > UART_TX_BUF_MAX_SIZE - UTBuffer.size) return;
   for(uint8_t i=0; i<len; i++)
   {
     UartTxBufWrite(wdat[i]);  
@@ -161,13 +162,14 @@ void usart_process_rx_commands(void)
 {
   uint8_t command[32];
   uint8_t len = 0;
+  uint32_t primask = __get_PRIMASK();
   __disable_irq();
   if (CatPendingLen) {
     len = CatPendingLen;
     memcpy(command, CatPending, len);
     CatPendingLen = 0;
   }
-  __enable_irq();
+  if (!primask) __enable_irq();
   if (len) Kenwood_CmdParser(command, len);
 }
 
