@@ -1,6 +1,10 @@
 # FX-9A Firmware TODO
 
-This file records improvement areas identified during review of the current FX-9A firmware source. The intent is to preserve working radio behavior while improving robustness, hardware compatibility, RF safety, calibration, and maintainability.
+Status audited against the implementation, both CLI firmware builds and offline
+regressions on 2026-11-21. `[x]` means the implementation/software check is done;
+`[ ]` means verification, implementation or a decision remains outstanding.
+Master retains Mbed CE; this branch contains the independent CMSIS/LL firmware.
+Hardware behavior is not established by a software check.
 
 ## Priority 0 — Migrate to CMSIS-Core + STM32 LL
 
@@ -45,7 +49,8 @@ STM32F103
 - [x] Preserve the STM32F103 72 MHz clock behavior and the existing 16 MHz board crystal configuration.
 - [x] Preserve interrupt ownership and timing contracts currently checked by `tools/verify_image.cmake`.
 - [x] Preserve the existing EEPROM binary layout unless an explicitly versioned migration is introduced.
-- [ ] Preserve radio behavior first; optimize/clean up only after each migrated subsystem is covered by tests or hardware checks.
+
+Preserve radio behavior first; optimize only with regression coverage and the required hardware checks.
 
 ### Migration rule: fix each subsystem while porting it
 
@@ -99,15 +104,15 @@ Suggested subsystem order:
 - [x] Extend host tests as logic is extracted from hardware-facing files.
 - [ ] Add small hardware smoke-test checkpoints after each peripheral group rather than waiting for the whole migration to finish.
 - [ ] Verify in stages with RF power disabled first, then dummy-load RX/TX checks, then controlled on-air testing.
-- [ ] Do not remove the current compatibility documentation until the CMSIS/LL path is proven on the actual radio.
+- [x] Retain compatibility documentation and the Mbed reference while hardware feature parity remains outstanding.
 
-## Development status — software complete, hardware verification outstanding
+## Development status — implemented features, hardware verification outstanding
 
-Feature implementations and pure-logic tests are included in the independent
-`cmsis-ll-port` firmware. The combined GitHub Actions run 44717229573
-passed the build, vector, existing radio regressions, and new feature tests.
-Checks below marked complete mean **implemented in software**, not physically
-measured or approved for RF transmission.
+Feature implementations, the application module split, CAT corrections and
+versioned settings integrity are present in `cmsis-ll-port` and the Mbed master
+backport. The build CLI has produced both full images and passed their branch
+image/link checks. Nine build-helper and seven flash-helper offline tests pass;
+these checks do not approve physical RF behavior or validate a live flash run.
 
 The TUNE limits (raw reflected-ADC thresholds, hold times, and DDS settling),
 SWR trip thresholds, filter wiring maps, calibration points, and TX/RX ordering
@@ -116,12 +121,11 @@ calibration slot does not modify the legacy 44-byte menu record. The
 continuous-tuning setting reuses an existing reserved menu byte and defaults ON
 when old EEPROM contents have no explicit OFF signature.
 
-Remaining software improvements include exhaustive CAT compatibility and
-recovery tests, stronger EEPROM transaction error propagation and integrity
-checks for the original settings format, and gradual source organization.
-Optical VFO acceleration is implemented but disabled by default until verified
-on the actual encoder. Those items
-remain unchecked below.
+Settings now use a fixed save snapshot, verified EEPROM writes, version 1 CRC32
+metadata and interrupted-save detection. CAT frame/reply and TX/TUNE interlock
+fixes are covered by host regressions. Remaining work is connected-radio/client
+validation, physical recovery/timing checks and gradual shared-state cleanup.
+Optical VFO acceleration remains optional and OFF by default.
 
 ## Priority 1 — Robustness and safety
 
@@ -146,7 +150,7 @@ remain unchecked below.
 - [x] Make multi-page EEPROM writes fail immediately if any page write fails.
 - [x] Preserve the first error rather than allowing a later successful page write to make the overall operation appear successful.
 - [x] Ensure I2C STOP / bus recovery is performed on NACK/error paths.
-- [x] Consider adding a configuration version and CRC/checksum in unused EEPROM space while retaining compatibility with existing FX-9A EEPROM layouts.
+- [x] Add settings version/CRC metadata in unused EEPROM space while preserving legacy record offsets.
 - [x] Validate saved settings before applying them.
 - [x] Verify shutdown writes/readback, detect incomplete saves and propagate errors to the power-button handler; preserve unreadable/corrupt EEPROM at boot.
 - [x] Add version 1 settings metadata with CRC32 at EEPROM 1152; preserve legacy offsets and keep calibration separate.
@@ -155,7 +159,7 @@ remain unchecked below.
 ## Priority 2 — RF behavior
 
 ### TX / RX sequencing
-Current code can assert the physical TX control before the DDS is updated for TX/XIT state.
+TX entry programs LO/BFO before asserting the physical TX gate. RX return removes RF first; actual settling and transition timing still need measurement.
 
 - [x] Refactor TX entry so the preferred order is approximately:
   1. Mute RX/audio path.
@@ -169,7 +173,7 @@ Current code can assert the physical TX control before the DDS is updated for TX
 - [ ] Verify carefully with the RF power stages disabled before on-air testing.
 
 ### Faster SWR protection
-The display-oriented SWR update path currently runs much slower than the ADC sampling capability.
+Fast protection uses an independent 10 ms sampling path; the display keeps its slower meter updates. Physical shutdown latency still needs measurement.
 
 - [x] Separate fast SWR protection from slow OLED meter updates.
 - [x] Evaluate a protection interval around 5–20 ms instead of roughly 200 ms.
@@ -221,7 +225,7 @@ Add a dedicated low-power TUNE state for driving an external automatic antenna t
 ## Priority 4 — Calibration and measurement
 
 ### S-meter, RF power, and SWR calibration
-Current meter conversion uses fixed ADC thresholds.
+Optional table-driven calibration is implemented in a separate versioned/CRC record at EEPROM 1104. Absent or invalid calibration retains the original conversion thresholds; protection still uses raw ADC thresholds.
 
 - [x] Replace hardcoded meter thresholds with table-driven calibration.
 - [x] Add configurable S-meter calibration points, for example S0 / S5 / S9 / S9+20 / S9+40.
@@ -242,7 +246,7 @@ Current meter conversion uses fixed ADC thresholds.
 ### Review dormant phase function
 - [x] Review `ad9834_tx_phase()`.
 - [x] Its input appears to be degrees but the current conversion uses `pi` in the divisor; fix or remove it if it is unused.
-- [ ] Do not change active RF behavior until hardware use is confirmed.
+- [x] Keep the corrected phase helper dormant; it has no active RF call sites.
 
 ## Priority 6 — User-interface improvements
 
@@ -269,7 +273,7 @@ The current fork allows continuous tuning through the gaps between amateur bands
 ### Main optical VFO encoder
 The RES20D-50-201-1 main VFO encoder is a 50 PPR optical quadrature encoder and the existing falling-edge direction scheme is simple and appropriate.
 
-- [ ] Keep the present main encoder decoder unless hardware testing shows missed pulses.
+- [x] Retain the existing optical encoder decoder; acceleration is optional and defaults OFF. Physical response testing remains open below.
 - [x] Consider optional velocity-based tuning acceleration:
   - slow rotation: fine step,
   - medium rotation: larger step,
@@ -319,21 +323,27 @@ The current fork already includes several important improvements that should rem
 - Image/vector/timer/delay verification in the build.
 - Host tests for encoder behavior, frequency logic, and RX alignment.
 
-## Suggested implementation order
+## Remaining work
 
-The CMSIS-Core + STM32 LL migration is the umbrella workstream. Apply the other TODO fixes when their subsystem is migrated rather than postponing them until after the port.
+1. Validate the current Mbed and CMSIS/LL firmware on the radio: GPIO, encoder
+   feel, OLED restoration, audio, CAT interoperability and EEPROM persistence.
+2. Measure DDS settling, TX/RX sequencing and SWR cutoff timing; establish final
+   TUNE thresholds with controlled dummy-load/mismatch tests and verify calibration.
+3. Identify the fitted filter-board revision and verify both supported maps on
+   their respective hardware before considering a service-menu selector.
+4. Exercise EEPROM error/recovery behavior and the complete CLI flash sequence on
+   hardware, confirming startup, RX, settings preservation and shutdown timing.
+   Settings version/CRC, verified writes and interrupted-save detection are
+   implemented and covered by offline tests.
+5. Gradually narrow remaining cross-module access to legacy shared radio state
+   with regression coverage. Both application module splits are implemented.
+   Keep master on Mbed and retain compatibility documentation while hardware
+   parity of the independent CMSIS/LL application is assessed.
 
-1. Establish Mbed-independent startup / clock / linker / vector support.
-2. Migrate GPIO and basic board control.
-3. Migrate timers and input scanning while preserving current encoder/key timing.
-4. Migrate USART/DMA and complete the CAT/UART safety + correctness fixes and tests.
-5. Migrate I2C/EEPROM and complete error handling, validation, and recovery improvements.
-6. Migrate DDS control and complete integer-math cleanup.
-7. Migrate ADC/protection and implement faster SWR protection.
-8. Migrate band/filter control and add hardware-revision support.
-9. Migrate OLED/UI and add the continuous-tuning enable/disable setting.
-10. Refactor TX/RX sequencing around the new hardware layer.
-11. Implement the automatic-tuner TUNE state.
-12. Add meter calibration and optional VFO acceleration.
-13. Remove Mbed CE / legacy StdPeriph only after the CMSIS/LL path is proven on hardware.
-14. Reduce remaining direct access to shared radio globals after the module split; validate physical behavior before further RF changes.
+## Build and flash tooling
+
+- [x] Add a checkout-aware CLI that builds/verifies the full Mbed or CMSIS/LL image and records a SHA256 manifest.
+- [x] Chain build-to-flash only after successful build/image checks; keep mandatory matching backups and readback verification.
+- [x] Add dry-run, explicit dependency setup, toolchain/build-directory selection, and documented CLI usage.
+- [x] Pass nine build-helper and seven offline flash-helper tests, including stale binaries, incompatible caches and verification failures; build and verify both firmware images through the CLI.
+- [ ] Exercise the complete CLI flash sequence on the connected radio and confirm physical startup, RX and settings preservation.

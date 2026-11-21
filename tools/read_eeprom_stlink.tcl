@@ -1,5 +1,7 @@
 # Host-driven 24LC16 read via the existing STM32 GPIOs. No flash or SRAM writes.
 # Invoke from the repository root using OpenOCD with stlink.cfg/stm32f1x.cfg.
+# Optional fx9a_eeprom_dir selects output directory; fx9a_eeprom_embedded=1
+# skips init/shutdown and propagates failures to the calling script.
 # GPIO wiring must match the checked-in FX9A source: PE2=WP, PE3=SCL, PE4=SDA.
 
 proc ee_high {mask} { mww 0x40011810 $mask }
@@ -45,7 +47,9 @@ proc ee_rx {last} {
     return $value
 }
 
-init
+if {![info exists fx9a_eeprom_embedded]} { set fx9a_eeprom_embedded 0 }
+if {![info exists fx9a_eeprom_dir]} { set fx9a_eeprom_dir "backups/2026-11-18-stlink/eeprom" }
+if {!$fx9a_eeprom_embedded} { init }
 set original_state [stm32f1x.cpu curstate]
 echo "Original CPU state: $original_state"
 set touched 0
@@ -81,7 +85,7 @@ set failure [catch {
         }
         # OpenOCD's Jim Tcl does not provide the Tcl binary command.
         # Preserve ASCII hex and convert to raw bytes on the host afterward.
-        set path "backups/2026-11-18-stlink/eeprom/fx9a-eeprom-read${pass}.hex.txt"
+        set path [file join $fx9a_eeprom_dir "fx9a-eeprom-read${pass}.hex.txt"]
         set out [open $path w]
         puts $out $hex
         close $out
@@ -102,4 +106,8 @@ set cleanup_failure [catch {
 if {$cleanup_failure} { echo "CLEANUP FAILED: $cleanup_reason" }
 if {$failure} { echo "EEPROM READ FAILED: $reason" }
 if {!$failure && !$cleanup_failure} { echo "EEPROM reads complete; original CPU state restored" }
-shutdown
+if {$fx9a_eeprom_embedded} {
+    if {$failure || $cleanup_failure} { error "EEPROM backup/cleanup failed: $reason $cleanup_reason" }
+} else {
+    shutdown
+}
