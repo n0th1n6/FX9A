@@ -191,8 +191,9 @@ skips this save. Per-adjustment EEPROM writes are not part of this backport.
 
 ## Application module ownership
 
-`bsp_board.c` handles board GPIO setup, hardware bring-up and the main-loop
-schedule. The Mbed application compiles these modules independently:
+`bsp_board.c` handles hardware bring-up and the main-loop schedule.
+`bsp_board_io.c` owns GPIO initialization, power hold, voice control, high/low
+power selection and the legacy power-button wait helper. The Mbed application compiles these modules independently:
 
 | Module | Owns |
 | --- | --- |
@@ -205,7 +206,8 @@ schedule. The Mbed application compiles these modules independently:
 
 The original public data types and legacy API declarations in `bsp_board.h`
 remain compatible with the peripheral and CAT drivers. Module headers declare
-cross-module operations. GPIO helper declarations live in `bsp_board_io.h`.
+cross-module operations. GPIO helper declarations live in `bsp_board_io.h`; include it after
+`bsp_board.h` so the Mbed compatibility GPIO remap is active.
 RX/TX latches and ISR sample state are private to `radio_rf.c`; the legacy
 `hswr_timeout` latch remains shared with the keyer. At TUNE exit, the RF module
 passes a frozen sample and validity flag to UI-owned result storage. The ISR
@@ -225,3 +227,13 @@ regressions continue to exercise the moved production functions, including
 injected SWR interrupts and UI result expiry. Physical radio behavior after
 the module split still needs validation. This extraction applies to master;
 the independent LL branch has not been reorganized by this change.
+
+### BSP validation workflow
+
+The BSP working branch adds `.github/workflows/bsp-regressions.yml` with
+host feature regressions and independent ARM GCC Release builds for the
+`2016_03` and `ORIGINAL` filter maps. Every ARM link runs the existing
+image verification. A configured workflow is not evidence of a passing run;
+review the Actions logs before merging or using a resulting firmware image.
+The GPIO extraction does not change the pin mappings, startup ordering, or
+power-button behavior. Physical verification remains outstanding.
