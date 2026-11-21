@@ -95,6 +95,7 @@ if(FX9A_BUILD_FULL)
         app/radio_state.c
         app/radio_controls.c
         app/radio_ui.c
+        app/radio_rf.c
         app/radio_cat.c
         app/radio_synth.c
         app/i2c.c
