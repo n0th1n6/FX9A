@@ -139,7 +139,7 @@ change is included.
 - [x] Make multi-page EEPROM writes fail immediately if any page write fails.
 - [x] Preserve the first error rather than allowing a later successful page write to make the overall operation appear successful.
 - [x] Ensure I2C STOP / bus recovery is performed on NACK/error paths.
-- [x] Consider adding a configuration version and CRC/checksum in unused EEPROM space while retaining compatibility with existing FX-9A EEPROM layouts.
+- [x] Add settings version/CRC metadata in unused EEPROM space while preserving legacy record offsets.
 - [x] Validate saved settings before applying them.
 - [x] Verify shutdown writes/readback, detect incomplete saves and propagate errors to the power-button handler; preserve unreadable/corrupt EEPROM at boot.
 - [x] Add version 1 settings metadata with CRC32 at EEPROM 1152; preserve legacy offsets and keep calibration separate.
@@ -309,17 +309,25 @@ The current fork already includes several important improvements that should rem
 
 ## Remaining work
 
-1. Validate the latest Mbed backport and standalone changes on the radio: GPIO,
-   encoder feel, OLED restoration, audio, EEPROM persistence and CAT operation.
-2. Measure DDS settling, TX/RX sequencing and SWR cutoff timing, then establish
-   TUNE thresholds with controlled dummy-load/mismatch tests.
+1. Validate the current Mbed and CMSIS/LL firmware on the radio: GPIO, encoder
+   feel, OLED restoration, audio, CAT interoperability and EEPROM persistence.
+2. Measure DDS settling, TX/RX sequencing and SWR cutoff timing; establish final
+   TUNE thresholds with controlled dummy-load/mismatch tests and verify calibration.
 3. Identify the fitted filter-board revision and verify both supported maps on
-   their respective hardware; document identification before adding a selector.
-4. Complete the remaining CAT response audit and broader interoperability and
-   recovery tests.
-5. Decide how to add version/integrity protection for legacy settings; the
-   calibration record already has its own version and CRC. Improve end-to-end
-   error reporting from EEPROM save/read wrappers as part of that work.
-6. Apply the module split to the standalone branch and gradually narrow legacy
-   shared-state access with regression coverage. Retire Mbed/legacy compatibility
-   only after hardware feature parity.
+   their respective hardware before considering a service-menu selector.
+4. Exercise EEPROM error/recovery behavior and the complete CLI flash sequence on
+   hardware, confirming startup, RX, settings preservation and shutdown timing.
+   Settings version/CRC, verified writes and interrupted-save detection are
+   implemented and covered by offline tests.
+5. Gradually narrow remaining cross-module access to legacy shared radio state
+   with regression coverage. Both application module splits are implemented.
+   Keep master on Mbed and retain compatibility documentation while hardware
+   parity of the independent CMSIS/LL application is assessed.
+
+## Build and flash tooling
+
+- [x] Add a checkout-aware CLI that builds/verifies the full Mbed or CMSIS/LL image and records a SHA256 manifest.
+- [x] Chain build-to-flash only after successful build/image checks; keep mandatory matching backups and readback verification.
+- [x] Add dry-run, explicit dependency setup, toolchain/build-directory selection, and documented CLI usage.
+- [x] Pass nine build-helper and seven offline flash-helper tests, including stale binaries, incompatible caches and verification failures; build and verify both firmware images through the CLI.
+- [ ] Exercise the complete CLI flash sequence on the connected radio and confirm physical startup, RX and settings preservation.
