@@ -1,7 +1,7 @@
 #include "bsp_board.h"
 #include "bsp_board_io.h"
 
-void gpio_init()
+void gpio_init(void)
 {
       // GPIO enable clock and release Reset ,外部中断 辅助时钟必须打开
   RCC_APB2PeriphResetCmd(  RCC_APB2Periph_GPIOA, DISABLE);
@@ -24,7 +24,7 @@ void gpio_init()
   RCC_APB2PeriphClockCmd(  RCC_APB2Periph_GPIOE, ENABLE);
 }
 
-void power_key_init()
+void power_key_init(void)
 {
   // 34脚-PC5  电源控制脚 通电为高电平， 断电为低电平
   GPIO_InitTypeDef GPIO_InitStructure;
@@ -47,39 +47,39 @@ void power_key_init()
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 }
 
-void voice_control_stop()
+void voice_control_stop(void)
 {
   GPIO_SetBits(GPIOE, GPIO_Pin_15);  
 }
 
-void voice_control_start()
+void voice_control_start(void)
 {
   GPIO_ResetBits(GPIOE, GPIO_Pin_15);
 }
 
-void power_high_on()
+void power_high_on(void)
 {
   GPIO_SetBits(GPIOB, GPIO_Pin_10);  
 }
 
-void power_high_off()
+void power_high_off(void)
 {
   GPIO_ResetBits(GPIOB, GPIO_Pin_10);
 }
 
-void power_on()
+void power_on(void)
 {
   GPIO_SetBits(GPIOC, GPIO_Pin_5);  
 }
 
-void power_off()
+void power_off(void)
 {
   GPIO_ResetBits(GPIOC, GPIO_Pin_5); 
 }
 
 #define POWER_ON_WAIT_COUNT 3000000
 
-void WaitForPowerOn()
+void WaitForPowerOn(void)
 {
   GPIO_InitTypeDef GPIO_InitStructure;
   //先把电源按钮引脚设置为输入，90脚-PB4
