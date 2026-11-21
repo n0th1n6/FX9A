@@ -24,6 +24,7 @@
 #include "bsp_usart.h"
 #include "radio_cat.h"
 #include "radio_controls.h"
+#include "radio_board_io.h"
 
 
 
