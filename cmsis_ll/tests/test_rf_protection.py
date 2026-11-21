@@ -7,7 +7,8 @@ import subprocess
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-board = (root / "cmsis_ll/app/bsp_board.c").read_text(encoding="latin1")
+board = "\n".join((root / "cmsis_ll/app" / path).read_text(encoding="latin1")
+                  for path in ("bsp_board.c", "radio_ui.c"))
 header = (root / "RadioStation/BSP/bsp_board.h").read_text(encoding="latin1")
 
 
@@ -145,8 +146,11 @@ static void oled_swr_grid(uint8_t grid) { displayed_swr = grid; }
 static void oled_tune_result(uint8_t visible, uint8_t valid)
 { result_marker = visible; result_valid = valid; }
 static void oled_txrx_clear_grid(void) { displayed_swr = 0; ++meter_clears; }
+static bool RadioRF_HasSample(void) { return tune_swr_sampled; }
+static uint16_t RadioRF_LastSample(void) { return tune_last_swr_adc; }
 ''' + '\n'.join(function(name) for name in (
     "MODE_Refresh", "SWR_DisplayGrid", "Tune_ResultDraw", "Tune_ResultExpire",
+    "RadioUI_TuneStarting", "RadioUI_TuneStopped",
     "Tune_IsActive", "Tune_Start", "Tune_Stop", "Tune_Task", "swr_trip_level",
     "RF_SwrSampleISR", "RF_SwrService", "RF_Tx", "RF_Rx", "RF_ToRx",
     "RF_ToTx")) + r'''
