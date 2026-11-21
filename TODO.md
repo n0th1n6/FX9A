@@ -7,6 +7,8 @@ Status audited against the source and regression checks on 2026-11-21.
 - `master` retains Mbed CE and now includes the application feature backport.
 - `cmsis-ll-port` contains the independent CMSIS-Core / STM32 LL firmware.
   Migration checkboxes below refer to that branch, not removal of Mbed from master.
+- `bsp-io-separation` stages the additional Mbed BSP extraction and CI changes;
+  these are not merged into either reference branch.
 
 Hardware checks remain separate from software completion. Earlier firmware
 startup checks do not validate the latest backport, RF timing, or calibration.
@@ -290,6 +292,26 @@ The Mbed board file now contains hardware bring-up and the main-loop scheduler. 
 - [ ] Verify physical behavior after the refactoring/backport.
 - [x] Keep host regression tests around every extracted subsystem.
 
+### BSP interface cleanup and standalone integration
+
+Current working branch: `bsp-io-separation`. The GPIO extraction and CI
+configuration are committed; successful CI execution and hardware behavior
+have not yet been verified.
+
+- [x] Move GPIO initialization, power hold, voice control, H/L selection and the legacy power-button wait helper into `bsp_board_io.c`.
+- [x] Register the extracted source in CMake and declare explicit GPIO startup/control prototypes while preserving the Mbed symbol remap.
+- [x] Configure GitHub Actions to run the existing host feature regressions.
+- [x] Configure independent ARM GCC Release builds for `2016_03` and `ORIGINAL`, including existing post-link image verification.
+- [x] Document the new GPIO ownership and validation gates in `MBED_PORT.md`.
+- [ ] Confirm passing host regression and both ARM build jobs; investigate and fix any failures before merging.
+- [ ] Separate application data types, constants and persisted record definitions from `bsp_board.h` into platform-neutral headers; retain enum widths, packing, offsets and EEPROM ABI checks.
+- [ ] Move public RF/TUNE, VFO, controls, state and UI declarations into their respective module headers; update callers and retain compatibility only where required.
+- [ ] Remove unnecessary transitive includes and hardware dependencies from application modules; keep STM32-specific headers in peripheral implementations.
+- [ ] Apply equivalent application module boundaries to `cmsis-ll-port` without importing Mbed/StdPeriph code; preserve native LL drivers, TIM4 keyer ownership and existing ISR safety contracts.
+- [ ] Gradually replace direct access to legacy shared globals with module-owned state and narrow accessors; explicitly review ISR/main-loop synchronization and RF behavior.
+- [ ] Add or extend linked production-module tests for each extraction; rerun host regressions, EEPROM layout checks and firmware/image verification on both branches.
+- [ ] Review and merge validated BSP changes into the appropriate branches, retaining the Mbed reference until standalone hardware parity is demonstrated.
+
 ## Existing work to preserve
 
 The current fork already includes several important improvements that should remain protected by regression tests:
@@ -304,17 +326,19 @@ The current fork already includes several important improvements that should rem
 
 ## Remaining work
 
-1. Validate the latest Mbed backport and standalone changes on the radio: GPIO,
+1. Complete the Priority 7 BSP validation gate and interface cleanup before
+   merging or flashing the working branch. Confirm host tests and both ARM builds.
+2. Validate the latest Mbed backport and standalone changes on the radio: GPIO,
    encoder feel, OLED restoration, audio, EEPROM persistence and CAT operation.
-2. Measure DDS settling, TX/RX sequencing and SWR cutoff timing, then establish
+3. Measure DDS settling, TX/RX sequencing and SWR cutoff timing, then establish
    TUNE thresholds with controlled dummy-load/mismatch tests.
-3. Identify the fitted filter-board revision and verify both supported maps on
+4. Identify the fitted filter-board revision and verify both supported maps on
    their respective hardware; document identification before adding a selector.
-4. Complete the remaining CAT response audit and broader interoperability and
+5. Complete the remaining CAT response audit and broader interoperability and
    recovery tests.
-5. Decide how to add version/integrity protection for legacy settings; the
+6. Decide how to add version/integrity protection for legacy settings; the
    calibration record already has its own version and CRC. Improve end-to-end
    error reporting from EEPROM save/read wrappers as part of that work.
-6. Apply the module split to the standalone branch and gradually narrow legacy
+7. Apply the module split to the standalone branch and gradually narrow legacy
    shared-state access with regression coverage. Retire Mbed/legacy compatibility
    only after hardware feature parity.
