@@ -1165,7 +1165,7 @@ void oled_swr_grid(uint8_t num)
       }
     }
   }
-  else if(num > rx_grid_old)  // 格子增多
+  else if(num > swr_grid_old)  // 格子增多
   {
     for(uint8_t i=swr_grid_old; i<=num; i++)
     {
