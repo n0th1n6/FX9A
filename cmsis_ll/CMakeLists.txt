@@ -92,6 +92,7 @@ if(FX9A_BUILD_FULL)
         app/bsp_key.c
         app/bsp_board.c
         app/frequency_state.c
+        app/radio_state.c
         app/radio_cat.c
         app/radio_synth.c
         app/i2c.c
