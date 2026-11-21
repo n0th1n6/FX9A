@@ -70,6 +70,7 @@ void RF_ToTx(void);
 void RF_ToRx(void);
 void Tune_Stop(void);
 bool Tune_IsActive(void);
+bool RF_IsTx(void);
 
 static void deliver_irq(void)
 {
