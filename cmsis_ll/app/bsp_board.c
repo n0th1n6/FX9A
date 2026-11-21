@@ -266,6 +266,9 @@ static volatile uint16_t tune_last_swr_adc;
 
 
 
+bool RadioRF_HasSample(void) { return tune_swr_sampled; }
+uint16_t RadioRF_LastSample(void) { return tune_last_swr_adc; }
+
 bool Tune_IsActive(void)
 {
   return tune_active;
