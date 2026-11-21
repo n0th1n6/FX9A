@@ -43,6 +43,8 @@ jobs:
         run: |
           python3 cmsis_ll/tests/verify_boot_image.py build-cmsis-ll/fx9a_boot.bin
           python3 cmsis_ll/tests/verify_boot_image.py build-cmsis-ll/fx9a_full.bin
+      - name: Enforce split native application module ownership
+        run: python3 cmsis_ll/tests/test_bsp_split.py
       - name: Verify full application symbols and driver independence
         run: |
           python3 cmsis_ll/tests/verify_full_image.py \
