@@ -29,6 +29,7 @@ set(FX9A_BSP_SOURCES
     RadioStation/BSP/bsp_adc.c
     RadioStation/BSP/bsp_baud.c
     RadioStation/BSP/bsp_board.c
+    RadioStation/BSP/bsp_board_io.c
     RadioStation/BSP/radio_state.c
     RadioStation/BSP/radio_vfo.c
     RadioStation/BSP/radio_rf.c
