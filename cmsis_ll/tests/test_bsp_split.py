@@ -33,8 +33,8 @@ for filename, names in ownership.items():
     assert f"app/{filename}" in CMAKE, f"Module not compiled: {filename}"
     for name in names:
         regex = re.compile(
-            r"(?m)^(?:static\\s+)?(?:void|bool|uint8_t|uint16_t|uint32_t|int32_t)"
-            r"\\s+" + re.escape(name) + r"\\s*\\([^;]*?\\)\\s*\\{"
+            r"(?m)^(?:static\s+)?(?:void|bool|uint8_t|uint16_t|uint32_t|int32_t)"
+            r"\s+" + re.escape(name) + r"\s*\([^;]*?\)\s*\{"
         )
         found = [p for p, text in sources.items() if regex.search(text)]
         assert found == [filename], f"{name} ownership mismatch: {found}"
