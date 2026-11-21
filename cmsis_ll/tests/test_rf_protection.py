@@ -154,7 +154,7 @@ static uint16_t RadioRF_LastSample(void) { return tune_last_swr_adc; }
     "RadioUI_TuneStarting", "RadioUI_TuneStopped",
     "Tune_IsActive", "Tune_Start", "Tune_Stop", "Tune_Task", "swr_trip_level",
     "RF_SwrSampleISR", "RF_SwrService", "RF_Tx", "RF_Rx", "RF_ToRx",
-    "RF_ToTx")) + r'''
+    "RF_ToTx", "RF_IsTx")) + r'''
 static void reset(unsigned mode)
 {
     RADIO.mode = mode;
