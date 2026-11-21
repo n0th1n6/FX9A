@@ -384,10 +384,11 @@ void RadioControls_Task(void)
       {
         if (isRun)
         {
+          if (!RadioState_Save()) {
+            oled_ts((uint8_t *)"ERR");
+            break; /* Keep power held so the operator can retry/recover. */
+          }
           isRun = false;
-
-
-          RadioState_Save();
           oled_display_off();
           delay_ms(100);
 

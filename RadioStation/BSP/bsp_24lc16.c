@@ -98,6 +98,7 @@ bool e2p_write(uint16_t addr, uint8_t *data, uint16_t len)
    * Respect the 24LC16's eight-byte page boundaries, including unaligned
    * callers, and avoid 8-bit page-loop counter wraparound.
    */
+  if ((len && !data) || addr > 2048u || len > 2048u - addr) return false;
   uint16_t offset = 0;
   while (offset < len)
   {
@@ -146,6 +147,7 @@ uint8_t e2p_read_byte(uint16_t addr)
 
 bool e2p_read(uint16_t addr, uint8_t *rdata, uint16_t len)
 {
+      if ((len && !rdata) || addr > 2048u || len > 2048u - addr) return false;
       if (len == 0) return true;
       uint8_t ccode;
       uint8_t wordh;

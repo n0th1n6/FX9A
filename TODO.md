@@ -125,20 +125,25 @@ change is included.
 - [x] Add malformed-command handling and optional diagnostic/error counters.
 
 ### CAT protocol correctness
-- [ ] Initialize all fields in CAT responses before transmission.
-- [x] Fix `IF` response RIT/XIT field so inactive RIT/XIT returns a defined value such as `00000` rather than uninitialized stack data.
+- [x] Initialize all fields in CAT responses before transmission.
+- [x] Fix `IF` response RIT/XIT field so inactive RIT/XIT returns a defined signed Hz value (`+0000` when inactive) rather than uninitialized stack data.
 - [x] Correct AF gain scaling:
   - CAT 0–255 -> internal volume 0–60.
   - Internal volume 0–60 -> CAT 0–255.
-- [ ] Review the rest of the Kenwood command implementation for incomplete or inconsistent responses.
+- [x] Review the rest of the Kenwood command implementation for incomplete or inconsistent responses.
 - [x] Add host-side CAT regression tests for framing, gain/status responses and deferred dispatch; broader interoperability remains open.
+
+- [ ] Verify CAT interoperability with the connected radio and the operator's control software; unsupported features retain fixed compatibility replies.
 
 ### EEPROM / 24LC16 reliability
 - [x] Make multi-page EEPROM writes fail immediately if any page write fails.
 - [x] Preserve the first error rather than allowing a later successful page write to make the overall operation appear successful.
 - [x] Ensure I2C STOP / bus recovery is performed on NACK/error paths.
-- [ ] Consider adding a configuration version and CRC/checksum in unused EEPROM space while retaining compatibility with existing FX-9A EEPROM layouts.
+- [x] Consider adding a configuration version and CRC/checksum in unused EEPROM space while retaining compatibility with existing FX-9A EEPROM layouts.
 - [x] Validate saved settings before applying them.
+- [x] Verify shutdown writes/readback, detect incomplete saves and propagate errors to the power-button handler; preserve unreadable/corrupt EEPROM at boot.
+- [x] Add version 1 settings metadata with CRC32 at EEPROM 1152; preserve legacy offsets and keep calibration separate.
+- [ ] Check actual EEPROM shutdown duration, error display and recovery on the radio. See `SETTINGS_AND_CAT.md`.
 
 ## Priority 2 — RF behavior
 
@@ -183,7 +188,7 @@ A dedicated low-power TUNE state drives an external automatic antenna tuner. Lon
 - [x] Auto-complete tuning when SWR remains below a target threshold for a defined settling period (for example a few hundred milliseconds).
 - [x] Add a hard maximum tune timeout so carrier generation can never continue indefinitely.
 - [x] Stop TUNE on front-panel cancel/PTT/power-off requests and on completion, severe protection or timeout.
-- [ ] Audit cancellation/interlocks for the remaining conflicting CAT/control actions.
+- [x] Audit cancellation/interlocks for the remaining conflicting CAT/control actions.
 - [x] On TUNE exit:
   1. Remove CW carrier/keying.
   2. Return safely to RX.
@@ -281,10 +286,10 @@ The Mbed board file now contains hardware bring-up and the main-loop scheduler. 
 
 - [x] Extract focused policy helpers and the meter-calibration module while retaining the existing application structure.
 - [x] Extract DDS math, filter mapping, tuning policy, TUNE logic, optional VFO acceleration, saved-setting validation, CAT frame validation, and meter calibration into separate helpers/modules.
-- [x] Separate radio state/settings (`radio_state.c`), VFO/memory persistence (`radio_vfo.c`), RF/TUNE sequencing (`radio_rf.c`), UI refresh (`radio_ui.c`), front-panel actions (`radio_controls.c`) and CAT servicing (`radio_cat.c`) from `bsp_board.c` on master.
+- [x] Separate radio state/settings (`radio_state.c`), VFO/memory state (`radio_vfo.c`), verified persistence (`settings_store.c`), RF/TUNE sequencing (`radio_rf.c`), UI refresh (`radio_ui.c`), front-panel actions (`radio_controls.c`) and CAT servicing (`radio_cat.c`) from `bsp_board.c` on master.
 - [x] Keep RF/ISR state private and hand a frozen final TUNE sample to UI-owned display state; retain main-loop-only OLED work.
-- [x] Link the production state/VFO/CAT modules in host tests to check shutdown/reset save order, RAM-only edits, reload and CAT-before-DMA dispatch.
-- [ ] Apply the corresponding module extraction to `cmsis-ll-port`; its hardware-facing application is still separate.
+- [x] Link production state/VFO/settings/CAT modules in host tests to check RAM-only edits, legacy reload, CRC, interrupted saves, I/O failures and CAT-before-DMA dispatch.
+- [x] Apply the corresponding module extraction to `cmsis-ll-port` while retaining its native hardware drivers.
 - [ ] Reduce remaining cross-module access to legacy shared globals in a later behavior-reviewed change.
 - [x] Preserve the legacy EEPROM record sizes/offsets with compile-time assertions and regression tests.
 - [ ] Verify physical behavior after the refactoring/backport.

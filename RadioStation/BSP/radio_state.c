@@ -1,6 +1,7 @@
 #include "radio_state.h"
 #include "radio_vfo.h"
 #include "settings_validation.h"
+#include "settings_store.h"
 #include "bsp_24lc16.h"
 #include "bsp_iambic_keyer.h"
 
@@ -57,9 +58,12 @@ void RX_AlignmentInit(void)
   }
 }
 
-void RadioState_ResetDefaults(void)
+static bool settings_write_allowed = true;
+
+static void defaults_in_ram(void)
 {
-  e2p_save_write(0x5a);
+  memset(&MENU, 0, sizeof MENU);
+  FIL.func = W; ATT.val = 0;
 
     MENU.rxUsbOffset = 0;
     MENU.rxLsbOffset = 0;
@@ -94,12 +98,19 @@ void RadioState_ResetDefaults(void)
     }
 
     VOL.val = 2;
-    RadioVFO_Persist(true);
-    e2p_fil_write(FIL.func);
-    e2p_vol_write(VOL.val);
-    e2p_att_write(ATT.val);
-    e2p_pwm_write(WPM.val);
-    e2p_menu_write(&MENU);
+
+}
+
+bool RadioState_Save(void)
+{
+  return settings_write_allowed && Settings_Save();
+}
+
+void RadioState_ResetDefaults(void)
+{
+  defaults_in_ram();
+  settings_write_allowed = true;
+  (void)RadioState_Save();
 }
 
 static void sanitize_saved_settings(void)
@@ -127,6 +138,8 @@ static void sanitize_saved_settings(void)
     MEM[i].baud = fx9a_saved_band(MEM[i].baud, SIZE_OF_BAUD, 3u);
     if (!fx9a_mode_valid(MEM[i].mode)) MEM[i].mode = USB;
   }
+  if (VFO.RIT < LOWER_OF_RIT || VFO.RIT > UPPER_OF_RIT) VFO.RIT = 0;
+  if (VFO.XIT < LOWER_OF_XIT || VFO.XIT > UPPER_OF_XIT) VFO.XIT = 0;
   if (FIL.func != W && FIL.func != N) FIL.func = W;
   VOL.val = fx9a_saved_volume(VOL.val);
   WPM.val = fx9a_saved_wpm(WPM.val);
@@ -146,23 +159,12 @@ static void sanitize_saved_settings(void)
 
 void RadioState_Load(void)
 {
-  //e2p_save_write(0x11);
-
-  if( e2p_save_read() == 0x5a)
-  {
-    e2p_mem_read(0, MEM, 100);
-    VFO = e2p_vfo_read();
-    FIL.func = e2p_fil_read();
-    VOL.val = e2p_vol_read();
-    ATT.val = e2p_att_read();
-    WPM.val = e2p_pwm_read();
-    MENU = e2p_menu_read();
+  SettingsResult result = Settings_Load();
+  settings_write_allowed = result != SETTINGS_CORRUPT && result != SETTINGS_IO_ERROR;
+  if (result == SETTINGS_VALID || result == SETTINGS_LEGACY)
     sanitize_saved_settings();
-  }
-  else  // 保存默认配置
-  {
-    RadioState_ResetDefaults();
-  }
+  else
+    defaults_in_ram(); /* Never overwrite unreadable or corrupt EEPROM at boot. */
   RX_AlignmentInit();
   CWFilter.func = FIL.func;
 
@@ -174,14 +176,4 @@ void RadioState_Load(void)
 
   // 全部刷新
   DRMgr.item |= ALLItem;
-}
-
-void RadioState_Save(void)
-{
-  RadioVFO_Persist(false);
-  e2p_fil_write(FIL.func);
-  e2p_vol_write(VOL.val);
-  e2p_att_write(ATT.val);
-  e2p_pwm_write(WPM.val);
-  e2p_menu_write(&MENU);
 }

@@ -49,7 +49,20 @@ static uint8_t e2p_vol_read(void) { return stored_vol; }
 static uint8_t e2p_fil_read(void) { return stored_fil; }
 static uint8_t e2p_att_read(void) { return stored_att; }
 static uint8_t e2p_pwm_read(void) { return stored_wpm; }
-static void RadioState_ResetDefaults(void) { ++defaults; }
+#define LOWER_OF_RIT -9990
+#define UPPER_OF_RIT 9990
+#define LOWER_OF_XIT -9990
+#define UPPER_OF_XIT 9990
+static bool settings_write_allowed;
+enum { SETTINGS_VALID, SETTINGS_LEGACY, SETTINGS_EMPTY, SETTINGS_CORRUPT, SETTINGS_IO_ERROR };
+typedef unsigned SettingsResult;
+static void defaults_in_ram(void) { ++defaults; }
+static SettingsResult Settings_Load(void) {
+    if (e2p_save_read() != 0x5a) return SETTINGS_EMPTY;
+    e2p_mem_read(0, MEM, 100); VFO = e2p_vfo_read();
+    FIL.func = e2p_fil_read(); VOL.val = e2p_vol_read(); ATT.val = e2p_att_read();
+    WPM.val = e2p_pwm_read(); MENU = e2p_menu_read(); return SETTINGS_LEGACY;
+}
 ''' + '\n'.join(function(board, n) for n in ('sanitize_saved_settings',
     'RX_AlignmentInit', 'VFO_Get', 'RadioState_Load')) + r'''
 int main(void) {

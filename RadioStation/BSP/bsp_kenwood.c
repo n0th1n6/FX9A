@@ -8,6 +8,8 @@
 #include "bsp_iambic_keyer.h"
 #include "bsp_key.h"
 #include "cat_validation.h"
+#include "bsp_frequency.h"
+#include "tuning_policy.h"
 
 /**
  * itoa() 将整型值转换为字符串
@@ -17,15 +19,11 @@
 uint32_t StringToDec(uint8_t *pBuf, uint8_t len)
 {
   uint32_t result = 0;
-  uint8_t i;
-  
-  for(i=0; i<len-1; i++)
-  {
-    result += (pBuf[i] - 0x30); 
-    result *= 10;
+  for (uint8_t i = 0; i < len; ++i) {
+    if (pBuf[i] < '0' || pBuf[i] > '9' ||
+        result > (UINT32_MAX - (pBuf[i] - '0')) / 10u) return UINT32_MAX;
+    result = result * 10u + (pBuf[i] - '0');
   }
-  result += (pBuf[len-1] - 0x30);;
-  
   return result;
 }
 
@@ -76,24 +74,16 @@ void Myitoa(int32_t n, uint8_t str[])
 
 void Kenwood_BaudSet(uint8_t baud)
 {
-  if ( RF_IsTx() || !(FREQ.item & MEMItem) || AIMgr.item & MEMSETItem)
+  if (baud >= SIZE_OF_BAUD || RF_IsTx() || (FREQ.item & MEMItem) || AIMgr.item)
   {
     return;
   }
-  FREQ.numOfbaud = baud;   
-  
-  if( AIMgr.item & MEMSETItem)
-  {
-    FREQ.val = BAUD[FREQ.numOfbaud][1];
-    DRMgr.item |= MEMSETItem;
-  }
-  else
-  {
-    VFO_Get();
-    DRMgr.item |= FREQItem;
-    DRMgr.item |= RADIOItem; 
-    DRMgr.item |= FILItem;
-  }
+  if (FREQ.item & VFOItem) VFO_Save();
+  FREQ.numOfbaud = baud;
+  if (FREQ.item & VFOBItem) VFO.CurrBaudOfVfoB = baud;
+  else VFO.CurrBaudOfVfoA = baud;
+  VFO_Get();
+  DRMgr.item |= FREQItem | RADIOItem | FILItem;
 }
 
 void Kenwood_BuildTransceiverStatus()
@@ -122,7 +112,11 @@ void Kenwood_BuildTransceiverStatus()
   // P3 RIT/XIT frequency: always initialize all five digits.
   int32_t shift = (FREQ.item & XITItem) ? VFO.XIT :
                   (FREQ.item & RITItem) ? VFO.RIT : 0;
-  DecToString(&buf[len], 5, shift);
+  int64_t hz = (int64_t)shift * 10;
+  if (hz > 9990) hz = 9990;
+  if (hz < -9990) hz = -9990;
+  buf[len] = hz < 0 ? '-' : '+';
+  DecToString(&buf[len+1], 4, (int32_t)(hz < 0 ? -hz : hz));
   len += 5;
   
   // P4 RIT 0:OFF / 1:ON
@@ -142,7 +136,7 @@ void Kenwood_BuildTransceiverStatus()
     buf[len ++] = '0';
   
   // P6 P7 Memory channel number
-  buf[len ++] = '1';
+  buf[len ++] = ' ';
   buf[len ++] = (FREQ.numOfmem % 100 / 10) + 0x30;
   buf[len ++] = (FREQ.numOfmem % 10) + 0x30;
   
@@ -221,7 +215,7 @@ void Kenwood_MemoryDataAnswer()
   buf[len ++] = '0';
   
   // P2 P3 Channel number (refer to the MC command)
-  buf[len ++] = '1';
+  buf[len ++] = ' ';
   buf[len ++] = (FREQ.numOfmem % 100 / 10) + 0x30;
   buf[len ++] = (FREQ.numOfmem % 10) + 0x30;
   
@@ -303,6 +297,7 @@ void Kenwood_VMSwithced(FREQ_ItemDef item)
     return;
   }
   
+  if (FREQ.item & VFOItem) VFO_Save();
   if (item & VFOAItem)
   {
     FREQ.item &= ~MEMItem;
@@ -360,7 +355,8 @@ void Kenwood_VMAnswer()
 
 bool Kenwood_ModeSwithced(RADIO_ModeDef mode)
 {
-  if ((AIMgr.item & MENUSETItem) || RF_IsTx())
+  if ((AIMgr.item & MENUSETItem) || RF_IsTx() ||
+      (mode != LSB && mode != USB && mode != CW))
   {
     return false;
   }
@@ -406,7 +402,8 @@ void Kenwood_RITSetDown(int32_t val)
   
   if( FREQ.item & RITItem )
   {
-    VFO.RIT -= val;
+    int64_t offset = (int64_t)VFO.RIT - val / 10;
+    VFO.RIT = offset > 999 ? 999 : offset < -999 ? -999 : (int32_t)offset;
     DRMgr.item |= FREQItem;
   }
 }
@@ -421,7 +418,8 @@ void Kenwood_RITSetUp(int32_t val)
   
   if( FREQ.item & RITItem )
   {
-    VFO.RIT += val;
+    int64_t offset = (int64_t)VFO.RIT + val / 10;
+    VFO.RIT = offset > 999 ? 999 : offset < -999 ? -999 : (int32_t)offset;
     DRMgr.item |= FREQItem;
   }
 }
@@ -436,7 +434,8 @@ void Kenwood_XITSetDown(int32_t val)
   
   if( FREQ.item & XITItem )
   {
-    VFO.XIT -= val;
+    int64_t offset = (int64_t)VFO.XIT - val / 10;
+    VFO.XIT = offset > 999 ? 999 : offset < -999 ? -999 : (int32_t)offset;
     DRMgr.item |= FREQItem;
   }
 }
@@ -451,29 +450,19 @@ void Kenwood_XITSetUp(int32_t val)
   
   if( FREQ.item & XITItem )
   {
-    VFO.XIT += val;
+    int64_t offset = (int64_t)VFO.XIT + val / 10;
+    VFO.XIT = offset > 999 ? 999 : offset < -999 ? -999 : (int32_t)offset;
     DRMgr.item |= FREQItem;
   }
 }
 
 void Kenwodd_MemSet(uint8_t mem)
 {
-  if ((AIMgr.item & MENUSETItem) || (FREQ.item & MEMItem))
-  {
-    FREQ.numOfmem = mem; 
+  if (mem >= SIZE_OF_MEM || RF_IsTx() || AIMgr.item) return;
+  FREQ.numOfmem = mem;
+  if (FREQ.item & MEMItem) {
     MEM_Get();
-    
-    if(AIMgr.item == MEMSETItem)
-    {
-      DRMgr.item |= MEMSETItem; 
-      DRMgr.item |= RADIOItem;
-    }
-    else
-    {
-      DRMgr.item |= FREQItem;
-      DRMgr.item |= RADIOItem;
-    }
-    DRMgr.item |= FILItem;
+    DRMgr.item |= FREQItem | RADIOItem | FILItem;
   }
 }
 
@@ -487,7 +476,8 @@ void Kenwood_VFOAAnswer()
   buf[ len++ ] = '0';
   buf[ len++ ] = '0';
   buf[ len++ ] = '0';
-  DecToString(&buf[len], 7, (int32_t)VFO.VFOA[FREQ.numOfbaud].freq);
+  DecToString(&buf[len], 7, (int32_t)(((FREQ.item & VFOItem) && (FREQ.item & VFOAItem)) ?
+              FREQ.val : VFO.VFOA[VFO.CurrBaudOfVfoA].freq));
   len += 7;    
   buf[ len++ ] = '0';
   buf[ len++ ] = ';';
@@ -504,7 +494,8 @@ void Kenwood_VFOBAnswer()
   buf[ len++ ] = '0';
   buf[ len++ ] = '0';
   buf[ len++ ] = '0';
-  DecToString(&buf[len], 7, (int32_t)VFO.VFOB[FREQ.numOfbaud].freq);
+  DecToString(&buf[len], 7, (int32_t)(((FREQ.item & VFOItem) && (FREQ.item & VFOBItem)) ?
+              FREQ.val : VFO.VFOB[VFO.CurrBaudOfVfoB].freq));
   len += 7;    
   buf[ len++ ] = '0';
   buf[ len++ ] = ';';
@@ -521,6 +512,40 @@ bool Kenwood_VFOSet(int32_t freq)
 
   DRMgr.item |= FREQItem;
   return true;
+}
+
+/* Change the addressed VFO without retuning a different active VFO. */
+static bool set_addressed_vfo(bool b, uint32_t frequency)
+{
+  if (RF_IsTx() || AIMgr.item) return false;
+  bool active = (FREQ.item & VFOItem) && (FREQ.item & (b ? VFOBItem : VFOAItem));
+  uint8_t selected = active ? FREQ.numOfbaud :
+                     b ? VFO.CurrBaudOfVfoB : VFO.CurrBaudOfVfoA;
+  if (!fx9a_tuning_allowed(ContinuousTuning_Enabled(), selected, frequency,
+                           BAUD, SIZE_OF_BAUD)) return false;
+  if (active) {
+    if (!Kenwood_VFOSet((int32_t)frequency)) return false;
+    VFO_Save();
+  } else {
+    uint8_t band = frequency_band(frequency, BAUD, SIZE_OF_BAUD);
+    VFO_SaveInfo *entry = b ? &VFO.VFOB[band] : &VFO.VFOA[band];
+    entry->freq = frequency;
+    if (b) VFO.CurrBaudOfVfoB = band; else VFO.CurrBaudOfVfoA = band;
+  }
+  return true;
+}
+static bool cat_mutates(const uint8_t *p, uint8_t len)
+{
+  uint16_t command = (uint16_t)p[0] << 8 | p[1];
+  switch (command) {
+  case ('R' << 8) | 'C': case ('R' << 8) | 'D': case ('R' << 8) | 'U':
+  case ('T' << 8) | 'X': return true;
+  case ('F' << 8) | 'A': case ('F' << 8) | 'B': case ('F' << 8) | 'R':
+  case ('M' << 8) | 'C': case ('M' << 8) | 'D': case ('K' << 8) | 'S':
+  case ('A' << 8) | 'G': case ('B' << 8) | 'D': case ('B' << 8) | 'U':
+  case ('R' << 8) | 'T': case ('X' << 8) | 'T': return len > 2;
+  default: return false;
+  }
 }
 
 void Kenwood_AFGainSet(uint8_t vol)
@@ -558,7 +583,7 @@ void Kenwood_MemoryChannelAnswer()
   
   buf[ len++ ] = 'M';
   buf[ len++ ] = 'C';
-  buf[ len++ ] = '1';
+  buf[ len++ ] = ' ';
   DecToString(&buf[len], 2, (int32_t)FREQ.numOfmem);
   len += 2;
   buf[ len++ ] = ';';
@@ -572,7 +597,8 @@ void Kenwood_ModeStauteAnswer()
   
   buf[ len++ ] = 'M';
   buf[ len++ ] = 'D';
-  DecToString(&buf[len], 1, (int32_t)RADIO.mode);
+  DecToString(&buf[len], 1, RADIO.mode == LSB ? 1 :
+              RADIO.mode == USB ? 2 : 3);
   len += 1;
   buf[ len++ ] = ';';
   UartTx(buf, len);
@@ -632,10 +658,16 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
 {
   if (!fx9a_cat_valid_frame(pBuf, len)) {
     ++CatMalformedCount;
+    UartTx((uint8_t *)"?;", 2);
     return;
   }
+  if (pBuf[0] == 'R' && pBuf[1] == 'X') Tune_Stop();
+  if (cat_mutates(pBuf, len)) {
+    if (Tune_IsActive()) { Tune_Stop(); UartTx((uint8_t *)"?;", 2); return; }
+    if (RF_IsTx() || AIMgr.item) { UartTx((uint8_t *)"?;", 2); return; }
+  }
   uint32_t tmp = 0;
-  uint8_t buf[15];
+  uint8_t buf[15] = {0};
   
   // 设置和读取电源开关状态
   if(pBuf[0] == 'P' && pBuf[1] == 'S')
@@ -712,7 +744,7 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
     if( len > 2)
     {
       tmp = StringToDec(&pBuf[2], 11);// Frequency (11 digits in Hz); eg.00014195000 for 14.195 MHz
-      if (Kenwood_VFOSet((tmp / 10)) )
+      if (set_addressed_vfo(false, tmp / 10))
       {
          Kenwood_VFOAAnswer();
       }  
@@ -728,7 +760,7 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
     if( len > 2)
     {
       tmp = StringToDec(&pBuf[2], 11);// Frequency (11 digits in Hz); eg.00014195000 for 14.195 MHz
-      if (Kenwood_VFOSet((tmp / 10)) )
+      if (set_addressed_vfo(true, tmp / 10))
       {
          Kenwood_VFOBAnswer();
       } 
@@ -881,7 +913,7 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
     }
     else
     {
-      UartTx("RA0000", 7);  // 00: ATT OFF
+      UartTx("RA0000;", 7);  // 00: ATT OFF
     }
   }
   else if(pBuf[0] == 'V' && pBuf[1] == 'X')
@@ -1205,7 +1237,8 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
     if( len > 2 )
     {
       tmp = StringToDec(&pBuf[2], 3); // 004 ~ 060 (in steps of 1)
-      WPM.val = tmp;
+      WPM.val = tmp < 4u ? 4u : tmp > 60u ? 60u : tmp;
+      DRMgr.item |= WPMSETItem;
     }
     else
     {
@@ -1241,11 +1274,7 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
     // Converts the entered characters into morse code while keying.
     if( len == 2 )
     {
-      buf[0] = 'K';
-      buf[1] = 'Y';
-      buf[1] = '0'; //0: Character buffer space
-      buf[5] = ';';
-      UartTx(buf, 4);
+      UartTx((uint8_t *)"KY0;", 4);
     }
     else if( len > 3 )
     {
@@ -1258,11 +1287,8 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
     // Sets and reads the Memory Channel number
     if( len > 2 )
     {
-      if( pBuf[1] == '1' )
-      {
-        tmp = StringToDec(&pBuf[2], 2); //00 ~ 99: Two digit channel number
-        Kenwodd_MemSet(tmp);
-      }
+      tmp = StringToDec(&pBuf[len == 5 ? 3 : 2], 2);
+      Kenwodd_MemSet(tmp);
     }
     else
     {
@@ -1275,7 +1301,7 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
     // Sets and reads the operating mode status.
     if( len > 2 )
     {
-      if (Kenwood_ModeSwithced((RADIO_ModeDef)(pBuf[2] - '0' )))
+      if (Kenwood_ModeSwithced(pBuf[2] == '3' ? CW : (RADIO_ModeDef)(pBuf[2] - '0')))
       {
         Kenwood_ModeStauteAnswer();
       }
@@ -1319,11 +1345,8 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
     }
     else
     {
-      buf[0] = 'R';
-      buf[1] = 'D';
-      buf[2] = '1';
-      buf[3] = ';';
-      UartTx(buf, 4);           //BG6RDF
+      Kenwood_RITSetDown(10);
+      Kenwood_XITSetDown(10);
     }
   }
   else if(pBuf[0] == 'R' && pBuf[1] == 'U')
@@ -1339,11 +1362,8 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
     }
     else
     {
-      buf[0] = 'R';
-      buf[1] = 'U';
-      buf[2] = '1';
-      buf[3] = ';';
-      UartTx(buf, 4);           //BG6RDF
+      Kenwood_RITSetUp(10);
+      Kenwood_XITSetUp(10);
     }
   }
   else if(pBuf[0] == 'R' && pBuf[1] == 'T') 
@@ -1428,4 +1448,6 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
     }
   }
   
+  else { UartTx((uint8_t *)"?;", 2); }
+
 }

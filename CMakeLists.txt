@@ -24,6 +24,7 @@ set_source_files_properties(
 
 set(FX9A_BSP_SOURCES
     RadioStation/BSP/bsp_24lc16.c
+    RadioStation/BSP/settings_store.c
     RadioStation/BSP/bsp_ad9834.c
     RadioStation/BSP/bsp_ad9951.c
     RadioStation/BSP/bsp_adc.c

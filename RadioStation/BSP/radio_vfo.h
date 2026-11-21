@@ -3,7 +3,6 @@
 #include "bsp_board.h"
 
 void RadioVFO_Init(void);
-/* Save the same legacy records/order as shutdown (false) or reset (true). */
-void RadioVFO_Persist(bool all_memories);
+/* Persistence belongs to settings_store. */
 
 #endif

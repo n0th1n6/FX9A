@@ -4,7 +4,7 @@
 #include "tuning_policy.h"
 #include "bsp_24lc16.h"
 
-static uint8_t MemSetMaxIndex;
+
 
 void RadioVFO_Init(void)
 {
@@ -109,14 +109,5 @@ void MEM_Save()
   MEM[FREQ.numOfmem].freq = FREQ.val;
   MEM[FREQ.numOfmem].baud = FREQ.numOfbaud;
   MEM[FREQ.numOfmem].mode = RADIO.mode;
-  if( MemSetMaxIndex < FREQ.numOfmem )
-  {
-    MemSetMaxIndex = FREQ.numOfmem;
-  }
-}
 
-void RadioVFO_Persist(bool all_memories)
-{
-  e2p_mem_write(0, MEM, all_memories ? SIZE_OF_MEM : MemSetMaxIndex + 1);
-  e2p_vfo_write(&VFO);
 }

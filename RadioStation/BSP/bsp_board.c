@@ -9,6 +9,7 @@
 #include "bsp_key.h"
 #include "bsp_adc.h"
 #include "bsp_oled.h"
+#include "bsp_oled_api.h"
 #include "bsp_baud.h"
 #include "bsp_iambic_keyer.h"
 #include "bsp_24lc16.h"

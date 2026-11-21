@@ -10,7 +10,7 @@ extern FIL_AttrDef FIL;
 extern FIL_AttrDef CWFilter;
 extern bool isRun;
 void RadioState_Load(void);
-void RadioState_Save(void);
+bool RadioState_Save(void);
 void RadioState_ResetDefaults(void);
 void RX_AlignmentInit(void);
 

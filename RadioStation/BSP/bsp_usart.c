@@ -180,6 +180,7 @@ void UartTxBufWrite(unsigned char wdat)
 
 void UartTx(uint8_t *wdat, uint8_t len)
 {
+  if (!wdat || len > UART_TX_BUF_MAX_SIZE - UTBuffer.size) return;
   for(uint8_t i=0; i<len; i++)
   {
     UartTxBufWrite(wdat[i]);  
