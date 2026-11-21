@@ -277,11 +277,15 @@ The RES20D-50-201-1 main VFO encoder is a 50 PPR optical quadrature encoder and 
 ## Priority 7 — Architecture and maintainability
 
 ### Reduce `bsp_board.c` responsibilities
-The current board file combines radio state, UI state, persistence, DDS control, meter conversion, and TX/RX behavior.
+The Mbed board file now contains hardware bring-up and the main-loop scheduler. State/settings, VFO persistence, RF/TUNE sequencing, UI refresh, front-panel actions and CAT servicing are separate translation units with module headers. The legacy shared data structures and EEPROM ABI remain unchanged.
 
 - [x] Extract focused policy helpers and the meter-calibration module while retaining the existing application structure.
 - [x] Extract DDS math, filter mapping, tuning policy, TUNE logic, optional VFO acceleration, saved-setting validation, CAT frame validation, and meter calibration into separate helpers/modules.
-- [ ] Continue separating the remaining radio state, RF sequencing, VFO persistence, UI refresh and CAT command orchestration from `bsp_board.c`.
+- [x] Separate radio state/settings (`radio_state.c`), VFO/memory persistence (`radio_vfo.c`), RF/TUNE sequencing (`radio_rf.c`), UI refresh (`radio_ui.c`), front-panel actions (`radio_controls.c`) and CAT servicing (`radio_cat.c`) from `bsp_board.c` on master.
+- [x] Keep RF/ISR state private and hand a frozen final TUNE sample to UI-owned display state; retain main-loop-only OLED work.
+- [x] Link the production state/VFO/CAT modules in host tests to check shutdown/reset save order, RAM-only edits, reload and CAT-before-DMA dispatch.
+- [ ] Apply the corresponding module extraction to `cmsis-ll-port`; its hardware-facing application is still separate.
+- [ ] Reduce remaining cross-module access to legacy shared globals in a later behavior-reviewed change.
 - [x] Preserve the legacy EEPROM record sizes/offsets with compile-time assertions and regression tests.
 - [ ] Verify physical behavior after the refactoring/backport.
 - [x] Keep host regression tests around every extracted subsystem.
@@ -311,5 +315,6 @@ The current fork already includes several important improvements that should rem
 5. Decide how to add version/integrity protection for legacy settings; the
    calibration record already has its own version and CRC. Improve end-to-end
    error reporting from EEPROM save/read wrappers as part of that work.
-6. Continue extracting responsibilities from `bsp_board.c` with regression
-   coverage. Retire Mbed/legacy compatibility only after hardware feature parity.
+6. Apply the module split to the standalone branch and gradually narrow legacy
+   shared-state access with regression coverage. Retire Mbed/legacy compatibility
+   only after hardware feature parity.

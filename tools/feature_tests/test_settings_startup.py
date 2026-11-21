@@ -49,9 +49,9 @@ static uint8_t e2p_vol_read(void) { return stored_vol; }
 static uint8_t e2p_fil_read(void) { return stored_fil; }
 static uint8_t e2p_att_read(void) { return stored_att; }
 static uint8_t e2p_pwm_read(void) { return stored_wpm; }
-static void ResetToDefault(void) { ++defaults; }
+static void RadioState_ResetDefaults(void) { ++defaults; }
 ''' + '\n'.join(function(board, n) for n in ('sanitize_saved_settings',
-    'RX_AlignmentInit', 'VFO_Get', 'software_init')) + r'''
+    'RX_AlignmentInit', 'VFO_Get', 'RadioState_Load')) + r'''
 int main(void) {
     marker = 0x5a; stored_vol = 60; stored_fil = N; stored_att = 1; stored_wpm = 20;
     for (unsigned b = 0; b < SIZE_OF_BAUD; ++b) {
@@ -65,7 +65,7 @@ int main(void) {
     stored_menu.delay = 8; stored_menu.vswr = 9; stored_menu.freqOfbuzzer = 600;
     stored_menu.ref = 50000000; stored_menu.cwnloOffset = -1130;
     stored_menu.rxAlignmentMagic = RX_ALIGNMENT_MAGIC; stored_menu.null = 0xc0u;
-    software_init();
+    RadioState_Load();
     assert(!defaults && VOL.val == 60 && WPM.val == 20 && FIL.func == N);
     assert(FREQ.val == BAUD[3][1] && RADIO.mode == USB && MENU.null == 0xc0u);
     for (unsigned fill = 0; fill <= 255; ++fill) {
@@ -74,7 +74,7 @@ int main(void) {
         memset(stored_mem, fill, sizeof stored_mem);
         stored_vol = stored_wpm = stored_fil = stored_att = fill;
         MENU_AttrDef original_menu = stored_menu;
-        software_init();
+        RadioState_Load();
         assert(!defaults && VOL.val <= 60 && WPM.val >= 4 && WPM.val <= 60);
         assert(FIL.func == W || FIL.func == N);
         assert(FREQ.numOfbaud < SIZE_OF_BAUD && FREQ.val >= BAUD[0][0] && FREQ.val <= BAUD[9][2]);

@@ -10,7 +10,8 @@ root = Path(__file__).resolve().parents[1]
 tests = root / "tools/feature_tests"
 for script in ("test_frequency.py", "test_encoders.py", "test_rx_alignment.py",
                "feature_tests/test_rf_protection.py", "feature_tests/test_tune_oled.py",
-               "feature_tests/test_eeprom_uart.py", "feature_tests/test_settings_startup.py"):
+               "feature_tests/test_eeprom_uart.py", "feature_tests/test_settings_startup.py",
+               "feature_tests/test_radio_modules.py"):
     subprocess.run([sys.executable, str(root / "tools" / script)], check=True)
 with tempfile.TemporaryDirectory(prefix="fx9a-features-") as directory:
     for source in sorted(tests.glob("*_test.c")):

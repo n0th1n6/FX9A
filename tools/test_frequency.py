@@ -5,10 +5,13 @@ import os
 import re
 import subprocess
 import tempfile
+import sys
+sys.dont_write_bytecode = True
+from radio_sources import load_radio_source
 
 root = Path(__file__).resolve().parents[1]
 bsp = root / "RadioStation/BSP"
-board = (bsp / "bsp_board.c").read_text(encoding="latin1")
+board = load_radio_source(bsp)
 header = (bsp / "bsp_board.h").read_text(encoding="latin1")
 key = (bsp / "bsp_key.c").read_text(encoding="latin1")
 cat = (bsp / "bsp_kenwood.c").read_text(encoding="latin1")

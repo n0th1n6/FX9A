@@ -5,9 +5,13 @@ import os
 import re
 import subprocess
 import tempfile
+import sys
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from radio_sources import load_radio_source
 
 root = Path(__file__).resolve().parents[2]
-board = (root / "RadioStation/BSP/bsp_board.c").read_text(encoding="latin1")
+board = load_radio_source(root / "RadioStation/BSP")
 header = (root / "RadioStation/BSP/bsp_board.h").read_text(encoding="latin1")
 
 
@@ -53,7 +57,8 @@ static TP_LevelDef tune_saved_power;
 static volatile bool tune_active;
 static volatile bool tune_carrier_on, tune_swr_sampled;
 static volatile uint16_t tune_last_swr_adc;
-static bool tune_result_visible;
+static bool tune_result_visible, tune_result_sampled;
+static uint16_t tune_result_adc;
 static uint32_t tune_result_tick, tune_result_frequency;
 #define TUNE_RESULT_TICKS 500u
 static unsigned result_marker, result_valid, displayed_swr, meter_clears;
@@ -69,6 +74,7 @@ void RF_ToTx(void);
 void RF_ToRx(void);
 void Tune_Stop(void);
 bool Tune_IsActive(void);
+bool RF_IsTx(void);
 
 static void deliver_irq(void)
 {
@@ -146,17 +152,18 @@ static void oled_tune_result(uint8_t visible, uint8_t valid)
 { result_marker = visible; result_valid = valid; }
 static void oled_txrx_clear_grid(void) { displayed_swr = 0; ++meter_clears; }
 static unsigned keyer_calls;
-static void key_task(void) {}
-static void board_refresh_manager(void) {}
+static void RadioControls_Task(void) {}
+static void RadioUI_Refresh(void) {}
 static void call_task(void) { ++keyer_calls; }
 static void keyer_manual_task(void) { ++keyer_calls; }
 static void keyer_auto_task(void) { ++keyer_calls; }
-static void UART_Task(void) {}
+static void RadioCAT_Task(void) {}
 ''' + '\n'.join(function(name) for name in (
     "MODE_Refresh", "SWR_DisplayGrid", "Tune_ResultDraw", "Tune_ResultExpire",
+    "RadioUI_TuneStarting", "RadioUI_ShowTune", "RadioUI_TuneStopped", "RadioUI_SwrTrip",
     "Tune_IsActive", "Tune_Start", "Tune_Stop", "Tune_Task", "swr_trip_level",
     "RF_SwrSampleISR", "RF_SwrService", "RF_Tx", "RF_Rx", "RF_ToRx",
-    "RF_ToTx", "board_task")) + r'''
+    "RF_ToTx", "RF_IsTx", "board_task")) + r'''
 static void reset(unsigned mode)
 {
     RADIO.mode = mode;
@@ -171,6 +178,7 @@ static void reset(unsigned mode)
     PttPressed = RfIsTx = tune_active = false;
     tune_carrier_on = tune_swr_sampled = tune_result_visible = false;
     tune_last_swr_adc = tune_result_tick = tune_result_frequency = 0;
+    tune_result_adc = 0; tune_result_sampled = false;
     result_marker = result_valid = displayed_swr = meter_clears = 0;
     hswr_timeout = swr_trip_pending = swr_high_samples = 0;
     fx9a_ticks_10ms = 0;

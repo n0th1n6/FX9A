@@ -187,3 +187,41 @@ DDS and protection timing with RF disabled before controlled dummy-load tests.
 Volume changes still update RAM and the digital volume control immediately;
 EEPROM saving occurs on normal power-button shutdown. Cutting the bench PSU
 skips this save. Per-adjustment EEPROM writes are not part of this backport.
+
+
+## Application module ownership
+
+`bsp_board.c` handles board GPIO setup, hardware bring-up and the main-loop
+schedule. The Mbed application compiles these modules independently:
+
+| Module | Owns |
+| --- | --- |
+| `radio_state.c` | Legacy shared radio data, defaults, settings load/validation and shutdown save |
+| `radio_vfo.c` | VFO/band tuning policy, per-band snapshots, memory recall and VFO/memory EEPROM writes |
+| `radio_rf.c` | Private RX/TX and TUNE state, DDS sequencing, SWR ISR sampling and trip handling |
+| `radio_ui.c` | Display refresh, private redraw caches and held final TUNE result |
+| `radio_controls.c` | Front-panel event handling and menu editing |
+| `radio_cat.c` | Main-loop CAT dispatch followed by queued DMA transmission |
+
+The original public data types and legacy API declarations in `bsp_board.h`
+remain compatible with the peripheral and CAT drivers. Module headers declare
+cross-module operations. GPIO helper declarations live in `bsp_board_io.h`.
+RX/TX latches and ISR sample state are private to `radio_rf.c`; the legacy
+`hswr_timeout` latch remains shared with the keyer. At TUNE exit, the RF module
+passes a frozen sample and validity flag to UI-owned result storage. The ISR
+performs no OLED or EEPROM calls.
+
+Shutdown still saves VFO/memory, filter, volume, attenuation, WPM and menu in
+the original order. Encoder edits stay in RAM until normal power-button
+shutdown. CAT commands still run after the RF/control/UI/keyer tasks and
+before the UART DMA queue is serviced. This source separation changes neither
+the 44-byte menu layout nor the Mbed TIM5 keyer remap.
+
+`python3 tools/test_features.py` includes a host test that links the production
+state, VFO and CAT translation units separately with an in-memory EEPROM and
+mock UART transport. It checks reset/shutdown write order, per-band and memory
+reload, volume persistence, RAM-only edits and CAT/DMA service order. The other
+regressions continue to exercise the moved production functions, including
+injected SWR interrupts and UI result expiry. Physical radio behavior after
+the module split still needs validation. This extraction applies to master;
+the independent LL branch has not been reorganized by this change.
