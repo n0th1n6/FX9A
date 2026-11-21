@@ -13,7 +13,7 @@
 
 #define ADC1_DR_Address    ((uint32_t)0x4001244C)
 
-uint16_t ADC_Value[16];
+volatile uint16_t ADC_Value[16];
 
 void ADC_Config(void)
 {
@@ -79,6 +79,7 @@ void adc_init()
 //  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;  
 //  NVIC_Init(&NVIC_InitStructure);
   
+  RCC_ADCCLKConfig(RCC_PCLK2_Div6); /* 72 MHz / 6 = 12 MHz ADC clock. */
   ADC_Config(); 
   
 //  ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);

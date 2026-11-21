@@ -1,4 +1,9 @@
+#include "cmsis_gcc.h"
 #include "bsp_board.h"
+#include "tune_logic.h"
+#include "tuning_policy.h"
+#include "meter_cal.h"
+#include "settings_validation.h"
 #include "bsp_frequency.h"
 #include "bsp_oled_api.h"
 #include "bsp_key.h"
@@ -44,9 +49,10 @@ uint8_t NumOfMem;
 
 bool isRun = false;
 
-bool RfIsTx = false;
+volatile bool RfIsTx = false;
 
-uint16_t hswr_timeout= 0;
+volatile uint16_t hswr_timeout = 0;
+static volatile uint8_t swr_trip_pending;
 FIL_AttrDef CWFilter; 
 uint8_t MemSetMaxIndex;
 
@@ -190,6 +196,7 @@ void RX_AlignmentInit(void)
       MENU.rxUsbOffset < -RX_ALIGNMENT_LIMIT || MENU.rxUsbOffset > RX_ALIGNMENT_LIMIT ||
       MENU.rxLsbOffset < -RX_ALIGNMENT_LIMIT || MENU.rxLsbOffset > RX_ALIGNMENT_LIMIT)
   {
+    MENU.null = CONT_TUNE_ON;
     MENU.rxUsbOffset = 0;
     MENU.rxLsbOffset = 0;
     MENU.rxAlignmentMagic = RX_ALIGNMENT_MAGIC;
@@ -215,6 +222,14 @@ static void RX_AlignmentAdjust(uint8_t pos, int16_t step)
   if (value < -RX_ALIGNMENT_LIMIT) value = -RX_ALIGNMENT_LIMIT;
   if (pos == RX_USB_MENU) MENU.rxUsbOffset = value;
   else MENU.rxLsbOffset = value;
+}
+
+bool ContinuousTuning_Enabled(void)
+{
+  /* Existing EEPROM images contain an unspecified value in MENU.null.
+   * Only explicit OFF disables the continuous tuning behavior.
+   */
+  return fx9a_continuous_on(MENU.null);
 }
 
 void ResetToDefault()
@@ -263,6 +278,52 @@ void ResetToDefault()
     e2p_menu_write(&MENU);
 }
 
+/* Validate unversioned EEPROM values before they can index band/memory
+ * tables or program synthesizers. Recover in RAM without silently rewriting
+ * the EEPROM; a future version/CRC format can distinguish missing reads.
+ */
+static void sanitize_saved_settings(void)
+{
+  VFO.CurrBaudOfVfoA = fx9a_saved_band(VFO.CurrBaudOfVfoA,
+                                      SIZE_OF_BAUD, 3u);
+  VFO.CurrBaudOfVfoB = fx9a_saved_band(VFO.CurrBaudOfVfoB,
+                                      SIZE_OF_BAUD, 3u);
+  for (uint8_t band = 0; band < SIZE_OF_BAUD; ++band) {
+    VFO_SaveInfo *a = &VFO.VFOA[band];
+    VFO_SaveInfo *b = &VFO.VFOB[band];
+    if (!fx9a_saved_frequency(a->freq, BAUD[0][0],
+                              BAUD[SIZE_OF_BAUD-1u][2]))
+      a->freq = BAUD[band][1];
+    if (!fx9a_saved_frequency(b->freq, BAUD[0][0],
+                              BAUD[SIZE_OF_BAUD-1u][2]))
+      b->freq = BAUD[band][1];
+    if (!fx9a_mode_valid(a->mode)) a->mode = band < 3u ? LSB : USB;
+    if (!fx9a_mode_valid(b->mode)) b->mode = band < 3u ? LSB : USB;
+  }
+  for (uint8_t i = 0; i < SIZE_OF_MEM; ++i) {
+    if (!fx9a_saved_frequency(MEM[i].freq, BAUD[0][0],
+                              BAUD[SIZE_OF_BAUD-1u][2]))
+      MEM[i].freq = BAUD[3][1];
+    MEM[i].baud = fx9a_saved_band(MEM[i].baud, SIZE_OF_BAUD, 3u);
+    if (!fx9a_mode_valid(MEM[i].mode)) MEM[i].mode = USB;
+  }
+  if (FIL.func != W && FIL.func != N) FIL.func = W;
+  VOL.val = fx9a_saved_volume(VOL.val);
+  WPM.val = fx9a_saved_wpm(WPM.val);
+  ATT.val = ATT.val ? 1u : 0u;
+  MENU.vswr = fx9a_saved_swr(MENU.vswr);
+  MENU.delay = fx9a_saved_delay(MENU.delay);
+  if (MENU.cwMode > 1u) MENU.cwMode = AUTO;
+  if (MENU.key > 1u) MENU.key = 0u;
+  if (MENU.freqOfbuzzer < 500u || MENU.freqOfbuzzer > 1200u)
+    MENU.freqOfbuzzer = 600u;
+  if (MENU.ref < 1000000u || MENU.ref > 100000000u)
+    MENU.ref = 50000000u;
+  if (MENU.cwnloOffset > MAX_CWN_LO_OFFSET ||
+      MENU.cwnloOffset < -MAX_CWN_LO_OFFSET)
+    MENU.cwnloOffset = -1130;
+}
+
 void software_init()
 {
   //e2p_save_write(0x11);
@@ -276,6 +337,7 @@ void software_init()
     ATT.val = e2p_att_read();
     WPM.val = e2p_pwm_read();
     MENU = e2p_menu_read();
+    sanitize_saved_settings();
   }
   else  // 保存默认配置
   {
@@ -337,11 +399,12 @@ void board_init()
   e2p_reset();
   
   software_init();
+  MeterCal_Init();
   key_init();           //初始化按钮、编码器和电键的GPIO，初始化GPIO中断和中断向量表，检测手键还是自动键
   
   //如果K4,K6被按下，则恢复到默认值
   uint16_t portValue=GPIO_ReadInputData(GPIOD);
-  if (!(portValue & GPIO_Pin_4) &&  !(portValue & GPIO_Pin_1))  //K4, K6也被按下
+  if (!(portValue & GPIO_BSRR_BS4) &&  !(portValue & GPIO_BSRR_BS1))  //K4, K6也被按下
     ResetToDefault();
 
   oled_init();
@@ -558,11 +621,18 @@ void MENU_SetUp(uint8_t pos)
     if (MENU.cwnloOffset>MAX_CWN_LO_OFFSET)
       MENU.cwnloOffset=MAX_CWN_LO_OFFSET;
     break;
+  case CONT_TUNE_MENU:
+    MENU.null = CONT_TUNE_ON;
+    break;
   case RX_USB_MENU:
   case RX_LSB_MENU:
     RX_AlignmentAdjust(pos, (FREQ.item & TSItem) ? 100 : 10);
     break;
   default:
+    if (pos >= METER_CAL_FIRST && pos <= METER_CAL_LAST) {
+      MeterCal_Adjust(pos, (FREQ.item & TSItem) ? 10 : 1);
+      break;
+    }
     if (pos < 9 || pos >= RX_USB_MENU) break;
     if(MENU.callSign[pos - 9] == MORSE_CODE_COUNT)
     {
@@ -686,11 +756,18 @@ void MENU_SetDown(uint8_t pos)
     if (MENU.cwnloOffset<(-MAX_CWN_LO_OFFSET))
       MENU.cwnloOffset=-MAX_CWN_LO_OFFSET;
     break;
+  case CONT_TUNE_MENU:
+    MENU.null = CONT_TUNE_OFF;
+    break;
   case RX_USB_MENU:
   case RX_LSB_MENU:
     RX_AlignmentAdjust(pos, (FREQ.item & TSItem) ? -100 : -10);
     break;
   default:
+    if (pos >= METER_CAL_FIRST && pos <= METER_CAL_LAST) {
+      MeterCal_Adjust(pos, (FREQ.item & TSItem) ? -10 : -1);
+      break;
+    }
     if (pos < 9 || pos >= RX_USB_MENU) break;
     if(MENU.callSign[pos - 9] == MORSE_CODE_COUNT)      // pos中包含了前面的菜单
     {
@@ -759,8 +836,130 @@ void MENU_Ts(uint8_t pos)
 }
 
 
+extern volatile uint32_t fx9a_ticks_10ms;
+static Fx9aTuneLogic tune_logic;
+static TP_LevelDef tune_saved_power;
+static volatile bool tune_active;
+static volatile bool tune_carrier_on;
+static volatile bool tune_swr_sampled;
+static volatile uint16_t tune_last_swr_adc;
+static bool tune_result_visible;
+static uint32_t tune_result_tick;
+static uint32_t tune_result_frequency;
+#define TUNE_RESULT_TICKS 500u /* Five seconds on the independent 10 ms clock. */
+
+static uint8_t SWR_DisplayGrid(uint16_t adc)
+{
+  if (MeterCal_Active()) return MeterCal_Grid(2u, adc);
+  if (adc > 574u) return 9u;
+  if (adc > 360u) return (uint8_t)(6u + (adc - 360u) / 71u);
+  if (adc > 20u) return (uint8_t)((adc - 20u) / 56u);
+  return 0u;
+}
+
+static void Tune_ResultDraw(void)
+{
+  if (!tune_result_visible) return;
+  oled_tune_result(1u, tune_swr_sampled);
+  if (tune_swr_sampled) oled_swr_grid(SWR_DisplayGrid(tune_last_swr_adc));
+}
+
+static void Tune_ResultExpire(void)
+{
+  if (!tune_result_visible) return;
+  if (isRun && !RfIsTx && !AIMgr.item && FREQ.val == tune_result_frequency &&
+      (uint32_t)(fx9a_ticks_10ms - tune_result_tick) < TUNE_RESULT_TICKS)
+    return;
+  tune_result_visible = false;
+  /* Settings pages redraw their own screen; do not erase their contents. */
+  if (isRun && !AIMgr.item) {
+    oled_tune_result(0u, 0u);
+    oled_txrx_clear_grid();
+    DRMgr.item |= RfIsTx ? (SWRCHKItem | RFCHKItem) : RXCHKItem;
+  }
+}
+
+bool Tune_IsActive(void)
+{
+  return tune_active;
+}
+
+bool Tune_Start(void)
+{
+  if (tune_active || RfIsTx || hswr_timeout || swr_trip_pending ||
+      !isRun || PttPressed || AIMgr.item)
+    return false;
+  /* Physically select LOW power before asserting the transmitter.
+   * Do not change RADIO.mode or the user's displayed RF frequency.
+   */
+  if (tune_result_visible) oled_tune_result(0u, 0u);
+  tune_result_visible = false;
+  tune_swr_sampled = false;
+  tune_last_swr_adc = 0u;
+  tune_carrier_on = false;
+  tune_saved_power = TP.level;
+  TP.level = L;
+  power_high_off();
+  DRMgr.item |= TPItem;
+  fx9a_tune_logic_init(&tune_logic, fx9a_ticks_10ms);
+  tune_active = true;
+  CWT_Off();
+  RF_ToTx();
+  MICControlOff();
+  /* A trip during DDS settling must also inhibit the TUNE carrier. */
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  bool started = RfIsTx && !hswr_timeout && !swr_trip_pending;
+  if (started) {
+    CWT_On(); /* Continuous carrier, never the iambic keyer. */
+    tune_carrier_on = true;
+  }
+  __set_PRIMASK(primask);
+  if (!started || hswr_timeout || swr_trip_pending) {
+    Tune_Stop();
+    return false;
+  }
+  oled_lsb_usb("TUNE");
+  return true;
+}
+
+void Tune_Stop(void)
+{
+  if (!tune_active) return;
+  bool had_carrier = tune_carrier_on;
+  tune_carrier_on = false; /* Freeze the RF-on reading before removing RF. */
+  CWT_Off();
+  MICControlOff();
+  tx_control_off();
+  tune_active = false; /* Restore the ordinary receive DDS calculations. */
+  RF_ToRx();
+  TP.level = tune_saved_power;
+  if (TP.level == L) power_high_off();
+  else power_high_on();
+  /* MODE_Refresh normally skips an unchanged mode, leaving TUNE behind.
+   * Force the original mode label back for every completion/cancel path.
+   */
+  MODE_Refresh(1u);
+  tune_result_visible = had_carrier || tune_swr_sampled;
+  tune_result_tick = fx9a_ticks_10ms;
+  tune_result_frequency = FREQ.val;
+  DRMgr.item |= TPItem | RADIOItem | TXRXItem | SWRCHKItem;
+}
+
+void Tune_Task(void)
+{
+  if (!tune_active) return;
+  uint32_t tick = fx9a_ticks_10ms;
+  Fx9aTuneResult result = fx9a_tune_logic_step(
+      &tune_logic, tick, adc_swr(),
+      PttPressed || hswr_timeout || !isRun || !RfIsTx);
+  if (result != FX9A_TUNE_RUNNING)
+    Tune_Stop();
+}
+
 uint32_t Get_DDSLO(uint32_t freq)
 {
+  if (Tune_IsActive()) return freq * 10u;
   int32_t tmp;
   if( RADIO.mode == USB)
   {
@@ -797,6 +996,7 @@ uint32_t Get_DDSLO(uint32_t freq)
 
 uint32_t Get_DDSBFO()
 {
+  if (Tune_IsActive()) return 0u;
   uint32_t tmp;
   if( RADIO.mode == USB)
   {
@@ -832,6 +1032,7 @@ uint32_t Get_DDSBFO()
 
 void board_refresh_manager()
 {
+  Tune_ResultExpire();
   uint8_t grid = 0;
   
   if (DRMgr.item > 0)
@@ -1026,7 +1227,10 @@ void board_refresh_manager()
         
                 //4096-0: 2.5v-0
         // 1.5:0.12V(196.608)  3:0.35V(573.44) 2:0.22(360.448)
-        adc_val = adc_swr();
+        /* Hold the last RF-on sample after TUNE, rather than reading the
+         * detector after returning to RX (which would misleadingly be zero).
+         */
+        adc_val = tune_result_visible ? tune_last_swr_adc : adc_swr();
         
         if(adc_val > 574)
         {
@@ -1044,8 +1248,10 @@ void board_refresh_manager()
         {
           grid = 0;
         }
-        oled_swr_grid(grid);
-        if( grid >= MENU.vswr && MENU.vswr > 0)
+        uint8_t protection_grid = grid; /* Never trust user meter calibration for PA protection. */
+        if (MeterCal_Active()) grid = MeterCal_Grid(2u, adc_val);
+        if (!tune_result_visible || tune_swr_sampled) oled_swr_grid(grid);
+        if (RF_IsTx() && !Tune_IsActive() && protection_grid >= MENU.vswr && MENU.vswr > 0)
         {
           RF_ToRx();
           oled_h_vswr_disp();
@@ -1108,6 +1314,7 @@ void board_refresh_manager()
         }
         
         //平滑，快起慢落       BG6RDF
+        if (MeterCal_Active()) grid = MeterCal_Grid(1u, adc_val);
         float rf_grid=(float)grid;
         if (rf_grid<last_rf_grid)
         {
@@ -1116,7 +1323,7 @@ void board_refresh_manager()
         }
         last_rf_grid=rf_grid;
         
-        oled_rf_grid(grid);
+        if (!tune_result_visible) oled_rf_grid(grid);
         if (DRMgr.item == 0)
         {
           return;
@@ -1158,6 +1365,7 @@ void board_refresh_manager()
         }
 
         //平滑，快起慢落
+        if (MeterCal_Active()) grid = MeterCal_Grid(0u, adc_val);
         float rx_grid=(float)grid;
         if (rx_grid<last_rx_grid)
         {
@@ -1166,7 +1374,7 @@ void board_refresh_manager()
         }
         last_rx_grid=rx_grid;
         
-        oled_rx_grid(grid);
+        if (!tune_result_visible) oled_rx_grid(grid);
         
         if (DRMgr.item == 0)
         {
@@ -1267,7 +1475,8 @@ void board_refresh_manager()
             bfo_update(Get_DDSBFO(), MENU.ref);
           }
         }
-        oled_txrx_clear_grid();  // TX和RX状态切换后，清除所有显示格子
+        oled_txrx_clear_grid();  // TX/RX meter area is shared.
+        Tune_ResultDraw();
         if (DRMgr.item == 0)
         {
           return;
@@ -1343,6 +1552,16 @@ void board_refresh_manager()
 
 void key_task()
 {
+  /* Any front-panel key cancels the continuous carrier; never execute that
+   * key's normal radio action in the same iteration. PTT also cancels.
+   */
+  if (Tune_IsActive()) {
+    if (PttPressed || key_ispress(&key)) {
+      key_clear();
+      Tune_Stop();
+    }
+    return;
+  }
   if( RADIO.mode == USB || RADIO.mode == LSB )
   {
     if( PttPressed && !PttFinish )
@@ -1445,7 +1664,10 @@ void key_task()
       }
       else if( key.state == keyLong )
       {
-        if(FREQ.item & MEMItem)
+        if ((FREQ.item & VFOItem) && !AIMgr.item) {
+          Tune_Start(); /* Long V/M when in ordinary VFO mode. */
+        }
+        else if(FREQ.item & MEMItem)
         {
           MEM_Get();
           oled_set_screen(0x00);
@@ -1581,8 +1803,9 @@ void key_task()
       }
       else if( key.state == keyShot)
       {     
-        if( AIMgr.item & MENUSETItem)           //如果是在设置模式，则退出设置模式
+        if( AIMgr.item & MENUSETItem)           // exit settings and save calibration
         {
+          MeterCal_Save();
           AIMgr.item &= ~MENUSETItem;
           DRMgr.item |= ALLItem;
           buzzer_stop();
@@ -1783,6 +2006,7 @@ void key_task()
 
 void UART_Task()
 {
+  usart_process_rx_commands();
   uint8_t size = 0;
   if (DMA_IsTxComplete())
   {
@@ -1795,13 +2019,76 @@ void UART_Task()
   }
 }
 
+/* Called at 10 ms intervals by TIM2's 250 us sampling ISR.
+ * Do not call OLED, DDS, delay, or EEPROM functions inside this ISR.
+ */
+static uint8_t swr_high_samples;
+static uint16_t swr_trip_level(uint8_t level)
+{
+  if (level <= 6u) return (uint16_t)(20u + level * 56u);
+  return (uint16_t)(360u + (level - 6u) * 71u);
+}
+
+void RF_SwrSampleISR(void)
+{
+  if (!RfIsTx || swr_trip_pending) {
+    swr_high_samples = 0u;
+    return;
+  }
+  uint16_t reflected = adc_swr();
+  bool tune = Tune_IsActive();
+  if (tune && tune_carrier_on) {
+    /* Save before a protection trip removes RF. OLED work stays in main. */
+    tune_last_swr_adc = reflected;
+    tune_swr_sampled = true;
+  }
+  /* Severe reflected power cuts the RF gate on the first 10 ms sample,
+   * irrespective of the user's ordinary SWR protection setting.
+   */
+  if (reflected >= FX9A_TUNE_SEVERE_REFLECTED_ADC) {
+    MICControlOff();
+    tx_control_off();
+    swr_trip_pending = 1u;
+    hswr_timeout = 1u;
+    return;
+  }
+  if (MENU.vswr == 0u ||
+      (tune && (uint32_t)(fx9a_ticks_10ms - tune_logic.started_at) <
+               FX9A_TUNE_SETTLE_TICKS)) {
+    swr_high_samples = 0u;
+    return;
+  }
+  uint16_t limit = swr_trip_level(MENU.vswr > 9u ? 9u : MENU.vswr);
+  if (reflected >= limit) {
+    /* Normal TX: 3 samples / 30 ms. TUNE: 30 / 300 ms to allow match-up. */
+    uint8_t required = tune ? 30u : 3u;
+    if (++swr_high_samples >= required) {
+      MICControlOff();
+      tx_control_off();
+      swr_trip_pending = 1u;
+      hswr_timeout = 1u;
+    }
+  } else swr_high_samples = 0u;
+}
+
+void RF_SwrService(void)
+{
+  if (!swr_trip_pending) return;
+  swr_trip_pending = 0u;
+  if (Tune_IsActive()) Tune_Stop();
+  else RF_ToRx();
+  oled_h_vswr_disp();
+}
+
 void board_task()
 {
+  RF_SwrService();
+  Tune_Task();
   key_task();
   
   board_refresh_manager();
   
-  if( RADIO.mode == CWA || RADIO.mode == CWB)
+  if (!Tune_IsActive() && (RADIO.mode == CWA || RADIO.mode == CWB))
   {
     if(FREQ.item & CALLItem)
     {
@@ -1824,7 +2111,8 @@ void board_task()
  * recalling another band's saved frequency when tuning across a boundary. */
 bool Frequency_Set(uint32_t frequency)
 {
-  if (frequency < BAUD[0][0] || frequency > BAUD[SIZE_OF_BAUD-1][2])
+  if (!fx9a_tuning_allowed(ContinuousTuning_Enabled(), FREQ.numOfbaud,
+                           frequency, BAUD, SIZE_OF_BAUD))
     return false;
 
   uint8_t band = frequency_band(frequency, BAUD, SIZE_OF_BAUD);
@@ -1838,8 +2126,13 @@ bool Frequency_Set(uint32_t frequency)
 
 void Frequency_Tune(int32_t step)
 {
-  Frequency_Set(frequency_step(FREQ.val, step,
-                              BAUD[0][0], BAUD[SIZE_OF_BAUD-1][2]));
+  bool continuous = ContinuousTuning_Enabled();
+  uint32_t lower = fx9a_tuning_lower(continuous, FREQ.numOfbaud,
+                                     BAUD, SIZE_OF_BAUD);
+  uint32_t upper = fx9a_tuning_upper(continuous, FREQ.numOfbaud,
+                                     BAUD, SIZE_OF_BAUD);
+  if (upper >= lower && lower != 0u)
+    Frequency_Set(frequency_step(FREQ.val, step, lower, upper));
 }
 
 // 在W/V切换、VFOA/B切换、波段切换及菜单退出情况下，被调用
@@ -1894,72 +2187,89 @@ void MEM_Save()
   }
 }
 
-void RF_Tx()
+/* Update synthesizers synchronously during TX/RX transitions.
+ * Display refresh must not be responsible for RF safety sequencing.
+ */
+static void RF_ProgramSynth(void)
 {
-  // TX发射控制端（不管是SSB模式还是CW模式，在发射时输出高电平）
-  tx_control_on();
-  
-  // 静音控制，在发射时输出高电平
-  QuietModeOn();
-  
-  //  CW滤波器切换控制，在SSB模式下默认低电平，在CW模式下 RX时默认高电平（N 窄带）。
-  //         在CM模式 发射时 为低电平（W 宽带）
-  CW_FilterControl(0);
-  
-  // MIC控制，在CW模式下发射时输出低电平，RX时也输出低电平，只有在SSB模式，输出高电平
-  if( RADIO.mode == CWA || RADIO.mode == CWB )
-  {
-    MICControlOff();
-    // BFO切换 CW发射状态下，输出高电平; 其他情况全为低电平
-    CW_BFOControl(1);
-    
-    TMR_Start(TIM4); // 启动1ms 时钟定时器，
+  uint32_t freq = FREQ.val;
+  if (!(FREQ.item & MEMItem)) {
+    if (RfIsTx && !Tune_IsActive() && (FREQ.item & XITItem)) {
+      int64_t adjusted = (int64_t)freq + VFO.XIT;
+      if (adjusted > 0) freq = (uint32_t)adjusted;
+    } else if (!RfIsTx && (FREQ.item & RITItem)) {
+      int64_t adjusted = (int64_t)freq + VFO.RIT;
+      if (adjusted > 0) freq = (uint32_t)adjusted;
+    }
   }
-  else
-  {
-    MICControlOn();
+  lo_update(Get_DDSLO(freq), MENU.ref);
+  bfo_update(Get_DDSBFO(), MENU.ref);
+}
+
+void RF_Tx(void)
+{
+  /* Prepare a silent path; RF control stays OFF until the DDS has settled. */
+  MICControlOff();
+  QuietModeOn();
+  CW_FilterControl(0);
+  if (Tune_IsActive() || RADIO.mode == CWA || RADIO.mode == CWB) {
+    CW_BFOControl(1);
+    if (!Tune_IsActive()) TMR_Start(TIM4);
+    else TMR_Stop(TIM4);
+  } else {
     CW_BFOControl(0);
     TMR_Stop(TIM4);
   }
-}
-
-void RF_Rx()
-{
-  tx_control_off();
-  
-  QuietModeOff();
-  
-  MICControlOff();
-
-  CW_BFOControl(0);
-  
-  if( RADIO.mode == CWA || RADIO.mode == CWB )
-  {
-    if (FIL.func == N) // 显示时，只显示N， W不显示； 功率显示，是显示L
-    {
-      CW_FilterControl(1);
-    }
-    else
-    {
-      CW_FilterControl(0);
-    }
+  RF_ProgramSynth();
+  delay_ms(2); /* First hardware gate must verify synthesizer settling. */
+  /* TIM2 can trip while the DDS settles. Commit the gate and MIC together
+   * only if no trip is latched; otherwise the ISR's shutdown must win.
+   * Keep the slow synthesizer/delay work outside this critical section.
+   */
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  if (RfIsTx && !hswr_timeout && !swr_trip_pending) {
+    tx_control_on();
+    if (!Tune_IsActive() && RADIO.mode != CWA && RADIO.mode != CWB)
+      MICControlOn();
   }
+  __set_PRIMASK(primask);
 }
 
-//切换接收后，频率在board_refresh_manager中处理TXRXItem事件处理时设置 BG6RDF
-void RF_ToRx()
+void RF_Rx(void)
 {
+  /* Remove RF and microphone drive before changing any DDS or filters. */
+  MICControlOff();
+  tx_control_off();
+  QuietModeOn();
+  CW_BFOControl(0);
+  if (RADIO.mode == CWA || RADIO.mode == CWB)
+    CW_FilterControl(FIL.func == N ? 1 : 0);
+  RF_ProgramSynth();
+  delay_ms(2);
+  QuietModeOff();
+}
+
+void RF_ToRx(void)
+{
+  /* RF_Rx must operate with RfIsTx already cleared so Get_DDSLO()
+   * restores the receive offset instead of the transmit LO.
+   * Drop the physical TX control first, with the microphone muted.
+   */
+  MICControlOff();
+  tx_control_off();
   RfIsTx = false;
   RF_Rx();
-  DRMgr.item |= TXRXItem;       //收发转换事件
+  DRMgr.item |= TXRXItem;
 }
 
-//切换发射前应设置发射频率，不应等到board_refresh_manager中处理 BG6RDF
-void RF_ToTx()
+void RF_ToTx(void)
 {
+  if (RfIsTx || hswr_timeout || swr_trip_pending) return;
+  /* RfIsTx informs LO/BFO calculation, NOT the physical PA gate. */
   RfIsTx = true;
   RF_Tx();
-  DRMgr.item |= TXRXItem;       //收发转换事件
+  DRMgr.item |= TXRXItem;
 }
 
 bool RF_IsTx()

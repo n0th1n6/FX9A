@@ -1,3 +1,4 @@
+#include "cmsis_gcc.h"
 #include "bsp_usart.h"
 #include "bsp_kenwood.h"
 
@@ -6,6 +7,12 @@
 
 unsigned char UartRxLen = 0;
 unsigned char UartRxBuf[32];
+
+static bool UartRxDiscard = false;
+volatile uint32_t UartRxOverflowCount = 0;
+volatile uint32_t UartCatQueueDropCount = 0;
+static uint8_t CatPending[32];
+static volatile uint8_t CatPendingLen;
 
 static UartTxBufDef UTBuffer;
 static bool DMA_IsReady = true;
@@ -29,7 +36,7 @@ void UartBufInit()
   UTBuffer.head = 0;
   UTBuffer.rear = 0;
   UTBuffer.size	= 0;
-  memset(UTBuffer.dat, 0, 32);
+  memset(UTBuffer.dat, 0, sizeof UTBuffer.dat);
 }
 
 void dma_init()
@@ -202,14 +209,32 @@ unsigned char UART_TxBufSize()
 
 void usart_rx_analysis(uint8_t wdat)
 {
-  if(wdat == ';')
+  /* The CAT protocol is semicolon framed. Once a command is too long,
+   * ignore all bytes until its delimiter; otherwise the suffix might
+   * accidentally be interpreted as a fresh transmit command.
+   */
+  if (wdat == ';')
   {
-    Kenwood_CmdParser(UartRxBuf, UartRxLen);
+    if (!UartRxDiscard && UartRxLen >= 2) {
+      if (CatPendingLen == 0) {
+        memcpy(CatPending, UartRxBuf, UartRxLen);
+        __DMB();
+        CatPendingLen = UartRxLen;
+      } else ++UartCatQueueDropCount;
+    }
     UartRxLen = 0;
+    UartRxDiscard = false;
   }
-  else
+  else if (!UartRxDiscard)
   {
-    UartRxBuf[ UartRxLen++ ] = wdat;
+    if (UartRxLen < sizeof UartRxBuf)
+      UartRxBuf[UartRxLen++] = wdat;
+    else
+    {
+      UartRxDiscard = true;
+      UartRxLen = 0;
+      ++UartRxOverflowCount;
+    }
   }
 }
 
@@ -265,4 +290,18 @@ void DMA1_Channel4_IRQHandler(void)
 
   //允许再次发送  
   DMA_IsReady = 1;  
-} 
+}
+void usart_process_rx_commands(void)
+{
+  uint8_t command[32];
+  uint8_t len = 0;
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  if (CatPendingLen) {
+    len = CatPendingLen;
+    memcpy(command, CatPending, len);
+    CatPendingLen = 0;
+  }
+  __set_PRIMASK(primask);
+  if (len) Kenwood_CmdParser(command, len);
+}

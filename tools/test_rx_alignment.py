@@ -11,7 +11,7 @@ from test_frequency import bsp, board, header, typedef
 
 
 def extract(source, name):
-    match = re.search(r'(?:void|int16_t|uint32_t) ' + name + r'\([^)]*\)\s*\{', source)
+    match = re.search(r'(?:void|bool|int16_t|uint32_t) ' + name + r'\([^)]*\)\s*\{', source)
     assert match, name
     end, depth = match.end(), 1
     while depth:
@@ -20,9 +20,9 @@ def extract(source, name):
     return source[match.start():end]
 
 constants = '\n'.join(re.search(r'^#define ' + name + r'\s+\S+', header, re.M).group()
-    for name in ('RX_USB_MENU', 'RX_LSB_MENU', 'RX_ALIGNMENT_LIMIT', 'RX_ALIGNMENT_MAGIC'))
+    for name in ('RX_USB_MENU', 'RX_LSB_MENU', 'CONT_TUNE_MENU', 'CONT_TUNE_ON', 'CONT_TUNE_OFF', 'METER_CAL_FIRST', 'METER_CAL_LAST', 'RX_ALIGNMENT_LIMIT', 'RX_ALIGNMENT_MAGIC'))
 functions = '\n'.join(extract(board, name) for name in (
-    'RX_AlignmentInit', 'RX_AlignmentOffset', 'RX_AlignmentAdjust',
+    'ContinuousTuning_Enabled', 'RX_AlignmentInit', 'RX_AlignmentOffset', 'RX_AlignmentAdjust',
     'MENU_SetUp', 'MENU_SetDown', 'MENU_Ts', 'Get_DDSLO', 'Get_DDSBFO'))
 oled = (bsp / 'bsp_oled_api.c').read_text(encoding='latin1')
 functions += '\n' + '\n'.join(extract(oled, n) for n in ('Show_RX_Alignment', 'oled_menu_set', 'oled_menu_arrows_set'))
@@ -33,6 +33,7 @@ program = r'''
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+#include "tuning_policy.h"
 #define MAX_CALLSIGN_LENGTH 10
 #define MAX_CWN_LO_OFFSET 9999
 #define MORSE_CODE_COUNT 50
@@ -44,7 +45,10 @@ MENU_AttrDef MENU;
 FREQ_AttrDef FREQ;
 RADIO_AttrDef RADIO;
 static struct { unsigned func; } FIL;
-static bool tx;
+static bool tx, tune;
+static bool Tune_IsActive(void) { return tune; }
+static void MeterCal_Adjust(uint8_t p, int16_t s) { (void)p; (void)s; }
+static uint16_t MeterCal_Value(uint8_t p) { (void)p; return 123; }
 static bool RF_IsRx(void) { return !tx; }
 static bool RF_IsTx(void) { return tx; }
 static void oled_ts(const char *text) { (void)text; }
@@ -96,7 +100,8 @@ int main(void) {
         assert(!MENU.rxUsbOffset && !MENU.rxLsbOffset);
         assert(MENU.rxAlignmentMagic == RX_ALIGNMENT_MAGIC);
         assert(!memcmp(&MENU, &old, 5));
-        assert(!memcmp((uint8_t *)&MENU + 13, (uint8_t *)&old + 13, sizeof(MENU)-13));
+        assert(MENU.null == CONT_TUNE_ON);
+        assert(!memcmp((uint8_t *)&MENU + 14, (uint8_t *)&old + 14, sizeof(MENU)-14));
     }
     MENU.rxUsbOffset = 120; MENU.rxLsbOffset = -230;
     RX_AlignmentInit();
@@ -134,7 +139,7 @@ int main(void) {
     for (int offset = -1000; offset <= 1000; offset += 10) {
         MENU.rxUsbOffset = offset; MENU.rxLsbOffset = -offset;
         for (unsigned i = 0; i < sizeof(frequencies)/sizeof(*frequencies); ++i) {
-            for (unsigned mode = 0; mode < 4; ++mode) {
+            for (unsigned mode = 1; mode <= 4; ++mode) {
                 RADIO.mode = mode;
                 for (unsigned narrow = 0; narrow < 2; ++narrow) {
                     FIL.func = narrow ? N : 0;
@@ -157,11 +162,11 @@ int main(void) {
     Show_RX_Alignment(20, 1, -1000); assert(!strcmp(displayed, "RX USB: -1000 Hz"));
     Show_RX_Alignment(36, 0, 230); assert(!strcmp(displayed, "RX LSB: +0230 Hz"));
     Show_RX_Alignment(20, 1, 0); assert(!strcmp(displayed, "RX USB: +0000 Hz"));
-    for (unsigned pos = 0; pos <= RX_LSB_MENU; ++pos) {
+    for (unsigned pos = 0; pos <= METER_CAL_LAST; ++pos) {
         oled_menu_set(pos); oled_menu_arrows_set(pos);
         assert(menu_pos == pos && arrows_pos == pos);
     }
-    for (int pos = RX_LSB_MENU; pos >= 0; --pos) {
+    for (int pos = METER_CAL_LAST; pos >= 0; --pos) {
         oled_menu_set(pos); oled_menu_arrows_set(pos);
         assert(menu_pos == pos && arrows_pos == pos);
     }
@@ -173,5 +178,5 @@ with tempfile.TemporaryDirectory(prefix='fx9a-rx-alignment-') as directory:
     binary = Path(directory) / 'test'
     source.write_text(program)
     subprocess.run([os.environ.get('CC', 'cc'), '-std=c11', '-Wall', '-Wextra', '-Werror',
-                    '-fshort-enums', '-fsanitize=undefined,address', str(source), '-o', str(binary)], check=True)
+                    '-fshort-enums', '-fsanitize=undefined,address', '-I', str(bsp), str(source), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)

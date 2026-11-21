@@ -23,7 +23,7 @@ Mac. A newer compatible ARM GNU toolchain can be used instead.
 ## Safety status
 
 The build produces `build/fx9a.elf`, `build/fx9a.bin`, and `build/fx9a.hex`.
-Build, flash readback, and normal power-on have been verified on an FX9A. Keep
+The earlier Mbed baseline passed build, flash readback, and normal power-on checks on an FX9A. The new feature backport has software validation only and has not been flashed. Keep
 the RF power stages safely disabled until the power-hold, RX/TX, DDS, filter,
 keyer, EEPROM, OLED, ADC, and CAT interfaces have been checked on hardware.
 
@@ -89,8 +89,8 @@ which supports the radio's 16 MHz crystal and configures a 72 MHz system clock.
 
 ## Continuous tuning
 
-The main encoder and CAT frequency commands now tune through the gaps between
-amateur bands, within the existing overall range of 1.79900 to 29.70099 MHz.
+With CONTINUOUS TUNING set to ON, the main encoder and CAT frequency
+commands tune through the gaps between amateur bands, within the existing overall range of 1.79900 to 29.70099 MHz.
 Each hardware filter stays selected until the next band's existing lower
 boundary is reached, in either tuning direction. Individual band upper edges
 no longer stop tuning. Crossing a boundary preserves the tuned frequency and
@@ -120,3 +120,70 @@ signature; older records are initialized to zero offsets without moving other
 settings. Run `python3 tools/test_rx_alignment.py` for migration, persistence,
 menu navigation, adjustment limits, labels, and RX/TX frequency checks.
 Actual audio improvement requires alignment and listening on the radio.
+
+
+## Enhancements backported to master
+
+The Mbed application now includes the implemented CMSIS/LL branch features,
+while retaining Mbed startup, legacy peripheral initialization, and the TIM5
+keyer remap. Host checks do not establish hardware timing or RF performance.
+
+- **Continuous tuning:** long-press BAND, navigate with CH to CONTINUOUS
+  TUNING, and use the main tuning knob to select ON/OFF. ON retains tuning
+  through band gaps; OFF limits both the knob and CAT to the selected band.
+  The setting uses the existing reserved byte of the 44-byte menu record;
+  legacy records default ON.
+- **Antenna TUNE:** long-press V/M in normal VFO mode. The radio requests LOW
+  power and a steady CW carrier without changing the selected mode. A key,
+  PTT, completion, protection trip or 10-second timeout stops tuning and
+  restores the original power/mode. The final RF-on reflected-detector bar
+  remains for five seconds as LAST SWR; an absent sample shows SWR --.
+  Frequency changes, settings entry, or TX clear the result. CAT CA1;/CA0;/CA;
+  starts, cancels, or queries TUNE. Normal CW keyer tasks are suspended during
+  the independent TUNE state.
+- **RF sequencing/protection:** synthesizers are prepared before TX enable;
+  RX return drops the gate first. TIM2 samples reflected power every 10 ms,
+  independently of display refresh. TX startup respects a latched protection
+  trip. Protection always uses raw detector readings, regardless of display
+  calibration. The provisional 2 ms DDS settling delay needs measurement.
+- **Calibration:** service pages after CONTINUOUS TUNING edit five S-meter,
+  three RF-power and three reflected-detector points. Use the main knob;
+  TS selects a larger step. Exit BAND settings to save. Calibration uses a
+  separate CRC/version-checked 30-byte record at EEPROM address 1104; the
+  legacy menu and save-marker locations remain unchanged. Invalid/absent
+  calibration retains the original display conversions.
+- **CAT/EEPROM:** bounds checking discards overlong frames through the next
+  semicolon; a bounded mailbox runs commands in main instead of the UART
+  ISR. Malformed commands are rejected, IF offsets are initialized, AG gain
+  scaling is corrected, and the M4 response has sufficient buffer capacity.
+  EEPROM page errors stop subsequent writes and NACK paths send STOP. Saved
+  settings are validated in RAM before use. Legacy settings still have no
+  checksum, and exhaustive CAT interoperability remains outstanding.
+- **DDS:** frequency tuning words use rounded integer arithmetic; the dormant
+  AD9834 phase conversion uses the correct 12-bit degrees mapping.
+
+Build options (defaults preserve the later board map and unaccelerated VFO):
+
+```sh
+cmake -S . -B build -DFX9A_BOARD_REVISION=2016_03 -DFX9A_VFO_ACCEL=OFF
+# Alternative original wiring and experimental optical acceleration:
+cmake -S . -B build -DFX9A_BOARD_REVISION=ORIGINAL -DFX9A_VFO_ACCEL=ON
+```
+
+The existing FX9A_ENCODER_TRACE option remains available. Both filter maps
+have host tests; physically confirm the fitted revision before using either.
+Acceleration is disabled by default and retains TS as the coarse-step control.
+
+Run all feature regressions with `python3 tools/test_features.py`. They cover
+production tuning/encoder/menu paths, TX/TUNE interrupt injection and display
+restoration, EEPROM transactions, deferred CAT framing, DDS math, filter maps,
+calibration record validation and optional acceleration.
+
+TUNE thresholds remain provisional raw ADC values: success at reflected ADC
+<=75 held for 500 ms after a 400 ms settling period, severe cutoff at >=800,
+and a 10-second maximum. These are not calibrated SWR ratios. Confirm GPIO,
+DDS and protection timing with RF disabled before controlled dummy-load tests.
+
+Volume changes still update RAM and the digital volume control immediately;
+EEPROM saving occurs on normal power-button shutdown. Cutting the bench PSU
+skips this save. Per-adjustment EEPROM writes are not part of this backport.

@@ -43,6 +43,7 @@ set(FX9A_BSP_SOURCES
     RadioStation/BSP/bsp_usart.c
     RadioStation/BSP/bsp_vol.c
     RadioStation/BSP/i2c.c
+    RadioStation/BSP/meter_cal.c
 )
 
 set(FX9A_STDPERIPH_SOURCES
@@ -65,6 +66,18 @@ add_executable(fx9a
     ${FX9A_STDPERIPH_SOURCES}
 )
 option(FX9A_ENCODER_TRACE "Capture encoder contacts in RAM for ST-Link diagnosis" OFF)
+option(FX9A_VFO_ACCEL "Enable experimental optical VFO encoder acceleration" OFF)
+set(FX9A_BOARD_REVISION "2016_03" CACHE STRING "FX-9A RF filter board revision: 2016_03 or ORIGINAL")
+set_property(CACHE FX9A_BOARD_REVISION PROPERTY STRINGS 2016_03 ORIGINAL)
+if(NOT FX9A_BOARD_REVISION STREQUAL "2016_03" AND NOT FX9A_BOARD_REVISION STREQUAL "ORIGINAL")
+    message(FATAL_ERROR "Unsupported FX9A_BOARD_REVISION: ${FX9A_BOARD_REVISION}")
+endif()
+if(FX9A_VFO_ACCEL)
+    target_compile_definitions(fx9a PRIVATE FX9A_VFO_ACCEL=1)
+endif()
+if(FX9A_BOARD_REVISION STREQUAL "ORIGINAL")
+    target_compile_definitions(fx9a PRIVATE FX9A_BOARD_ORIGINAL)
+endif()
 if(FX9A_ENCODER_TRACE)
     set_property(SOURCE RadioStation/BSP/bsp_key.c APPEND PROPERTY
         COMPILE_DEFINITIONS FX9A_ENCODER_TRACE=1)

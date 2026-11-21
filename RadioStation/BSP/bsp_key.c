@@ -1,4 +1,5 @@
 #include "bsp_key.h"
+#include "vfo_accel.h"
 #include "bsp_encoder.h"
 #include "bsp_timer.h"
 #include "bsp_adc.h"
@@ -50,6 +51,23 @@ static KEY_AttrDef key;
 static EncoderState channel_encoder;
 static EncoderState volume_encoder;
 static uint8_t key_scan_divider;
+static uint16_t swr_sample_divider;
+#ifdef FX9A_VFO_ACCEL
+extern volatile uint32_t fx9a_ticks_10ms;
+static Fx9aVfoAccel optical_accel;
+#endif
+static int32_t optical_frequency_step(int8_t sign)
+{
+#ifdef FX9A_VFO_ACCEL
+    return fx9a_vfo_accel_step(&optical_accel, fx9a_ticks_10ms,
+                               sign, (FREQ.item & TSItem) != 0u);
+#else
+    return sign > 0 ? ((FREQ.item & TSItem) ? 100 : 1)
+                    : ((FREQ.item & TSItem) ? -100 : -1);
+#endif
+}
+
+volatile uint32_t fx9a_ticks_10ms;
 #ifdef FX9A_ENCODER_TRACE
 /* Diagnostic only: 50 us raw contacts, normal 250 us control decoding.
  * Stop when full so ST-Link can read a consistent completed trace. */
@@ -98,7 +116,6 @@ void KEY_EXTI_Config()
   config.EXTI_LineCmd = DISABLE;
   EXTI_Init(&config);
 }
-
 void GPIO_NVIC_Config()
 {
   NVIC_InitTypeDef NVIC_InitStructure;
@@ -535,7 +552,7 @@ void EXTI2_IRQHandler(void)
         }
         else
         {
-          Frequency_Tune((FREQ.item & TSItem) ? 100 : 1);
+          Frequency_Tune(optical_frequency_step(1));
         }
         if (AIMgr.item & MENUSETItem)
         {
@@ -603,7 +620,7 @@ void EXTI2_IRQHandler(void)
         }
         else
         {
-          Frequency_Tune((FREQ.item & TSItem) ? -100 : -1);
+          Frequency_Tune(optical_frequency_step(-1));
         }
 
         if (AIMgr.item & MENUSETItem)
@@ -844,6 +861,17 @@ static void channel_encoder_step(int8_t step)
 
 void key_timer_callback(void)
 {
+  /* Fast SWR sampling must run even if diagnostic encoder trace exits early. */
+#ifdef FX9A_ENCODER_TRACE
+  const uint16_t swr_interval = 200u; /* 50 us ticks */
+#else
+  const uint16_t swr_interval = 40u;  /* 250 us ticks */
+#endif
+  if (++swr_sample_divider >= swr_interval) {
+    swr_sample_divider = 0;
+    ++fx9a_ticks_10ms;
+    RF_SwrSampleISR();
+  }
   uint8_t ch_phases = channel_phases(GPIO_ReadInputData(KEY_K1A1B_PORT));
   uint8_t vol_phases = volume_phases(GPIO_ReadInputData(KEY_23456R1A1BK2A2B_PORT));
 #ifdef FX9A_ENCODER_TRACE

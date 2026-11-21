@@ -15,7 +15,7 @@ cat = (bsp / "bsp_kenwood.c").read_text(encoding="latin1")
 
 
 def function(source, name):
-    match = re.search(r"(?:void|bool) " + name + r"\([^)]*\)\s*\{", source)
+    match = re.search(r"(?:static )?(?:void|bool|int32_t) " + name + r"\([^)]*\)\s*\{", source)
     assert match, name
     depth = 1
     end = match.end()
@@ -37,8 +37,9 @@ types = "\n".join(typedef(n) for n in (
     "DispRefreshItem", "DispRefreshMgr", "AdjustItemMgr"))
 table = re.search(r"uint32_t BAUD\[.*?\n};", board, re.S).group()
 functions = "\n".join(function(board, n) for n in (
-    "VFO_Save", "Frequency_Set", "Frequency_Tune", "VFO_Get", "MEM_Get"))
+    "ContinuousTuning_Enabled", "VFO_Save", "Frequency_Set", "Frequency_Tune", "VFO_Get", "MEM_Get"))
 functions += "\n" + function(cat, "Kenwood_VFOSet")
+functions += "\n" + function(key, "optical_frequency_step")
 functions += "\n" + function(key, "EXTI2_IRQHandler")
 program = r'''
 #include <assert.h>
@@ -47,6 +48,7 @@ program = r'''
 #include <stdio.h>
 #include <string.h>
 #include "bsp_frequency.h"
+#include "tuning_policy.h"
 #define SIZE_OF_BAUD 10
 #define SIZE_OF_MEM 100
 #define UPPER_OF_RIT 9990
@@ -73,7 +75,7 @@ static int GPIO_ReadInputDataBit(int port, int pin) {
     (void)port; (void)pin; return direction;
 }
 static bool RF_IsTx(void) { return transmitting; }
-static struct { uint8_t numOfmenu; } MENU;
+static struct { uint8_t numOfmenu, null; } MENU;
 static void MENU_SetUp(uint8_t menu) { (void)menu; ++menu_up; }
 static void MENU_SetDown(uint8_t menu) { (void)menu; ++menu_down; }
 ''' + functions + r'''
@@ -153,7 +155,20 @@ int main(void) {
     MEM[0].freq = 750000; MEM[0].baud = 9; MEM[0].mode = LSB;
     FREQ.numOfmem = 0; MEM_Get();
     assert(FREQ.val == 750000 && FREQ.numOfbaud == 3 && RADIO.mode == LSB);
-    puts("PASS: continuous tuning, all boundaries, range ends, encoder, CAT, offsets, menus, VFO and memory recall");
+    /* Band-limited policy must govern both encoder and CAT, including gaps. */
+    FREQ.item = VFOItem | VFOAItem; FREQ.numOfbaud = 3;
+    FREQ.val = BAUD[3][2]; MENU.null = 0xc0u;
+    tick(true); assert(FREQ.val == BAUD[3][2]);
+    assert(!Kenwood_VFOSet(BAUD[3][2] + 1));
+    assert(!Kenwood_VFOSet(BAUD[4][1]));
+    FREQ.val = BAUD[3][0]; tick(false); assert(FREQ.val == BAUD[3][0]);
+    assert(Kenwood_VFOSet(BAUD[3][1])); VFO_Save();
+    FREQ.item |= RITItem; tick(true); assert(VFO.RIT == 1);
+    FREQ.item &= ~RITItem; FREQ.item |= XITItem; tick(true); assert(VFO.XIT == 1);
+    FREQ.item &= ~XITItem;
+    MENU.null = 0xc1u; assert(Kenwood_VFOSet(BAUD[4][1]));
+    MENU.null = 0xffu; assert(ContinuousTuning_Enabled());
+    puts("PASS: ON/OFF tuning policy, continuous tuning, all boundaries, range ends, encoder, CAT, offsets, menus, VFO and memory recall");
 }
 '''
 def main():

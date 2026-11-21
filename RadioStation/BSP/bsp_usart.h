@@ -12,6 +12,7 @@ typedef struct{
 }UartTxBufDef;
 
 void usart_init();
+void usart_process_rx_commands(void);
 bool DMA_IsTxComplete();
 void CopyTBufToDMA();
 void UART_DMAStart(uint8_t length);

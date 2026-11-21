@@ -1,0 +1,25 @@
+name: Mbed feature regressions
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "RadioStation/BSP/**"
+      - "tools/**"
+      - ".github/workflows/mbed-features.yml"
+  pull_request:
+    paths:
+      - "RadioStation/BSP/**"
+      - "tools/**"
+      - ".github/workflows/mbed-features.yml"
+  workflow_dispatch:
+
+jobs:
+  host-logic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Test production Mbed logic and portable feature policies
+        run: python3 tools/test_features.py

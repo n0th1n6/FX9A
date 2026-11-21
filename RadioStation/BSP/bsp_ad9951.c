@@ -1,3 +1,4 @@
+#include "dds_math.h"
 #include "bsp_ad9951.h"
 
 // DDS  AD9951¿ØÖÆ½Ó¿Ú  PD13/60/UPD  PD14/61/SDIO   PD15/62/CLK   PC6/63/RET
@@ -163,7 +164,7 @@ void ad9951_update()
 void ad9951_write_freq(uint32_t freq, uint32_t ref)
 {
   uint32_t ftw;
-  ftw = (freq * 4294967296) / ref;
+  ftw = fx9a_ad9951_ftw(freq, ref);
 //  if( ftw > 0x7fffffff)
 //  {
 //    ftw = 4294967296 - ftw;

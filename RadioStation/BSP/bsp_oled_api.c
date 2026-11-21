@@ -1,4 +1,5 @@
 #include "bsp_oled_api.h"
+#include "meter_cal.h"
 #include "zk.h"
 #include "bsp_pwm.h"
 #include "bsp_transmit_power.h"
@@ -1656,6 +1657,15 @@ void oled_arrows_set_1608(uint8_t position)
 
 void oled_menu_arrows_set(uint8_t position)
 {
+  if (position >= METER_CAL_FIRST) {
+    arrows_pos = position;
+    return;
+  }
+  if (position == CONT_TUNE_MENU)
+  {
+    arrows_pos = position;
+    return;
+  }
   if (position >= RX_USB_MENU)
   {
     Show_String0705(3, 20, position == RX_USB_MENU ? ">" : " ");
@@ -1697,9 +1707,42 @@ void oled_menu_set(uint8_t position)
   uint8_t pos_y = 12;
   uint8_t all = 0 ;
 
+  if (position >= METER_CAL_FIRST && position <= METER_CAL_LAST)
+  {
+    static const char *const names[11] = {
+      "S0", "S5", "S9", "S9+20", "S9+40",
+      "PWR 1W", "PWR 5W", "PWR 10W",
+      "SWR LOW", "SWR MID", "SWR HIGH"
+    };
+    char number[] = "ADC: 0000   ";
+    uint8_t index = position - METER_CAL_FIRST;
+    if (menu_pos < METER_CAL_FIRST)
+      oled_set_screen(0x00);
+    Show_String0705(5, 4, "METER CALIBRATION");
+    Show_String0705(5, 20, names[index]);
+    uint16_t value = MeterCal_Value(index);
+    number[5] = '0' + (value / 1000u) % 10u;
+    number[6] = '0' + (value / 100u) % 10u;
+    number[7] = '0' + (value / 10u) % 10u;
+    number[8] = '0' + value % 10u;
+    Show_String0705(5, 36, number);
+    Show_String0705(5, 52, "VFO / TS:STEP");
+    menu_pos = position;
+    return;
+  }
+  if (position == CONT_TUNE_MENU)
+  {
+    if (menu_pos != CONT_TUNE_MENU)
+      oled_set_screen(0x00);
+    Show_String0705(5, 4, "CONTINUOUS TUNING");
+    Show_String0705(10, 24, ContinuousTuning_Enabled() ? "ON " : "OFF");
+    Show_String0705(5, 52, "VFO: ON / OFF");
+    menu_pos = position;
+    return;
+  }
   if (position >= RX_USB_MENU)
   {
-    if (menu_pos < RX_USB_MENU)
+    if (menu_pos < RX_USB_MENU || menu_pos >= CONT_TUNE_MENU)
       oled_set_screen(0x00);
     Show_String0705(5, 4, "RX ALIGNMENT");
     Show_RX_Alignment(20, 1, MENU.rxUsbOffset);
@@ -1898,6 +1941,14 @@ void oled_lsb_usb_mem(uint8_t *str)
 void oled_h_vswr_disp()
 {
   Show_String0705(10, 48, "HI-SWR");
+}
+
+/* Left of the VFO/mode area, below the meter scale and above HI-SWR. */
+void oled_tune_result(uint8_t visible, uint8_t valid)
+{
+  if (!visible) Show_String0705(0, 41, "        ");
+  else if (valid) Show_String0705(0, 41, "LAST SWR");
+  else Show_String0705(0, 41, "SWR --  ");
 }
 
 void oled_h_vswr_clear()

@@ -23,20 +23,23 @@ uint8_t e2p_write_byte(uint16_t addr, uint8_t wdata)
 	i2c_start();
 	
 	i2c_tx(ccode);	
-	if( i2c_getack() == NOACK )
-	{
+	if (i2c_getack() == NOACK)
+        {
+          i2c_stop();
           return false;
         }
 	
 	i2c_tx(wordl);
-	if( i2c_getack() == NOACK )
-	{
+	if (i2c_getack() == NOACK)
+        {
+          i2c_stop();
           return false;
         }
 	
 	i2c_tx(wdata);
-	if( i2c_getack() == NOACK )
+	if (i2c_getack() == NOACK)
         {
+          i2c_stop();
           return false;
         }
 	  	
@@ -61,24 +64,27 @@ uint8_t e2p_write_mulbyte(uint16_t addr, uint8_t *wdata, uint8_t len)
 	i2c_start();
 	
 	i2c_tx(ccode);	
-	if( i2c_getack() == NOACK )
-	{
+	if (i2c_getack() == NOACK)
+        {
+          i2c_stop();
           return false;
         }
 	
 	i2c_tx(wordl);
-	if( i2c_getack() == NOACK )
-	{
+	if (i2c_getack() == NOACK)
+        {
+          i2c_stop();
           return false;
         }
 	
         for(uint8_t i=0; i<len; i++)
         {
           i2c_tx(wdata[i]);
-          if( i2c_getack() == NOACK )
-          {
-            return false;
-          }
+          if (i2c_getack() == NOACK)
+        {
+          i2c_stop();
+          return false;
+        }
         } 	
 	i2c_stop();
 	delay_ms(8);//写时序的有效停止信号到内部编程/擦除周期结束的这一段时间
@@ -88,25 +94,22 @@ uint8_t e2p_write_mulbyte(uint16_t addr, uint8_t *wdata, uint8_t len)
 
 bool e2p_write(uint16_t addr, uint8_t *data, uint16_t len)
 {
-  //uint16_t tlen = (len / 9) + 1;
-  uint16_t tlen = (len + 7) / 8;               //BG6RDF
-  bool ret = true;
-  
-  for(uint8_t j=0; j<tlen; j++)
+  /* Never allow a later successful page to mask an earlier I2C failure.
+   * Respect the 24LC16's eight-byte page boundaries, including unaligned
+   * callers, and avoid 8-bit page-loop counter wraparound.
+   */
+  uint16_t offset = 0;
+  while (offset < len)
   {
-    if( len <= 8)
-    {
-      ret = e2p_write_mulbyte(addr, &data[j*8], len);
-    }
-    else
-    {
-      ret = e2p_write_mulbyte(addr, &data[j*8], 8);
-      len -= 8;
-      addr += 8;
-    }
-    
+    uint8_t count = (uint8_t)(8u - (addr & 7u));
+    if (count > len - offset)
+      count = (uint8_t)(len - offset);
+    if (!e2p_write_mulbyte(addr, &data[offset], count))
+      return false;
+    addr += count;
+    offset += count;
   }
-  return ret;
+  return true;
 }
 
 uint8_t e2p_read_byte(uint16_t addr)
@@ -114,7 +117,7 @@ uint8_t e2p_read_byte(uint16_t addr)
 	uint8_t ccode;
 	uint8_t wordl;
         uint8_t wordh;
-	uint8_t tmp;
+	uint8_t tmp = 0xff;
 	
         wordh = (addr >> 8) & 0x07;
 	ccode = E2P_CTLCODE | (wordh << 1) | E2P_INS_WRITE;
@@ -123,19 +126,16 @@ uint8_t e2p_read_byte(uint16_t addr)
 	i2c_start();
 	
 	i2c_tx(ccode);	
-	if( i2c_getack() == NOACK )
-	  	return false;
+	if (i2c_getack() == NOACK) { i2c_stop(); return 0xff; }
 	
 	i2c_tx(wordl);
-	if( i2c_getack() == NOACK )
-	  	return false;
+	if (i2c_getack() == NOACK) { i2c_stop(); return 0xff; }
 	
 	//ccode = E2P_CTLCODE | (wordh << 1) | E2P_INS_READ;
-        ccode = E2P_CTLCODE | E2P_INS_READ;
+        ccode = E2P_CTLCODE | (wordh << 1) | E2P_INS_READ;
 	i2c_start();
 	i2c_tx(ccode);	
-	if( i2c_getack() == NOACK )
-	  	return false;
+	if (i2c_getack() == NOACK) { i2c_stop(); return 0xff; }
 	
 	tmp = i2c_rx();
 	i2c_noack();
@@ -146,6 +146,7 @@ uint8_t e2p_read_byte(uint16_t addr)
 
 bool e2p_read(uint16_t addr, uint8_t *rdata, uint16_t len)
 {
+      if (len == 0) return true;
       uint8_t ccode;
       uint8_t wordh;
 	uint8_t wordl;
@@ -159,19 +160,19 @@ bool e2p_read(uint16_t addr, uint8_t *rdata, uint16_t len)
 	
 	i2c_tx(ccode);	
 	if( i2c_getack() == NOACK )
-	  	return false;
+        { i2c_stop(); return false; }
 	
 	
 	i2c_tx(wordl);
 	if( i2c_getack() == NOACK )
-	  	return false;
+        { i2c_stop(); return false; }
 	
 	//ccode = E2P_CTLCODE | wordh << 1 | E2P_INS_READ;
-        ccode = E2P_CTLCODE | E2P_INS_READ;
+        ccode = E2P_CTLCODE | (wordh << 1) | E2P_INS_READ;
 	i2c_start();
 	i2c_tx(ccode);	
 	if( i2c_getack() == NOACK )
-	  	return false;
+        { i2c_stop(); return false; }
 	
         for(uint16_t i=0; i<len-1; i++)
         {
@@ -189,20 +190,20 @@ bool e2p_read(uint16_t addr, uint8_t *rdata, uint16_t len)
 void e2p_mem_write(uint8_t numOfmem, MEM_AttrDef *pMem, uint8_t len)
 {
   uint8_t step = 8;
-  uint8_t base = step * numOfmem;
+  uint16_t base = (uint16_t)step * numOfmem;
   for(uint8_t i=0; i<len; i++)
   {
-    e2p_write(E2P_ADDR_MEM+base+i*step, (uint8_t *)&pMem[i], sizeof(MEM_AttrDef));
+    e2p_write(E2P_ADDR_MEM+base+(uint16_t)i*step, (uint8_t *)&pMem[i], sizeof(MEM_AttrDef));
   }
 }
 
 void e2p_mem_read(uint8_t numOfmem, MEM_AttrDef *pMem, uint8_t len)
 {
   uint8_t step = 8;
-  uint8_t base = step * numOfmem;
+  uint16_t base = (uint16_t)step * numOfmem;
   for(uint8_t i=0; i<len; i++)
   {
-    e2p_read(E2P_ADDR_MEM+base+i*step, (uint8_t *)&pMem[i], sizeof(MEM_AttrDef));
+    e2p_read(E2P_ADDR_MEM+base+(uint16_t)i*step, (uint8_t *)&pMem[i], sizeof(MEM_AttrDef));
   }
 }
 
@@ -222,7 +223,7 @@ void e2p_vfo_write(VFO_SaveDef *vfo)
 
 VFO_SaveDef e2p_vfo_read()
 {
-  VFO_SaveDef vfo;
+  VFO_SaveDef vfo = {0};
   uint8_t step = 8;
   for(uint8_t i=0; i<SIZE_OF_BAUD; i++)
   {
@@ -243,7 +244,7 @@ void e2p_rit_write(int16_t rit)
 
 int16_t e2p_rit_read()
 {
-  int16_t rit;
+  int16_t rit = 0;
   e2p_read(E2P_ADDR_RIT, (uint8_t *)&rit, sizeof(int16_t));
   return rit;
 }
@@ -255,7 +256,7 @@ void e2p_fil_write(FIL_FuncDef filter)
 
 FIL_FuncDef e2p_fil_read()
 {
-  FIL_FuncDef filter;
+  FIL_FuncDef filter = W;
   e2p_read(E2P_ADDR_FIL, (uint8_t *)&filter, sizeof(uint8_t));
   return filter;
 }
@@ -267,7 +268,7 @@ void e2p_vol_write(uint8_t vol)
 
 uint8_t e2p_vol_read()
 {
-  uint8_t vol;
+  uint8_t vol = 0;
   e2p_read(E2P_ADDR_VOL, (uint8_t *)&vol, sizeof(uint8_t));
   return vol;
 }
@@ -279,7 +280,7 @@ void e2p_att_write(uint8_t att)
 
 uint8_t e2p_att_read()
 {
-  uint8_t att;
+  uint8_t att = 0;
   e2p_read(E2P_ADDR_ATT, (uint8_t *)&att, sizeof(uint8_t));
   return att;
 }
@@ -291,7 +292,7 @@ void e2p_pwm_write(uint8_t pwm)
 
 uint8_t e2p_pwm_read()
 {
-  uint8_t pwm;
+  uint8_t pwm = 0;
   e2p_read(E2P_ADDR_PWM, (uint8_t *)&pwm, sizeof(uint8_t));
   return pwm;
 }
@@ -313,7 +314,7 @@ void e2p_menu_write(MENU_AttrDef *menu)
 
 MENU_AttrDef e2p_menu_read()
 {
-  MENU_AttrDef menu;
+  MENU_AttrDef menu = {0};
   e2p_read(E2P_ADDR_MENU, (uint8_t *)&menu, sizeof(MENU_AttrDef));
   return menu;
 }
@@ -325,7 +326,7 @@ void e2p_save_write(uint8_t save)
 
 uint8_t e2p_save_read()
 {
-  uint8_t save;
+  uint8_t save = 0;
   e2p_read(E2P_ADDR_SAVE, (uint8_t *)&save, 1);
   return save;
 }

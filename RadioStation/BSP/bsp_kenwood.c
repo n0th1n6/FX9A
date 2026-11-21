@@ -7,6 +7,7 @@
 #include "bsp_oled_api.h"
 #include "bsp_iambic_keyer.h"
 #include "bsp_key.h"
+#include "cat_validation.h"
 
 /**
  * itoa() 将整型值转换为字符串
@@ -118,11 +119,10 @@ void Kenwood_BuildTransceiverStatus()
   buf[len ++] = ' ';
   buf[len ++] = ' ';
   
-  // P3 RIT/XIT frequency (5) BG6RDF
-  if (FREQ.item & RITItem)
-    DecToString(&buf[len], 5, (int32_t)VFO.RIT);
-  if (FREQ.item & XITItem)
-    DecToString(&buf[len], 5, (int32_t)VFO.XIT);
+  // P3 RIT/XIT frequency: always initialize all five digits.
+  int32_t shift = (FREQ.item & XITItem) ? VFO.XIT :
+                  (FREQ.item & RITItem) ? VFO.RIT : 0;
+  DecToString(&buf[len], 5, shift);
   len += 5;
   
   // P4 RIT 0:OFF / 1:ON
@@ -210,7 +210,8 @@ void Kenwood_BuildTransceiverStatus()
 
 void Kenwood_MemoryDataAnswer()
 {
-  uint8_t buf[40];
+  /* M4 reply exceeds 40 bytes; keep capacity above the fixed response. */
+  uint8_t buf[64];
   uint8_t len = 0;
   
   buf[len ++] = 'M';
@@ -530,11 +531,7 @@ void Kenwood_AFGainSet(uint8_t vol)
   }
   // 软件界面0-100：发送数据0-255
   // 音量0-60
-  uint16_t tmp = vol * 100 / 255;
-  if(tmp >= 60)
-  {
-    tmp = 60;
-  }
+  uint16_t tmp = ((uint32_t)vol * 60u + 127u) / 255u;
   VOL.val = tmp;
   DRMgr.item |= VOLItem;
 }
@@ -547,7 +544,7 @@ void Kenwood_AFGainAnswer()
   buf[ len++ ] = 'A';
   buf[ len++ ] = 'G';
   buf[ len++ ] = '0';
-  uint16_t tmp = VOL.val * 255 / 100;
+  uint16_t tmp = ((uint32_t)(VOL.val > 60 ? 60 : VOL.val) * 255u + 30u) / 60u;
   DecToString(&buf[len], 3, (int32_t)tmp);
   len += 3;    
   buf[ len++ ] = ';';
@@ -629,8 +626,14 @@ void Kenwodd_KeyingSpeedAnswer()
   UartTx(buf, len);
 }
 //len : 指令及数据, 末尾的分号不计算在len内    BG6RDF
+volatile uint32_t CatMalformedCount;
+
 void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
-{ 
+{
+  if (!fx9a_cat_valid_frame(pBuf, len)) {
+    ++CatMalformedCount;
+    return;
+  }
   uint32_t tmp = 0;
   uint8_t buf[15];
   
@@ -907,15 +910,13 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
   }
   else if(pBuf[0] == 'C' && pBuf[1] == 'A')
   {
-    // 未使用
-    if( len > 2)
-    {
-    
-    }
-    else
-    {
-      UartTx("CA0;", 4); // 0: Cancels CW TUNE/ Inactive
-    }
+    /* CA0; cancels TUNE, CA1; starts it, CA; queries it.
+     * Invalid frames do not trigger RF transmission.
+     */
+    if (len == 3 && pBuf[2] == '0') Tune_Stop();
+    else if (len == 3 && pBuf[2] == '1') Tune_Start();
+    if (len == 2 || (len == 3 && (pBuf[2] == '0' || pBuf[2] == '1')))
+      UartTx(Tune_IsActive() ? (uint8_t *)"CA1;" : (uint8_t *)"CA0;", 4);
   }
   else if(pBuf[0] == 'I' && pBuf[1] == 'D')
   {
@@ -1110,7 +1111,7 @@ void Kenwood_CmdParser(uint8_t *pBuf, uint8_t len)
   else if(pBuf[0] == 'M' && pBuf[1] == 'R')
   {
     // Reads the Memory channel data.
-    if( pBuf[2] = '0' && pBuf[3] == '1')
+    if (len == 4 && pBuf[2] == '0' && pBuf[3] == '1')
     {
       Kenwood_MemoryDataAnswer();
     }

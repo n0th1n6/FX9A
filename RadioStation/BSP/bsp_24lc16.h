@@ -18,16 +18,17 @@
 #define E2P_ADDR_VFOB   E2P_ADDR_BASE + 880   // 8 * 10 = 80
 #define E2P_ADDR_A_BAUD E2P_ADDR_BASE + 960  
 #define E2P_ADDR_B_BAUD E2P_ADDR_BASE + 968
-#define E2P_ADDR_RIT    E2P_ADDR_BASE + 976   // 4字节    BG6RDF
-#define E2P_ADDR_XIT    E2P_ADDR_BASE + 980   // 4字节    BG6RDF
+#define E2P_ADDR_RIT    E2P_ADDR_BASE + 976   // 4×Ö½Ú    BG6RDF
+#define E2P_ADDR_XIT    E2P_ADDR_BASE + 980   // 4×Ö½Ú    BG6RDF
 
 #define E2P_ADDR_FIL    E2P_ADDR_BASE + 984   // 1
 #define E2P_ADDR_VOL    E2P_ADDR_BASE + 992   // 1
 #define E2P_ADDR_ATT    E2P_ADDR_BASE + 1000   // 1
 #define E2P_ADDR_PWM    E2P_ADDR_BASE + 1008   // 1
 
-#define E2P_ADDR_MENU   E2P_ADDR_BASE + 1024   // 28 -不包括CALL号, BG6RDF:24+8(RESERVED)+10(CALLSIGN)
+#define E2P_ADDR_MENU   E2P_ADDR_BASE + 1024   // 28 -²»°üÀ¨CALLºÅ, BG6RDF:24+8(RESERVED)+10(CALLSIGN)
 
+#define E2P_ADDR_CAL    E2P_ADDR_BASE + 1104  // 30-byte versioned calibration, unused gap
 #define E2P_ADDR_SAVE   E2P_ADDR_BASE + 1600
 
 /**********************************************

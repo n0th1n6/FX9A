@@ -24,7 +24,7 @@ program = r'''
 #include "bsp_encoder.h"
 #define SIZE_OF_BAUD 10
 #define SIZE_OF_MEM 100
-#define SIZE_OF_MENU 21
+#define SIZE_OF_MENU 33
 #define MAX_CALLSIGN_LENGTH 10
 ''' + types + "\n" + extra_types + "\n" + table + r'''
 FREQ_AttrDef FREQ;
@@ -51,6 +51,10 @@ static uint16_t GPIO_ReadInputData(int port) {
 static bool RF_IsTx(void) { return transmitting; }
 static unsigned button_scans;
 static uint8_t key_scan_divider;
+static uint16_t swr_sample_divider;
+static volatile uint32_t fx9a_ticks_10ms;
+static unsigned swr_samples;
+static void RF_SwrSampleISR(void) { ++swr_samples; }
 static void key_calback(void) { ++button_scans; }
 ''' + key[key.index("static uint8_t channel_phases"):key.index("static void encoders_init(void)\n{")] + functions + r'''
 static void sample(unsigned ch, unsigned vol) {
@@ -118,7 +122,8 @@ int main(void) {
     cycle(true, false); assert(MENU.numOfmenu == 3);
     cycle(false, true); assert(VOL.val == 30);
     MENU.numOfmenu = 19; cycle(true, true); assert(MENU.numOfmenu == 20);
-    cycle(true, true); assert(MENU.numOfmenu == 20);
+    cycle(true, true); assert(MENU.numOfmenu == 21);
+    MENU.numOfmenu = 32; cycle(true, true); assert(MENU.numOfmenu == 32);
     MENU.numOfmenu = 0; cycle(true, false); assert(MENU.numOfmenu == 0);
     AIMgr.item = WPMSETItem; WPM.val = 20;
     cycle(false, true); assert(WPM.val == 21);
@@ -147,6 +152,7 @@ int main(void) {
     /* Both controls can move concurrently, including brief snap transitions. */
     sample(2,2); sample(0,0); sample(1,1); sample(3,3);
     assert(FREQ.numOfbaud == 4 && VOL.val == 32);
+    assert(swr_samples == fx9a_ticks_10ms && swr_samples > 0);
     puts("PASS: 250 us quadrature decoder, bounce, invalid/partial transitions, reversals, CH/VOL actions, limits, inhibit and 5 ms button cadence");
 }
 '''

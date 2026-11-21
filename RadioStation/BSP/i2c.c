@@ -183,7 +183,7 @@ void i2c_tx(uint8_t wdata)
 uint8_t i2c_rx()
 {
   uint8_t i;
-  uint8_t tmp;
+  uint8_t tmp = 0;
   
 
   SET_I2C_SDA_PIN(1);	//Release data bus
