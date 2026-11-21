@@ -43,6 +43,37 @@ firmware for reference; the independent CMake target explicitly selects its
 native LL counterparts. The original `master` branch remains the known-good
 Mbed CE reference.
 
+## BSP module ownership
+
+The reference Mbed split was committed to `master` as
+[`987fc770`](https://github.com/n0th1n6/FX9A/commit/987fc770288486f3634ff295a4780fb50f76a726)
+(`partial bsp split`). That commit uses `RadioStation/BSP/radio_*.c`
+and preserves its Mbed/StdPeriph build. The independent CMSIS/LL branch uses
+native `cmsis_ll/app/` modules instead; **do not copy the old Mbed BSP
+implementation into the LL target**.
+
+| Native LL source | Ownership |
+| --- | --- |
+| `bsp_board.c` | GPIO/power bring-up, peripheral initialization, main-loop scheduler |
+| `radio_state.c` | Shared radio state, EEPROM defaults/restore and validation |
+| `frequency_state.c` | VFO and memory persistence, band bounds and tuning policy |
+| `radio_synth.c` | LO/BFO frequency computation and RX alignment offsets |
+| `radio_rf.c` | TX/RX sequencing, CW TUNE, SWR fast ISR and RF trip latch |
+| `radio_ui.c` | OLED refresh, RX/TX meter display and held post-TUNE result |
+| `radio_controls.c` | Front-panel key dispatch, menu editing, user input state |
+| `radio_cat.c` | Deferred CAT command processing and DMA TX orchestration |
+
+The same legacy EEPROM structures and numeric radio-mode values are retained.
+The UI receives snapshots from RF state via `RadioRF_HasSample()` and
+`RadioRF_LastSample()`. TUNE-start/stop presentation events are delivered
+in the main loop, never from the high-rate SWR ISR.
+
+`tests/test_bsp_split.py` enforces each important function's unique owning
+module and prevents `bsp_board.c` from becoming monolithic again.
+The full build and the production RF interrupt-injection test remain required
+after every structural change. This refactor is **software-verified only**;
+timing and RF behavior still require controlled physical tests.
+
 ## Build
 
 From the repository root with `git`, `cmake`, `Ninja`, Python 3, and
