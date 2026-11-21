@@ -1166,7 +1166,7 @@ void oled_swr_grid(uint8_t num)
       }
     }
   }
-  else if(num > rx_grid_old)  // 格子增多
+  else if(num > swr_grid_old)  // 格子增多
   {
     for(uint8_t i=swr_grid_old; i<=num; i++)
     {
@@ -1941,6 +1941,14 @@ void oled_lsb_usb_mem(uint8_t *str)
 void oled_h_vswr_disp()
 {
   Show_String0705(10, 48, "HI-SWR");
+}
+
+/* Left of the VFO/mode area, below the meter scale and above HI-SWR. */
+void oled_tune_result(uint8_t visible, uint8_t valid)
+{
+  if (!visible) Show_String0705(0, 41, "        ");
+  else if (valid) Show_String0705(0, 41, "LAST SWR");
+  else Show_String0705(0, 41, "SWR --  ");
 }
 
 void oled_h_vswr_clear()

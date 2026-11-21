@@ -102,6 +102,7 @@ void oled_txrx(uint8_t *str);
 
 void oled_rx_grid(uint8_t num);
 void oled_swr_grid(uint8_t num);
+void oled_tune_result(uint8_t visible, uint8_t valid);
 void oled_rf_grid(uint8_t num);
 void oled_txrx_clear_grid();
 void oled_update_frequency(uint32_t freq, uint8_t all);

@@ -114,6 +114,12 @@ on the physical radio yet.
   (cancel) and `CA;` (query) commands now work. TUNE physically requests
   LOW power, uses CW carrier keying without changing `RADIO.mode`, and
   restores the user's power setting and RX mode afterward.
+  On exit, the original USB/LSB/CW label is explicitly redrawn and the final
+  RF-on SWR bar is held for five seconds with a `LAST SWR` marker. This uses
+  the existing reflected-detector meter scale, not a calibrated numeric SWR
+  ratio. If no sample was captured, `SWR --` is shown. The receive meter then
+  resumes; changing frequency, entering settings or transmitting also clears
+  the held result. `HI-SWR` warnings remain in their separate screen region.
 - **Fast SWR monitoring:** TIM2 samples the reflected-power ADC every
   10 ms independently of OLED refresh. Normal TX requires three consecutive
   high readings (~30 ms); severe readings trigger immediate RF gate removal.

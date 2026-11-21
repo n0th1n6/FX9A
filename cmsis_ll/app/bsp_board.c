@@ -842,6 +842,44 @@ extern volatile uint32_t fx9a_ticks_10ms;
 static Fx9aTuneLogic tune_logic;
 static TP_LevelDef tune_saved_power;
 static volatile bool tune_active;
+static volatile bool tune_carrier_on;
+static volatile bool tune_swr_sampled;
+static volatile uint16_t tune_last_swr_adc;
+static bool tune_result_visible;
+static uint32_t tune_result_tick;
+static uint32_t tune_result_frequency;
+#define TUNE_RESULT_TICKS 500u /* Five seconds on the independent 10 ms clock. */
+
+static uint8_t SWR_DisplayGrid(uint16_t adc)
+{
+  if (MeterCal_Active()) return MeterCal_Grid(2u, adc);
+  if (adc > 574u) return 9u;
+  if (adc > 360u) return (uint8_t)(6u + (adc - 360u) / 71u);
+  if (adc > 20u) return (uint8_t)((adc - 20u) / 56u);
+  return 0u;
+}
+
+static void Tune_ResultDraw(void)
+{
+  if (!tune_result_visible) return;
+  oled_tune_result(1u, tune_swr_sampled);
+  if (tune_swr_sampled) oled_swr_grid(SWR_DisplayGrid(tune_last_swr_adc));
+}
+
+static void Tune_ResultExpire(void)
+{
+  if (!tune_result_visible) return;
+  if (isRun && !RfIsTx && !AIMgr.item && FREQ.val == tune_result_frequency &&
+      (uint32_t)(fx9a_ticks_10ms - tune_result_tick) < TUNE_RESULT_TICKS)
+    return;
+  tune_result_visible = false;
+  /* Settings pages redraw their own screen; do not erase their contents. */
+  if (isRun && !AIMgr.item) {
+    oled_tune_result(0u, 0u);
+    oled_txrx_clear_grid();
+    DRMgr.item |= RfIsTx ? (SWRCHKItem | RFCHKItem) : RXCHKItem;
+  }
+}
 
 bool Tune_IsActive(void)
 {
@@ -856,6 +894,11 @@ bool Tune_Start(void)
   /* Physically select LOW power before asserting the transmitter.
    * Do not change RADIO.mode or the user's displayed RF frequency.
    */
+  if (tune_result_visible) oled_tune_result(0u, 0u);
+  tune_result_visible = false;
+  tune_swr_sampled = false;
+  tune_last_swr_adc = 0u;
+  tune_carrier_on = false;
   tune_saved_power = TP.level;
   TP.level = L;
   power_high_off();
@@ -869,7 +912,10 @@ bool Tune_Start(void)
   uint32_t primask = __get_PRIMASK();
   __disable_irq();
   bool started = RfIsTx && !hswr_timeout && !swr_trip_pending;
-  if (started) CWT_On(); /* Continuous carrier, never the iambic keyer. */
+  if (started) {
+    CWT_On(); /* Continuous carrier, never the iambic keyer. */
+    tune_carrier_on = true;
+  }
   __set_PRIMASK(primask);
   if (!started || hswr_timeout || swr_trip_pending) {
     Tune_Stop();
@@ -882,6 +928,8 @@ bool Tune_Start(void)
 void Tune_Stop(void)
 {
   if (!tune_active) return;
+  bool had_carrier = tune_carrier_on;
+  tune_carrier_on = false; /* Freeze the RF-on reading before removing RF. */
   CWT_Off();
   MICControlOff();
   tx_control_off();
@@ -890,6 +938,13 @@ void Tune_Stop(void)
   TP.level = tune_saved_power;
   if (TP.level == L) power_high_off();
   else power_high_on();
+  /* MODE_Refresh normally skips an unchanged mode, leaving TUNE behind.
+   * Force the original mode label back for every completion/cancel path.
+   */
+  MODE_Refresh(1u);
+  tune_result_visible = had_carrier || tune_swr_sampled;
+  tune_result_tick = fx9a_ticks_10ms;
+  tune_result_frequency = FREQ.val;
   DRMgr.item |= TPItem | RADIOItem | TXRXItem | SWRCHKItem;
 }
 
@@ -979,6 +1034,7 @@ uint32_t Get_DDSBFO()
 
 void board_refresh_manager()
 {
+  Tune_ResultExpire();
   uint8_t grid = 0;
   
   if (DRMgr.item > 0)
@@ -1173,7 +1229,10 @@ void board_refresh_manager()
         
                 //4096-0: 2.5v-0
         // 1.5:0.12V(196.608)  3:0.35V(573.44) 2:0.22(360.448)
-        adc_val = adc_swr();
+        /* Hold the last RF-on sample after TUNE, rather than reading the
+         * detector after returning to RX (which would misleadingly be zero).
+         */
+        adc_val = tune_result_visible ? tune_last_swr_adc : adc_swr();
         
         if(adc_val > 574)
         {
@@ -1193,8 +1252,8 @@ void board_refresh_manager()
         }
         uint8_t protection_grid = grid; /* Never trust user meter calibration for PA protection. */
         if (MeterCal_Active()) grid = MeterCal_Grid(2u, adc_val);
-        oled_swr_grid(grid);
-        if (!Tune_IsActive() && protection_grid >= MENU.vswr && MENU.vswr > 0)
+        if (!tune_result_visible || tune_swr_sampled) oled_swr_grid(grid);
+        if (RF_IsTx() && !Tune_IsActive() && protection_grid >= MENU.vswr && MENU.vswr > 0)
         {
           RF_ToRx();
           oled_h_vswr_disp();
@@ -1266,7 +1325,7 @@ void board_refresh_manager()
         }
         last_rf_grid=rf_grid;
         
-        oled_rf_grid(grid);
+        if (!tune_result_visible) oled_rf_grid(grid);
         if (DRMgr.item == 0)
         {
           return;
@@ -1317,7 +1376,7 @@ void board_refresh_manager()
         }
         last_rx_grid=rx_grid;
         
-        oled_rx_grid(grid);
+        if (!tune_result_visible) oled_rx_grid(grid);
         
         if (DRMgr.item == 0)
         {
@@ -1418,7 +1477,8 @@ void board_refresh_manager()
             bfo_update(Get_DDSBFO(), MENU.ref);
           }
         }
-        oled_txrx_clear_grid();  // TX和RX状态切换后，清除所有显示格子
+        oled_txrx_clear_grid();  // TX/RX meter area is shared.
+        Tune_ResultDraw();
         if (DRMgr.item == 0)
         {
           return;
@@ -1979,6 +2039,11 @@ void RF_SwrSampleISR(void)
   }
   uint16_t reflected = adc_swr();
   bool tune = Tune_IsActive();
+  if (tune && tune_carrier_on) {
+    /* Save before a protection trip removes RF. OLED work stays in main. */
+    tune_last_swr_adc = reflected;
+    tune_swr_sampled = true;
+  }
   /* Severe reflected power cuts the RF gate on the first 10 ms sample,
    * irrespective of the user's ordinary SWR protection setting.
    */
