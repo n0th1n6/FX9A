@@ -26,7 +26,9 @@ They are **not** copied into the repository. The selected MCU is
 
 The complete application now calls CMSIS and the official STM32F1 LL APIs directly. The obsolete project-owned compatibility drivers and the entire `cmsis_ll/compat/` directory have been deleted. Native peripheral logic lives in the `cmsis_ll/app/` sources, while `board/ll_pins.h` converts board signal bitmasks to the STM32F1 LL pin-selection encoding.
 
-The native application uses these subsystems:
+The native application calls CMSIS/STM32F1 LL directly. Module ownership is
+listed in the **BSP module ownership** section below. The board-facing
+peripheral drivers still include the following subsystems:
 
 | Module | Direct CMSIS/LL responsibility |
 | --- | --- |
