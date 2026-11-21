@@ -230,6 +230,8 @@ extern uint8_t rx_grid_old;
 extern uint8_t swr_grid_old;
 extern uint8_t rf_grid_old;
 
+extern uint8_t MemSetMaxIndex;
+void vfo_init(void);
 void board_init();
 void board_task();
 bool ContinuousTuning_Enabled(void);
