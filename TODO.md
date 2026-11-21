@@ -281,10 +281,17 @@ The RES20D-50-201-1 main VFO encoder is a 50 PPR optical quadrature encoder and 
 ## Priority 7 — Architecture and maintainability
 
 ### Reduce `bsp_board.c` responsibilities
-The current board file combines radio state, UI state, persistence, DDS control, meter conversion, and TX/RX behavior.
 
-- [ ] Refactor gradually rather than rewriting the firmware.
-- [ ] Candidate modules:
+The Mbed reference split is in `master` commit `987fc770`. The standalone
+STM32 LL application now also separates shared state/EEPROM defaults,
+VFO/memory policy, LO/BFO math, RF/TUNE/SWR sequencing, OLED/UI, front-panel
+controls, and CAT orchestration. `cmsis_ll/app/bsp_board.c` is limited to
+GPIO and power bring-up plus the main-loop scheduler. Software build, host
+regression and image-layout checks are required on the LL branch; hardware
+TX/RX verification remains outstanding.
+
+- [x] Refactor gradually rather than rewriting the firmware.
+- [x] Modules extracted:
   - radio state / mode handling,
   - RF TX/RX sequencing,
   - VFO/frequency handling,
@@ -292,7 +299,7 @@ The current board file combines radio state, UI state, persistence, DDS control,
   - meter conversion/calibration,
   - UI/display refresh,
   - CAT command handling.
-- [ ] Preserve EEPROM ABI and known hardware behavior during refactoring.
+- [x] Preserve EEPROM record layout and mode values during refactoring (software checks only; hardware behavior remains to be verified).
 - [x] Keep host regression tests around every extracted subsystem.
 
 ## Existing work to preserve
