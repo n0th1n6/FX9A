@@ -29,6 +29,7 @@
 
 
 #include "radio_controls.h"
+#include "radio_board_io.h"
 
 static KEY_AttrDef key;
 uint8_t MemSetAll;
