@@ -1,12 +1,21 @@
 # FX-9A Firmware TODO
 
-This file records improvement areas identified during review of the current FX-9A firmware source. The intent is to preserve working radio behavior while improving robustness, hardware compatibility, RF safety, calibration, and maintainability.
+Status audited against the source and regression checks on 2026-11-21.
 
-## Priority 0 — Migrate to CMSIS-Core + STM32 LL
+- `[x]` means the stated implementation or software check is complete.
+- `[ ]` means implementation, verification, or a decision is still outstanding.
+- `master` retains Mbed CE and now includes the application feature backport.
+- `cmsis-ll-port` contains the independent CMSIS-Core / STM32 LL firmware.
+  Migration checkboxes below refer to that branch, not removal of Mbed from master.
 
-Make the long-term firmware base independent of Mbed CE and the bundled legacy STM32 Standard Peripheral Library. The target architecture is a lean bare-metal STM32F103 firmware using modern CMSIS-Core/device headers plus STM32 LL, while retaining GCC/CMake and the existing application behavior.
+Hardware checks remain separate from software completion. Earlier firmware
+startup checks do not validate the latest backport, RF timing, or calibration.
 
-This should **not** be a big-bang rewrite. Migrate and verify one subsystem at a time, keeping the current Mbed CE build as the known-good reference until the replacement path reaches hardware feature parity.
+## Priority 0 — CMSIS-Core + STM32 LL migration (`cmsis-ll-port`)
+
+The independent STM32F103 application is implemented on `cmsis-ll-port`, using modern CMSIS-Core/device headers, STM32 LL and GCC/CMake. It builds without Mbed or the bundled legacy STM32 Standard Peripheral Library. Master intentionally retains the Mbed implementation for comparison.
+
+Software migration is complete; full hardware feature parity is still outstanding. Keep the Mbed build and compatibility documentation available while checking each peripheral group on the radio.
 
 ### Target architecture
 
@@ -27,21 +36,22 @@ STM32 LL + CMSIS-Core
 STM32F103
 ```
 
-- [ ] Keep the existing GCC + CMake build workflow.
-- [ ] Replace Mbed CE startup/runtime dependencies with project-owned startup, vector table, linker configuration, reset/init path, and system clock setup.
-- [ ] Use current CMSIS-Core / STM32F1 device headers rather than the old bundled CMSIS copy where practical.
-- [ ] Replace the 2009 STM32 Standard Peripheral Library usage with STM32 LL or small project-local register-level helpers.
-- [ ] Avoid STM32 HAL unless a specific peripheral clearly benefits from it; prefer LL/direct access for deterministic radio control.
-- [ ] Preserve the STM32F103 72 MHz clock behavior and the existing 16 MHz board crystal configuration.
-- [ ] Preserve interrupt ownership and timing contracts currently checked by `tools/verify_image.cmake`.
-- [ ] Preserve the existing EEPROM binary layout unless an explicitly versioned migration is introduced.
-- [ ] Preserve radio behavior first; optimize/clean up only after each migrated subsystem is covered by tests or hardware checks.
+- [x] Keep the existing GCC + CMake build workflow.
+- [x] Replace Mbed CE startup/runtime dependencies with project-owned startup, vector table, linker configuration, reset/init path, and system clock setup.
+- [x] Use current CMSIS-Core / STM32F1 device headers rather than the old bundled CMSIS copy where practical.
+- [x] Replace the 2009 STM32 Standard Peripheral Library usage with STM32 LL or small project-local register-level helpers.
+- [x] Avoid STM32 HAL unless a specific peripheral clearly benefits from it; prefer LL/direct access for deterministic radio control.
+- [x] Preserve the STM32F103 72 MHz clock behavior and the existing 16 MHz board crystal configuration.
+- [x] Add branch-appropriate vector/IRQ/layout checks: `tools/verify_image.cmake` on master, and `cmsis_ll/tests/verify_boot_image.py`, `verify_full_image.py` plus `platform/device_contracts.c` on the LL branch. Master keeps the TIM5 keyer remap; standalone uses TIM4.
+- [ ] Measure physical interrupt/peripheral timing and confirm hardware behavior matches the intended contracts.
+- [x] Preserve the existing EEPROM binary layout unless an explicitly versioned migration is introduced.
+- [ ] Complete hardware feature-parity checks for the migrated subsystems before retiring the Mbed reference.
 
-### Migration rule: fix each subsystem while porting it
+### Migration approach used
 
-Do not simply translate old StdPeriph/Mbed calls into LL calls. When a subsystem is migrated, also implement the relevant fixes already listed below so old defects are not carried into the new hardware layer.
+The migration added subsystem fixes alongside native peripheral calls. The sequence below records that approach; completion is tracked by the checkboxes and feature sections.
 
-Suggested subsystem order:
+Subsystem sequence:
 
 1. **Startup / clock / linker / vector table**
    - establish a fully Mbed-independent bootable image;
@@ -84,12 +94,12 @@ Suggested subsystem order:
 
 ### Migration validation
 
-- [ ] Keep the current Mbed CE image buildable during migration for A/B comparison.
-- [ ] Compare flash/vector layout and important data structure sizes between old and new builds.
-- [ ] Extend host tests as logic is extracted from hardware-facing files.
+- [x] Keep the current Mbed CE image buildable during migration for A/B comparison.
+- [x] Compare flash/vector layout and important data structure sizes between old and new builds.
+- [x] Extend host tests as logic is extracted from hardware-facing files.
 - [ ] Add small hardware smoke-test checkpoints after each peripheral group rather than waiting for the whole migration to finish.
 - [ ] Verify in stages with RF power disabled first, then dummy-load RX/TX checks, then controlled on-air testing.
-- [ ] Do not remove the current compatibility documentation until the CMSIS/LL path is proven on the actual radio.
+- [x] Retain the Mbed build and compatibility documentation; final removal remains gated on hardware feature parity.
 
 ## Development status — Mbed feature backport
 
@@ -133,7 +143,7 @@ change is included.
 ## Priority 2 — RF behavior
 
 ### TX / RX sequencing
-Current code can assert the physical TX control before the DDS is updated for TX/XIT state.
+TX entry now programs LO/BFO before enabling the physical TX gate. RX return removes RF first. The settling delay and physical transition timing still need measurement.
 
 - [x] Refactor TX entry so the preferred order is approximately:
   1. Mute RX/audio path.
@@ -147,7 +157,7 @@ Current code can assert the physical TX control before the DDS is updated for TX
 - [ ] Verify carefully with the RF power stages disabled before on-air testing.
 
 ### Faster SWR protection
-The display-oriented SWR update path currently runs much slower than the ADC sampling capability.
+Protection now samples reflected power every 10 ms independently of the slower OLED meter refresh. Ordinary TX requires three consecutive high readings; severe reflection cuts the gate on the first sample.
 
 - [x] Separate fast SWR protection from slow OLED meter updates.
 - [x] Evaluate a protection interval around 5–20 ms instead of roughly 200 ms.
@@ -156,7 +166,7 @@ The display-oriented SWR update path currently runs much slower than the ADC sam
 - [ ] Test shutdown timing into a controlled mismatch/dummy-load setup.
 
 ### Automatic-tuner TUNE mode
-Add a dedicated low-power TUNE state for driving an external automatic antenna tuner. This should be implemented as its own state machine rather than by reusing normal CW keyer timing.
+A dedicated low-power TUNE state drives an external automatic antenna tuner. Long-press V/M in normal VFO mode to start; CAT CA1;/CA0;/CA; provides start/cancel/query. Detector thresholds remain provisional until measured.
 
 - [x] Add explicit tune-state functions such as `Tune_Start()`, `Tune_Task()`, and `Tune_Stop()`.
 - [x] On TUNE start:
@@ -172,13 +182,16 @@ Add a dedicated low-power TUNE state for driving an external automatic antenna t
 - [x] Use the existing fast ADC/SWR sampling path rather than slowing the global protection system.
 - [x] Auto-complete tuning when SWR remains below a target threshold for a defined settling period (for example a few hundred milliseconds).
 - [x] Add a hard maximum tune timeout so carrier generation can never continue indefinitely.
-- [x] Stop TUNE immediately on user cancel, PTT, power-off, or another conflicting transmit/control action.
+- [x] Stop TUNE on front-panel cancel/PTT/power-off requests and on completion, severe protection or timeout.
+- [ ] Audit cancellation/interlocks for the remaining conflicting CAT/control actions.
 - [x] On TUNE exit:
   1. Remove CW carrier/keying.
   2. Return safely to RX.
   3. Restore the user's previous H/L power setting.
   4. Clear tune-specific timers/status.
-- [x] Show a clear OLED indication such as `TUNE` and keep the SWR bar live while tuning.
+- [x] Show `TUNE` and keep the SWR bar live while tuning.
+- [x] Restore the selected USB/LSB/CW label on exit and hold the final RF-on SWR bar for five seconds as `LAST SWR`, or show `SWR --` if no sample exists.
+- [x] Suspend ordinary CW/CQ tasks during the independent TUNE state on master; cover this in the production board-loop regression.
 - [x] Select a convenient front-panel long press or key combination for start/cancel without disturbing existing commonly used functions.
 - [x] Reuse the existing dormant Kenwood CAT `CA` (CW TUNE) command if practical, e.g. start/query/cancel support after local TUNE behavior is stable.
 - [x] Add host-side tests for tune-state transitions, forced LOW power, timeout, SWR success, severe-SWR abort, cancel behavior, and restoration of the previous power setting.
@@ -187,7 +200,7 @@ Add a dedicated low-power TUNE state for driving an external automatic antenna t
 ## Priority 3 — Hardware compatibility
 
 ### FX-9A filter-switching revisions
-`bsp_baud.c` documents both the original filter-switching map and the later 2016-03-09 map, but only one mapping is currently implemented.
+Both the original and 2016-03-09 filter maps are implemented in `filter_map.h`. CMake selects the revision; `2016_03` remains the default. Both maps have host tests, while physical revision identification and GPIO verification remain open.
 
 - [x] Convert band/filter GPIO selection to a table-driven implementation.
 - [x] Provide compile-time `FX9A_BOARD_REVISION=ORIGINAL` and `2016_03` wiring selections.
@@ -199,7 +212,7 @@ Add a dedicated low-power TUNE state for driving an external automatic antenna t
 ## Priority 4 — Calibration and measurement
 
 ### S-meter, RF power, and SWR calibration
-Current meter conversion uses fixed ADC thresholds.
+Optional table-driven calibration is implemented. A validated 30-byte versioned/CRC record at EEPROM address 1104 enables it; absent or invalid calibration retains the original conversion thresholds. Protection continues to use raw ADC thresholds.
 
 - [x] Replace hardcoded meter thresholds with table-driven calibration.
 - [x] Add configurable S-meter calibration points, for example S0 / S5 / S9 / S9+20 / S9+40.
@@ -220,12 +233,13 @@ Current meter conversion uses fixed ADC thresholds.
 ### Review dormant phase function
 - [x] Review `ad9834_tx_phase()`.
 - [x] Its input appears to be degrees but the current conversion uses `pi` in the divisor; fix or remove it if it is unused.
-- [ ] Do not change active RF behavior until hardware use is confirmed.
+- [x] Confirm `ad9834_tx_phase()` has no active call sites; correcting the dormant helper does not enable phase control.
+- [ ] Verify the active integer DDS frequency calculations on the physical radio.
 
 ## Priority 6 — User-interface improvements
 
 ### Continuous tuning enable / disable
-The current fork allows continuous tuning through the gaps between amateur bands. Add a user setting so this behavior can be enabled or disabled without rebuilding the firmware.
+The long-press BAND menu now provides a persistent CONTINUOUS TUNING ON/OFF option. ON retains cross-band tuning; OFF enforces the selected band limits for front-panel and CAT frequency changes.
 
 - [x] Add a `CONT TUNE` / `CONTINUOUS TUNING` ON/OFF setting.
 - [x] Put this option in the existing settings menu entered by **long-pressing the BAND key** — the same menu that currently contains callsign setup and the RX alignment items.
@@ -247,7 +261,7 @@ The current fork allows continuous tuning through the gaps between amateur bands
 ### Main optical VFO encoder
 The RES20D-50-201-1 main VFO encoder is a 50 PPR optical quadrature encoder and the existing falling-edge direction scheme is simple and appropriate.
 
-- [ ] Keep the present main encoder decoder unless hardware testing shows missed pulses.
+- [x] Keep the present main encoder decoder unless hardware testing shows missed pulses.
 - [x] Consider optional velocity-based tuning acceleration:
   - slow rotation: fine step,
   - medium rotation: larger step,
@@ -265,16 +279,11 @@ The RES20D-50-201-1 main VFO encoder is a 50 PPR optical quadrature encoder and 
 ### Reduce `bsp_board.c` responsibilities
 The current board file combines radio state, UI state, persistence, DDS control, meter conversion, and TX/RX behavior.
 
-- [ ] Refactor gradually rather than rewriting the firmware.
-- [ ] Candidate modules:
-  - radio state / mode handling,
-  - RF TX/RX sequencing,
-  - VFO/frequency handling,
-  - persistence/EEPROM,
-  - meter conversion/calibration,
-  - UI/display refresh,
-  - CAT command handling.
-- [ ] Preserve EEPROM ABI and known hardware behavior during refactoring.
+- [x] Extract focused policy helpers and the meter-calibration module while retaining the existing application structure.
+- [x] Extract DDS math, filter mapping, tuning policy, TUNE logic, optional VFO acceleration, saved-setting validation, CAT frame validation, and meter calibration into separate helpers/modules.
+- [ ] Continue separating the remaining radio state, RF sequencing, VFO persistence, UI refresh and CAT command orchestration from `bsp_board.c`.
+- [x] Preserve the legacy EEPROM record sizes/offsets with compile-time assertions and regression tests.
+- [ ] Verify physical behavior after the refactoring/backport.
 - [x] Keep host regression tests around every extracted subsystem.
 
 ## Existing work to preserve
@@ -289,21 +298,18 @@ The current fork already includes several important improvements that should rem
 - Image/vector/timer/delay verification in the build.
 - Host tests for encoder behavior, frequency logic, and RX alignment.
 
-## Suggested implementation order
+## Remaining work
 
-The CMSIS-Core + STM32 LL migration is the umbrella workstream. Apply the other TODO fixes when their subsystem is migrated rather than postponing them until after the port.
-
-1. Establish Mbed-independent startup / clock / linker / vector support.
-2. Migrate GPIO and basic board control.
-3. Migrate timers and input scanning while preserving current encoder/key timing.
-4. Migrate USART/DMA and complete the CAT/UART safety + correctness fixes and tests.
-5. Migrate I2C/EEPROM and complete error handling, validation, and recovery improvements.
-6. Migrate DDS control and complete integer-math cleanup.
-7. Migrate ADC/protection and implement faster SWR protection.
-8. Migrate band/filter control and add hardware-revision support.
-9. Migrate OLED/UI and add the continuous-tuning enable/disable setting.
-10. Refactor TX/RX sequencing around the new hardware layer.
-11. Implement the automatic-tuner TUNE state.
-12. Add meter calibration and optional VFO acceleration.
-13. Remove Mbed CE / legacy StdPeriph only after the CMSIS/LL path is proven on hardware.
-14. Continue splitting `bsp_board.c` as the migrated subsystems acquire clear module boundaries.
+1. Validate the latest Mbed backport and standalone changes on the radio: GPIO,
+   encoder feel, OLED restoration, audio, EEPROM persistence and CAT operation.
+2. Measure DDS settling, TX/RX sequencing and SWR cutoff timing, then establish
+   TUNE thresholds with controlled dummy-load/mismatch tests.
+3. Identify the fitted filter-board revision and verify both supported maps on
+   their respective hardware; document identification before adding a selector.
+4. Complete the remaining CAT response audit and broader interoperability and
+   recovery tests.
+5. Decide how to add version/integrity protection for legacy settings; the
+   calibration record already has its own version and CRC. Improve end-to-end
+   error reporting from EEPROM save/read wrappers as part of that work.
+6. Continue extracting responsibilities from `bsp_board.c` with regression
+   coverage. Retire Mbed/legacy compatibility only after hardware feature parity.
