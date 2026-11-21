@@ -20,6 +20,7 @@
 #include "bsp_pwm.h"
 #include "bsp_timer.h"
 #include "bsp_usart.h"
+#include "radio_cat.h"
 
 static KEY_AttrDef key;
 
@@ -1977,20 +1978,7 @@ void key_task()
   }
 }
 
-void UART_Task()
-{
-  usart_process_rx_commands();
-  uint8_t size = 0;
-  if (DMA_IsTxComplete())
-  {
-    size = UART_TxBufSize(); 
-    if(size > 0){
-      // 串口发送处理
-      CopyTBufToDMA();
-      UART_DMAStart( size );	
-    }
-  }
-}
+
 
 /* Called at 10 ms intervals by TIM2's 250 us sampling ISR.
  * Do not call OLED, DDS, delay, or EEPROM functions inside this ISR.
@@ -2077,7 +2065,7 @@ void board_task()
     }
   }
   
-  UART_Task();
+  RadioCAT_Task();
 }
 
 /* Keep frequency, filter selection, and VFO persistence in agreement without
