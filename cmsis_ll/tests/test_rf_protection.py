@@ -8,7 +8,7 @@ import tempfile
 
 root = Path(__file__).resolve().parents[2]
 board = "\n".join((root / "cmsis_ll/app" / path).read_text(encoding="latin1")
-                  for path in ("bsp_board.c", "radio_ui.c"))
+                  for path in ("bsp_board.c", "radio_ui.c", "radio_rf.c"))
 header = (root / "RadioStation/BSP/bsp_board.h").read_text(encoding="latin1")
 
 
