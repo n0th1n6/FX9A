@@ -1,5 +1,4 @@
 #include "i2c.h"
-#include "ll_pins.h"
 
 //----- ST24C16 I2C configure -------
 
@@ -43,22 +42,17 @@ void SET_I2C_SDA_PIN(uint8_t bit)
   }
 }
 
+/* Match StdPeriph GPIO_Mode_Out_OD / GPIO_Mode_IN_FLOATING exactly.
+ * STM32F1 CRL: each pin has CNF[1:0]:MODE[1:0] (four bits).
+ * PE4 output open-drain at 2 MHz = 0x6; floating input = 0x4.
+ * Only PE4's nibble is changed, leaving other GPIOE pins untouched.
+ */
 void SET_I2C_SDA_DIR(uint8_t out)
 {
-  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
-  
-  GPIO_InitStructure.Pin = fx9a_ll_pins(I2C_SDA);
-  if( out )
-  {
-    GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStructure.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
-  }
-  else
-  {
-    GPIO_InitStructure.Mode = LL_GPIO_MODE_FLOATING;
-  }
-  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  LL_GPIO_Init(I2C_PORT, &GPIO_InitStructure);
+  const uint32_t shift = 4u * 4u; /* PE4 in GPIOE->CRL */
+  const uint32_t mode = out ? 0x6u : 0x4u;
+  I2C_PORT->CRL = (I2C_PORT->CRL & ~(0xfu << shift)) |
+                  (mode << shift);
 }
 
 void i2c_reset()
@@ -79,25 +73,20 @@ void i2c_reset()
 
 void i2c_init(void)
 {
-  LL_GPIO_InitTypeDef GPIO_InitStructure = {0};
-  
-  GPIO_InitStructure.Pin = fx9a_ll_pins(E2P_WC);
-  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStructure.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  LL_GPIO_Init(I2C_PORT, &GPIO_InitStructure);
-  
-  GPIO_InitStructure.Pin = fx9a_ll_pins(I2C_SDA | I2C_SCK);
-  GPIO_InitStructure.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStructure.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
-  GPIO_InitStructure.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  LL_GPIO_Init(I2C_PORT, &GPIO_InitStructure);
-  
-  (I2C_PORT->BSRR = (E2P_WC));
-  
-  /*I2C总线初始为高电平*/ 
-  (I2C_PORT->BSRR = (I2C_SDA));
-  (I2C_PORT->BSRR = (I2C_SCK));
+  /* Release both I2C lines and assert write protect before enabling
+   * outputs. board_init() has already enabled the GPIOE clock.
+   * The 24LC16 is not written by this initialization routine.
+   */
+  I2C_PORT->BSRR = E2P_WC | I2C_SDA | I2C_SCK;
+
+  /* Exact STM32F1 CRL equivalents of the working StdPeriph setup:
+   * PE2: GPIO_Mode_Out_PP, 2 MHz  -> 0x2
+   * PE3: GPIO_Mode_Out_OD, 2 MHz  -> 0x6
+   * PE4: GPIO_Mode_Out_OD, 2 MHz  -> 0x6
+   */
+  const uint32_t mask = (0xfu << 8) | (0xfu << 12) | (0xfu << 16);
+  const uint32_t config = (0x2u << 8) | (0x6u << 12) | (0x6u << 16);
+  I2C_PORT->CRL = (I2C_PORT->CRL & ~mask) | config;
 }
 
 void i2c_start()
