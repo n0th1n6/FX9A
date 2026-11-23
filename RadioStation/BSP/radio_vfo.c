@@ -1,3 +1,5 @@
+#include <stdint.h>
+#include "cmsis_gcc.h"
 #include "radio_vfo.h"
 #include "radio_state.h"
 #include "bsp_frequency.h"
@@ -52,6 +54,17 @@ bool Frequency_Set(uint32_t frequency)
   FREQ.val = frequency;
   FREQ.numOfbaud = band;
   return true;
+}
+
+/* Keep the live frequency in radio units while the optical IRQ is enabled.
+ * The two old UI assignments exposed an intermediate value divided by 100.
+ */
+void Frequency_AlignCoarse(void)
+{
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  FREQ.val = (FREQ.val / 100u) * 100u;
+  __set_PRIMASK(primask);
 }
 
 void Frequency_Tune(int32_t step)

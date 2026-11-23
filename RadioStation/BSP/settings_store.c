@@ -96,7 +96,7 @@ static bool payload(bool write, uint32_t *crc)
 #undef FIELD
   return true;
 }
-SettingsResult Settings_Load(void)
+static SettingsResult read_settings(bool apply)
 {
   uint8_t marker, meta[META_SIZE];
   if (!e2p_read(E2P_ADDR_SAVE, &marker, 1) ||
@@ -109,8 +109,16 @@ SettingsResult Settings_Load(void)
   uint32_t crc = ~0u;
   if (!payload(false, &crc)) return SETTINGS_IO_ERROR;
   if (tagged && get32(meta + 8) != ~crc) return SETTINGS_CORRUPT;
-  copy_live(false);
+  if (apply) copy_live(false);
   return tagged ? SETTINGS_VALID : SETTINGS_LEGACY;
+}
+SettingsResult Settings_Load(void)
+{
+  return read_settings(true);
+}
+SettingsResult Settings_Check(void)
+{
+  return read_settings(false);
 }
 bool Settings_Save(void)
 {

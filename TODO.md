@@ -11,6 +11,11 @@ Status audited against the source and regression checks on 2026-11-21.
 Hardware checks remain separate from software completion. Earlier firmware
 startup checks do not validate the latest backport, RF timing, or calibration.
 
+Software follow-up on 2026-11-23: both branches suspend CW/CQ tasks during
+TUNE, keep SWR trip decisions in the RF ISR/service, and retain the calibration
+menu with `ERR` on a failed save. Calibration writes are read back before success.
+`tools/test_radio_integration.py` covers these paths; hardware checks remain open.
+
 ## Priority 0 — CMSIS-Core + STM32 LL migration (`cmsis-ll-port`)
 
 The independent STM32F103 application is implemented on `cmsis-ll-port`, using modern CMSIS-Core/device headers, STM32 LL and GCC/CMake. It builds without Mbed or the bundled legacy STM32 Standard Peripheral Library. Master intentionally retains the Mbed implementation for comparison.
@@ -141,6 +146,7 @@ change is included.
 - [x] Ensure I2C STOP / bus recovery is performed on NACK/error paths.
 - [x] Add settings version/CRC metadata in unused EEPROM space while preserving legacy record offsets.
 - [x] Validate saved settings before applying them.
+- [x] Revalidate EEPROM on an explicit save after a boot-time read failure, preserving current RAM edits and retrying shutdown only when stored data is readable and valid. Continued I/O/corruption errors remain protected; host regressions cover legacy and CRC records.
 - [x] Verify shutdown writes/readback, detect incomplete saves and propagate errors to the power-button handler; preserve unreadable/corrupt EEPROM at boot.
 - [x] Add version 1 settings metadata with CRC32 at EEPROM 1152; preserve legacy offsets and keep calibration separate.
 - [ ] Check actual EEPROM shutdown duration, error display and recovery on the radio. See `SETTINGS_AND_CAT.md`.
@@ -164,7 +170,7 @@ TX entry now programs LO/BFO before enabling the physical TX gate. RX return rem
 ### Faster SWR protection
 Protection now samples reflected power every 10 ms independently of the slower OLED meter refresh. Ordinary TX requires three consecutive high readings; severe reflection cuts the gate on the first sample.
 
-- [x] Separate fast SWR protection from slow OLED meter updates.
+- [x] Separate fast SWR protection from slow OLED meter updates. Display refresh no longer makes RF shutdown decisions; host tests cover single spikes and sustained trips.
 - [x] Evaluate a protection interval around 5–20 ms instead of roughly 200 ms.
 - [x] Require a small number of consecutive high-SWR readings to reject single-sample spikes.
 - [x] Keep the existing slower smoothing/update rate for the displayed meter.
@@ -223,7 +229,7 @@ Optional table-driven calibration is implemented. A validated 30-byte versioned/
 - [x] Add configurable S-meter calibration points, for example S0 / S5 / S9 / S9+20 / S9+40.
 - [x] Add RF power calibration points, for example 1 W / 5 W / 10 W.
 - [x] Add SWR/reflected-power calibration as practical.
-- [x] Store calibration data in unused EEPROM space with versioning/validation.
+- [x] Store calibration data in unused EEPROM space with versioning/validation. Verify write readback and keep the menu/edits with `ERR` on failure so saving can be retried.
 - [x] Provide a service/alignment menu rather than exposing raw ADC constants in normal operation.
 - [x] Preserve current defaults so existing radios behave the same without calibration.
 
@@ -264,6 +270,8 @@ The long-press BAND menu now provides a persistent CONTINUOUS TUNING ON/OFF opti
 - [x] Extend `tools/test_frequency.py` to cover both ON and OFF modes, including lower/upper limits, band gaps, VFO recall, RIT/XIT interaction, and CAT frequency commands.
 
 ### Main optical VFO encoder
+
+- [x] Acknowledge optical IRQ edges before processing and make TS alignment atomic; injected-edge regressions cover both branches. Fast-turn behavior still requires a physical retest.
 The RES20D-50-201-1 main VFO encoder is a 50 PPR optical quadrature encoder and the existing falling-edge direction scheme is simple and appropriate.
 
 - [x] Keep the present main encoder decoder unless hardware testing shows missed pulses.

@@ -492,10 +492,13 @@ void EXTI2_IRQHandler(void)
 {
   if (EXTI_GetITStatus(EXTI_Line2) == SET)
   {
+    /* Acknowledge this edge before applying tuning/menu changes. A new edge
+     * arriving during that work must remain pending for the next IRQ entry.
+     */
+    EXTI_ClearITPendingBit(EXTI_Line2);
     // Ëø¶¨×´Ì¬
     if ( ATT.val )
     {
-      EXTI_ClearITPendingBit(EXTI_Line2);
       return;
     }
 
@@ -637,7 +640,6 @@ void EXTI2_IRQHandler(void)
         }
       }
     }
-    EXTI_ClearITPendingBit(EXTI_Line2);
   }
 }
 

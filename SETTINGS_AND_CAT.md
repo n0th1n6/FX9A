@@ -23,7 +23,12 @@ metadata/checksum is invalid, the radio uses safe RAM defaults and blocks normal
 settings saves so the stored bytes remain available for recovery. An explicit
 factory reset initializes and saves new defaults. If shutdown saving fails, the
 radio displays `ERR` in the TS area and retains power, allowing another save
-attempt. A read/corruption fault at boot requires recovery or explicit reset.
+attempt. After a boot-time read/check failure, an explicit power-button save
+revalidates the stored data without applying it over the current RAM settings.
+If the EEPROM is readable and valid (or empty), saving resumes with the current
+edits. Continued I/O errors or corrupt records retain `ERR` and keep power on;
+corrupt data still requires recovery or an explicit factory reset. This does not
+add periodic saving or automatically overwrite failed records at boot.
 Verify these display and power-hold behaviors on hardware before deployment.
 
 Older firmware can read the unchanged legacy records. If older firmware saves

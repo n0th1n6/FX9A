@@ -585,7 +585,10 @@ void RadioControls_Task(void)
       {
         if( AIMgr.item & MENUSETItem)           // exit settings and save calibration
         {
-          MeterCal_Save();
+          if (!MeterCal_Save()) {
+            oled_ts((uint8_t *)"ERR");
+            break; /* Keep the menu and edited calibration available to retry. */
+          }
           AIMgr.item &= ~MENUSETItem;
           DRMgr.item |= ALLItem;
           buzzer_stop();

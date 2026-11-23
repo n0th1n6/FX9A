@@ -103,7 +103,17 @@ static void defaults_in_ram(void)
 
 bool RadioState_Save(void)
 {
-  return settings_write_allowed && Settings_Save();
+  if (!settings_write_allowed) {
+    /* An explicit save may retry a transient boot read failure. Recheck the
+     * EEPROM without loading it over the operator's current RAM settings.
+     * Unreadable/corrupt bytes remain protected until recovery or reset.
+     */
+    SettingsResult result = Settings_Check();
+    if (result == SETTINGS_CORRUPT || result == SETTINGS_IO_ERROR)
+      return false;
+    settings_write_allowed = true;
+  }
+  return Settings_Save();
 }
 
 void RadioState_ResetDefaults(void)
