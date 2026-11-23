@@ -305,7 +305,7 @@ void board_task()
   
   board_refresh_manager();
   
-  if( RADIO.mode == CWA || RADIO.mode == CWB)
+  if (!Tune_IsActive() && (RADIO.mode == CWA || RADIO.mode == CWB))
   {
     if(FREQ.item & CALLItem)
     {

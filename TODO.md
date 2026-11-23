@@ -6,6 +6,11 @@ regressions on 2026-11-21. `[x]` means the implementation/software check is done
 Master retains Mbed CE; this branch contains the independent CMSIS/LL firmware.
 Hardware behavior is not established by a software check.
 
+Software follow-up on 2026-11-23: both branches suspend CW/CQ tasks during
+TUNE, keep SWR trip decisions in the RF ISR/service, and retain the calibration
+menu with `ERR` on a failed save. Calibration writes are read back before success.
+`tools/test_radio_integration.py` covers these paths; hardware checks remain open.
+
 ## Priority 0 — Migrate to CMSIS-Core + STM32 LL
 
 **Software port status (development branch):** The standalone complete radio
@@ -152,6 +157,7 @@ Optical VFO acceleration remains optional and OFF by default.
 - [x] Ensure I2C STOP / bus recovery is performed on NACK/error paths.
 - [x] Add settings version/CRC metadata in unused EEPROM space while preserving legacy record offsets.
 - [x] Validate saved settings before applying them.
+- [x] Revalidate EEPROM on an explicit save after a boot-time read failure, preserving current RAM edits and retrying shutdown only when stored data is readable and valid. Continued I/O/corruption errors remain protected; host regressions cover legacy and CRC records.
 - [x] Verify shutdown writes/readback, detect incomplete saves and propagate errors to the power-button handler; preserve unreadable/corrupt EEPROM at boot.
 - [x] Add version 1 settings metadata with CRC32 at EEPROM 1152; preserve legacy offsets and keep calibration separate.
 - [ ] Check actual EEPROM shutdown duration, error display and recovery on the radio. See `SETTINGS_AND_CAT.md`.
@@ -175,7 +181,7 @@ TX entry programs LO/BFO before asserting the physical TX gate. RX return remove
 ### Faster SWR protection
 Fast protection uses an independent 10 ms sampling path; the display keeps its slower meter updates. Physical shutdown latency still needs measurement.
 
-- [x] Separate fast SWR protection from slow OLED meter updates.
+- [x] Separate fast SWR protection from slow OLED meter updates. Display refresh no longer makes RF shutdown decisions; host tests cover single spikes and sustained trips.
 - [x] Evaluate a protection interval around 5–20 ms instead of roughly 200 ms.
 - [x] Require a small number of consecutive high-SWR readings to reject single-sample spikes.
 - [x] Keep the existing slower smoothing/update rate for the displayed meter.
@@ -185,6 +191,7 @@ Fast protection uses an independent 10 ms sampling path; the display keeps its s
 Add a dedicated low-power TUNE state for driving an external automatic antenna tuner. This should be implemented as its own state machine rather than by reusing normal CW keyer timing.
 
 - [x] Add explicit tune-state functions such as `Tune_Start()`, `Tune_Task()`, and `Tune_Stop()`.
+- [x] Suspend ordinary CQ/manual/automatic CW tasks while TUNE is active, with board-loop regression coverage.
 - [x] On TUNE start:
   1. Save the current TX power setting.
   2. Force the radio to LOW power before any RF is generated.
@@ -231,7 +238,7 @@ Optional table-driven calibration is implemented in a separate versioned/CRC rec
 - [x] Add configurable S-meter calibration points, for example S0 / S5 / S9 / S9+20 / S9+40.
 - [x] Add RF power calibration points, for example 1 W / 5 W / 10 W.
 - [x] Add SWR/reflected-power calibration as practical.
-- [x] Store calibration data in unused EEPROM space with versioning/validation.
+- [x] Store calibration data in unused EEPROM space with versioning/validation. Verify write readback and keep the menu/edits with `ERR` on failure so saving can be retried.
 - [x] Provide a service/alignment menu rather than exposing raw ADC constants in normal operation.
 - [x] Preserve current defaults so existing radios behave the same without calibration.
 
@@ -271,6 +278,8 @@ The current fork allows continuous tuning through the gaps between amateur bands
 - [x] Extend `tools/test_frequency.py` to cover both ON and OFF modes, including lower/upper limits, band gaps, VFO recall, RIT/XIT interaction, and CAT frequency commands.
 
 ### Main optical VFO encoder
+
+- [x] Acknowledge optical IRQ edges before processing and make TS alignment atomic; injected-edge regressions cover both branches. Fast-turn behavior still requires a physical retest.
 The RES20D-50-201-1 main VFO encoder is a 50 PPR optical quadrature encoder and the existing falling-edge direction scheme is simple and appropriate.
 
 - [x] Retain the existing optical encoder decoder; acceleration is optional and defaults OFF. Physical response testing remains open below.

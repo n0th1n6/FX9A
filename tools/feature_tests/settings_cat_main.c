@@ -75,6 +75,28 @@ int main(void) {
     io_fail = true; before = writes; LOAD();
     assert(writes == before && VOL.val == 2 && !RadioState_Save()); io_fail = false;
     LOAD(); assert(VOL.val == 37);
+    /* A transient boot read fault must not permanently disable a later
+     * power-button save, for both legacy and CRC-tagged EEPROM records.
+     */
+    for (unsigned legacy = 0; legacy < 2; ++legacy) {
+        memcpy(ee, baseline, sizeof ee);
+        if (legacy) memset(ee+1152, 0xff, 20);
+        io_fail = true; LOAD();
+        VOL.val = 51; VFO.VFOA[3].freq = 712345; MENU.rxUsbOffset = 120;
+        MEM[7].freq = 715678;
+        isRun = true; display_off = power_removed = save_error = false;
+        uint8_t preserved[2048]; memcpy(preserved, ee, sizeof ee);
+        before = writes; power_button();
+        assert(isRun && save_error && !display_off && !power_removed && writes == before);
+        assert(!memcmp(ee, preserved, sizeof ee));
+        io_fail = false;
+        power_button();
+        assert(!isRun && display_off && power_removed && VOL.val == 51);
+        assert(VFO.VFOA[3].freq == 712345 && MENU.rxUsbOffset == 120 && MEM[7].freq == 715678);
+        LOAD(); assert(VOL.val == 51 && VFO.VFOA[3].freq == 712345);
+    }
+    memcpy(ee, baseline, sizeof ee); LOAD();
+    display_off = power_removed = save_error = false;
     corrupt_write = true; assert(!RadioState_Save()); corrupt_write = false;
     memcpy(ee, baseline, sizeof ee); LOAD();
     /* Inject a failure at every operation in a complete save, including commit.
@@ -186,5 +208,5 @@ int main(void) {
         for (unsigned j=0; j<sizeof input; ++j) { random = random*1664525u+1013904223u; input[j] = random>>24; }
         Kenwood_CmdParser(input, i % 34);
     }
-    puts("PASS: production settings/CAT: legacy migration, CRC, interrupted saves, I/O failures, responses, independent VFOs and RF interlocks");
+    puts("PASS: production settings/CAT: legacy/CRC save retry after boot I/O failure, interrupted saves, corruption protection, responses and RF interlocks");
 }

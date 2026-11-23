@@ -247,6 +247,7 @@ bool Tune_IsActive(void);
 
 bool Frequency_Set(uint32_t frequency);
 void Frequency_Tune(int32_t step);
+void Frequency_AlignCoarse(void);
 
 void VFO_Get();
 void VFO_Save();

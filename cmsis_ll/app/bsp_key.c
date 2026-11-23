@@ -485,10 +485,13 @@ void EXTI2_IRQHandler(void)
 {
   if (((EXTI->PR & EXTI->IMR & (1u << 2)) != 0u) == SET)
   {
+    /* Acknowledge this edge before applying tuning/menu changes. A new edge
+     * arriving during that work must remain pending for the next IRQ entry.
+     */
+    LL_EXTI_ClearFlag_0_31(1u << 2);
     // 锁定状态
     if ( ATT.val )
     {
-      LL_EXTI_ClearFlag_0_31(1u << 2);
       return;
     }
 
@@ -630,7 +633,6 @@ void EXTI2_IRQHandler(void)
         }
       }
     }
-    LL_EXTI_ClearFlag_0_31(1u << 2);
   }
 }
 

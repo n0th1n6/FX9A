@@ -5,5 +5,7 @@
 typedef enum { SETTINGS_LEGACY, SETTINGS_VALID, SETTINGS_EMPTY,
                SETTINGS_CORRUPT, SETTINGS_IO_ERROR } SettingsResult;
 SettingsResult Settings_Load(void);
+/* Validate stored bytes without applying them to the current radio state. */
+SettingsResult Settings_Check(void);
 bool Settings_Save(void);
 #endif

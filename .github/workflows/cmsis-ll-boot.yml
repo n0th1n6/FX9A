@@ -8,6 +8,7 @@ on:
       - "RadioStation/BSP/**"
       - "RadioStation/StdPeriph_Driver/**"
       - "port/**"
+      - "tools/**"
       - ".github/workflows/cmsis-ll-boot.yml"
   pull_request:
     paths:
@@ -15,6 +16,7 @@ on:
       - "RadioStation/BSP/**"
       - "RadioStation/StdPeriph_Driver/**"
       - "port/**"
+      - "tools/**"
       - ".github/workflows/cmsis-ll-boot.yml"
   workflow_dispatch:
 
@@ -57,6 +59,8 @@ jobs:
           python3 tools/test_rx_alignment.py
           python3 tools/test_settings_cat.py
           python3 tools/test_transport.py
+          python3 tools/test_radio_integration.py
+          python3 tools/test_vfo_interrupts.py
       - name: Simulated native STM32F1 LL peripheral tests
         run: |
           gcc -std=c11 -O0 -Wall -Wextra -Wno-pointer-to-int-cast \

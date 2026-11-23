@@ -85,6 +85,11 @@ bool MeterCal_Save(void)
     if (!e2p_write(E2P_ADDR_CAL, (uint8_t *)&meter_cal,
                    (uint16_t)sizeof meter_cal))
         return false;
+    Fx9aMeterCal verified;
+    if (!e2p_read(E2P_ADDR_CAL, (uint8_t *)&verified, (uint16_t)sizeof verified) ||
+        memcmp(&verified, &meter_cal, sizeof verified) != 0 ||
+        !fx9a_cal_valid(&verified))
+        return false;
     meter_cal_dirty = false;
     meter_cal_active = true;
     return true;

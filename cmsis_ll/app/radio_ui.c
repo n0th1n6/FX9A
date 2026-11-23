@@ -235,8 +235,7 @@ void board_refresh_manager()
         {
           oled_ts("TS");
         }
-        FREQ.val /= 100;
-        FREQ.val *= 100;
+        Frequency_AlignCoarse();
       }
       
       if (FREQ.item & RITItem && !(FREQ.item & MEMItem))  // RIT使能时，显示频率=RIT + FREQ
@@ -374,15 +373,11 @@ void board_refresh_manager()
         {
           grid = 0;
         }
-        uint8_t protection_grid = grid; /* Never trust user meter calibration for PA protection. */
         if (MeterCal_Active()) grid = MeterCal_Grid(2u, adc_val);
         if (!tune_result_visible || RadioRF_HasSample()) oled_swr_grid(grid);
-        if (RF_IsTx() && !Tune_IsActive() && protection_grid >= MENU.vswr && MENU.vswr > 0)
-        {
-          RF_ToRx();
-          oled_h_vswr_disp();
-          hswr_timeout = 1;
-        }
+        /* RF_SwrSampleISR owns protection and consecutive-sample filtering.
+         * Display refresh must never bypass that policy with a single sample.
+         */
         
         if (DRMgr.item == 0)
         {
@@ -624,8 +619,7 @@ void board_refresh_manager()
         DRMgr.item &= ~MEMSETItem; 
         if (FREQ.item & TSItem)
         {
-          FREQ.val /= 100;
-          FREQ.val *= 100;
+          Frequency_AlignCoarse();
         }
         oled_mem_set(FREQ.numOfmem, FREQ.val, MemSetAll);
         MemSetAll = 0;
