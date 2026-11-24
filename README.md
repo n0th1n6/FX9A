@@ -60,10 +60,12 @@ under `backups/flash-<UTC timestamp>/`.
 
 Both `build_radio.py --flash` and `flash_radio.py` accept:
 
+- `--branch BRANCH`: switch this same worktree and build its working files, including local edits. The flash tool builds and verifies before flashing; omit its image argument with this option. Conflicting branch switches stop without stashing or discarding edits.
 - `--serial SERIAL`: select an ST-Link.
 - `--openocd /path/to/openocd`: select the OpenOCD executable.
 - `--backup-dir /path/to/new-directory`: choose a new backup directory.
-- `--yes`: skip the prompt while retaining all backup and verification checks.
+- `--yes`: skip the prompt while retaining the selected backup and verification checks.
+- `--skip-eeprom-backup`: skip EEPROM backup and preservation verification; retain flash and option-byte backups and checks. EEPROM backup is enabled by default.
 
 The EEPROM backup requires the existing firmware's initialized GPIO configuration.
 Blank or damaged boards need a separate recovery procedure. Both firmware builds
@@ -71,6 +73,8 @@ and offline helper tests pass; the complete helper flash sequence still needs
 validation on the radio. Check physical startup/display and RX operation before TX.
 
 See [full build/flashing instructions and failure handling](tools/FLASHING.md).
+After committing reviewed changes, use `./tools/pushrepo.py --branch BRANCH`
+to switch this same clean worktree, push to `origin`, and verify the remote SHA.
 Run helper regressions with `python3 tools/test_build_radio.py` and
 `python3 tools/test_flash_radio.py` (`tclsh` required for flash tests).
 

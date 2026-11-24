@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Flash a full FX-9A .bin via ST-Link/OpenOCD after verified backups."""
+"""Flash a full FX-9A .bin, or build and flash --branch, via ST-Link/OpenOCD."""
 import argparse
 from datetime import datetime, timezone
 import hashlib
@@ -100,16 +100,20 @@ def flash(args, directory, image):
         backup += f'dump_image {tcl(directory / f"flash-read{number}.bin")} 0x08000000 0x40000\n'
         backup += f'dump_image {tcl(directory / f"options-read{number}.bin")} 0x1ffff800 16\n'
     backup += f'dump_image {tcl(directory / "uid.bin")} 0x1ffff7e8 12\n'
-    run_openocd(args, directory, 'backup', backup + eeprom_commands(directory))
+    run_openocd(args, directory, 'backup', backup +
+                ('' if args.skip_eeprom_backup else eeprom_commands(directory)))
     original = checked_pair(directory, 'flash-read', FLASH_SIZE)
     options = checked_pair(directory, 'options-read', 16)
-    eeprom = checked_pair(directory, 'fx9a-eeprom-read', EEPROM_SIZE, hexadecimal=True)
+    eeprom = None if args.skip_eeprom_backup else checked_pair(
+        directory, 'fx9a-eeprom-read', EEPROM_SIZE, hexadecimal=True)
     uid = (directory / 'uid.bin').read_bytes()
     if len(uid) != 12:
         raise ValueError('Incomplete device identity backup.')
     manifest = {'image': str(args.image), 'image_sha256': hashlib.sha256(image).hexdigest(),
                 'uid': uid.hex(), 'flash_sha256': hashlib.sha256(original).hexdigest(),
-                'eeprom_sha256': hashlib.sha256(eeprom).hexdigest(),
+                'eeprom_sha256': None if eeprom is None else hashlib.sha256(eeprom).hexdigest(),
+                'eeprom_backup_skipped': args.skip_eeprom_backup,
+                'eeprom_preservation_verified': False,
                 'options_sha256': hashlib.sha256(options).hexdigest(), 'status': 'backups_verified'}
     (directory / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     # Recheck identity and original flash before erase; refuse swapped/changed targets.
@@ -122,7 +126,8 @@ def flash(args, directory, image):
                 f'flash write_image erase {tcl(selected)} 0x08000000 bin\n' +
                 f'verify_image {tcl(selected)} 0x08000000 bin\n' +
                 f'dump_image {tcl(post / "flash.bin")} 0x08000000 0x40000\n' +
-                f'dump_image {tcl(post / "options.bin")} 0x1ffff800 16\n' + eeprom_commands(post))
+                f'dump_image {tcl(post / "options.bin")} 0x1ffff800 16\n' +
+                ('' if args.skip_eeprom_backup else eeprom_commands(post)))
     result = (post / 'flash.bin').read_bytes()
     # F103 high-density flash erases in 2 KiB pages. Only final-page padding may change.
     boundary = (len(image) + 2047) // 2048 * 2048
@@ -131,9 +136,10 @@ def flash(args, directory, image):
         raise ValueError('Flash readback differs from image or untouched flash tail.')
     if (post / 'options.bin').read_bytes() != options:
         raise ValueError('Option bytes changed unexpectedly; leaving CPU halted.')
-    if checked_pair(post, 'fx9a-eeprom-read', EEPROM_SIZE, hexadecimal=True) != eeprom:
+    if eeprom is not None and checked_pair(post, 'fx9a-eeprom-read', EEPROM_SIZE, hexadecimal=True) != eeprom:
         raise ValueError('EEPROM changed unexpectedly; leaving CPU halted.')
-    # Start firmware only after host-side checks, including EEPROM preservation.
+    manifest['eeprom_preservation_verified'] = eeprom is not None
+    # Start firmware only after all selected host-side checks pass.
     run_openocd(args, directory, 'start', guard +
                 f'verify_image {tcl(post / "flash.bin")} 0x08000000 bin\nreset run\n')
     manifest['status'] = 'flashed_verified_reset'
@@ -143,21 +149,54 @@ def flash(args, directory, image):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, epilog='Connect ST-Link to the powered radio; release PTT/paddles and use a secure dummy load. Requires Python 3 and OpenOCD with ST-Link support. Never writes EEPROM settings or option bytes.')
-    parser.add_argument('image', type=Path, help='explicit full radio .bin from either branch')
+    parser.add_argument('image', nargs='?', type=Path, help='explicit full radio .bin; omit with --branch')
+    parser.add_argument('--branch', help='switch this worktree, build and verify the branch, then flash')
+    parser.add_argument('--build-dir', type=Path, help='build directory for --branch')
+    parser.add_argument('--toolchain-bin', type=Path, help='ARM toolchain directory for --branch')
+    parser.add_argument('--jobs', type=int, help='parallel build jobs for --branch')
+    parser.add_argument('--board-revision', choices=('2016_03', 'ORIGINAL'), help='board revision for --branch')
+    parser.add_argument('--vfo-accel', action='store_true', help='enable VFO acceleration with --branch')
+    parser.add_argument('--init-deps', action='store_true', help='initialize missing build dependencies with --branch')
     parser.add_argument('--openocd', default='openocd', help='OpenOCD executable (default: PATH)')
     parser.add_argument('--serial', help='select an ST-Link serial number')
     parser.add_argument('--backup-dir', type=Path, help='new directory for backups/logs (default: repo/backups/flash-UTC timestamp)')
-    parser.add_argument('--yes', action='store_true', help='skip the FLASH prompt; backups and verification remain mandatory')
+    parser.add_argument('--skip-eeprom-backup', action='store_true',
+                        help='skip all EEPROM reads, including backup and preservation verification; flash/options backups remain required')
+    parser.add_argument('--yes', action='store_true', help='skip the FLASH prompt; selected backups and verification remain mandatory')
     parser.add_argument('--dry-run', action='store_true', help='validate image and show plan without contacting hardware or creating files')
     args = parser.parse_args(argv)
+    if bool(args.image) == bool(args.branch):
+        parser.error('Supply either an image or --branch BRANCH, exclusively.')
+    if not args.branch and any((args.build_dir, args.toolchain_bin, args.jobs is not None,
+                                args.board_revision, args.vfo_accel, args.init_deps)):
+        parser.error('Build options require --branch.')
     try:
+        if args.branch:
+            command = [sys.executable, str(ROOT/'tools/build_radio.py'), '--branch', args.branch, '--flash']
+            for flag, value in (('--build-dir', args.build_dir), ('--toolchain-bin', args.toolchain_bin),
+                                ('--jobs', args.jobs), ('--board-revision', args.board_revision),
+                                ('--openocd', args.openocd), ('--serial', args.serial),
+                                ('--backup-dir', args.backup_dir)):
+                if value is not None:
+                    command += [flag, str(value)]
+            for flag in ('yes', 'dry_run', 'skip_eeprom_backup', 'vfo_accel', 'init_deps'):
+                if getattr(args, flag):
+                    command.append('--' + flag.replace('_', '-'))
+            # Keep the loaded CLI implementation even if switching replaces
+            # these scripts with an older version from the selected branch.
+            import build_radio
+            return build_radio.main(command[2:])
         args.image = args.image.expanduser().resolve()
         if args.image.suffix.lower() != '.bin':
             raise ValueError('Supply a raw .bin image; ELF/HEX files are not accepted.')
         image = args.image.read_bytes()
         validate_image(image)
         print(f'Image: {args.image}\nBytes: {len(image)}\nSHA256: {hashlib.sha256(image).hexdigest()}')
-        print('Plan: check STM32 -> compare two flash/options/EEPROM backups -> program -> verify readback and preserved EEPROM/options -> reset.')
+        if args.skip_eeprom_backup:
+            print('EEPROM backup and preservation verification SKIPPED (--skip-eeprom-backup); no EEPROM reads will be performed.')
+            print('Plan: check STM32 -> compare two flash/options backups -> program -> verify readback and preserved options -> reset.')
+        else:
+            print('Plan: check STM32 -> compare two flash/options/EEPROM backups -> program -> verify readback and preserved EEPROM/options -> reset.')
         if args.dry_run:
             return 0
         if not shutil.which(args.openocd):
