@@ -6,6 +6,11 @@
 #define GET_I2C_SDA_PIN() 	( ((I2C_PORT->IDR & (I2C_SDA)) != 0u) )
 
 #define I2C_DELAY_US 15
+/* Direct register writes have none of StdPeriph's GPIO call overhead.
+ * Give SDA time to settle while SCL is low before every data/ACK clock.
+ * Keep this explicit rather than depending on compiler instruction timing.
+ */
+#define I2C_SETUP_US 5
 
 void SET_E2P_MODE(uint8_t bit)
 {
@@ -105,6 +110,7 @@ void i2c_start()
 void i2c_stop()
 {
   SET_I2C_SDA_PIN(0);
+  delay_us(I2C_SETUP_US);
   SET_I2C_SCK_PIN(1);     // 发送总线时钟信号
   delay_us(I2C_DELAY_US); // 结束总线时间大于4us 
   
@@ -115,6 +121,7 @@ void i2c_stop()
 void i2c_ack()
 {
   SET_I2C_SDA_PIN(0);
+  delay_us(I2C_SETUP_US);
   SET_I2C_SCK_PIN(1);
   delay_us(I2C_DELAY_US);
   
@@ -127,6 +134,7 @@ void i2c_noack()
 {
 
   SET_I2C_SDA_PIN(1);
+  delay_us(I2C_SETUP_US);
   SET_I2C_SCK_PIN(1);
   delay_us(I2C_DELAY_US);
   
@@ -142,6 +150,7 @@ uint8_t i2c_getack()
   /* 为输入做准备，确保从机ACK真正为低 */
   SET_I2C_SDA_PIN(1);
   SET_I2C_SDA_DIR(INPUT);
+  delay_us(I2C_SETUP_US);
   SET_I2C_SCK_PIN(1);
   delay_us(I2C_DELAY_US);
   
@@ -165,6 +174,7 @@ void i2c_tx(uint8_t wdata)
     else
       SET_I2C_SDA_PIN(0);
     wdata <<= 1;
+    delay_us(I2C_SETUP_US);
     SET_I2C_SCK_PIN(1);
     delay_us(I2C_DELAY_US);	//Confirm the time of csk high level over 4.7us
     SET_I2C_SCK_PIN(0);
@@ -181,6 +191,7 @@ uint8_t i2c_rx()
 
   SET_I2C_SDA_PIN(1);	//Release data bus
   SET_I2C_SDA_DIR(INPUT);
+  delay_us(I2C_SETUP_US);
   for(i=0;i<8;i++)
   {
     
