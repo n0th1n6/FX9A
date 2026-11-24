@@ -145,6 +145,32 @@ if {!$failed || !$resumed || ![string match "*EEPROM backup/cleanup failed*" $re
         self.assertEqual((self.root/'flash').read_bytes()[:len(self.data)],self.data)
         self.assertEqual((self.root/'eeprom').read_bytes(),bytes(range(256))*8)
         self.assertEqual(json.loads((self.backup/'manifest.json').read_text())['status'],'flashed_verified_reset')
+        self.assertEqual(events.count('eeprom'), 2)
+        manifest = json.loads((self.backup/'manifest.json').read_text())
+        self.assertFalse(manifest['eeprom_backup_skipped'])
+        self.assertTrue(manifest['eeprom_preservation_verified'])
+
+    def test_skip_eeprom_never_reads_eeprom(self):
+        (self.root/'eeprom').unlink()  # Any attempted EEPROM read would fail.
+        events = self.run_cli(extra=['--skip-eeprom-backup'], success=True)
+        self.assertNotIn('eeprom', events)
+        self.assertEqual(events[-1], 'reset')
+        self.assertTrue((self.backup/'flash-read2.bin').exists())
+        self.assertTrue((self.backup/'options-read2.bin').exists())
+        manifest = json.loads((self.backup/'manifest.json').read_text())
+        self.assertTrue(manifest['eeprom_backup_skipped'])
+        self.assertFalse(manifest['eeprom_preservation_verified'])
+        self.assertIsNone(manifest['eeprom_sha256'])
+
+    def test_skip_eeprom_retains_flash_and_option_checks(self):
+        for fault in ('backup-flash', 'post-options'):
+            with self.subTest(fault=fault):
+                events = self.run_cli(fault, extra=['--skip-eeprom-backup'])
+                self.assertNotIn('reset', events)
+                self.assertNotIn('eeprom', events)
+                self.assertEqual('program' in events, fault == 'post-options')
+                shutil.rmtree(self.backup)
+                (self.root/'events').unlink()
 
     def test_failures_before_program(self):
         for fault in ('wrong-target','backup-flash','backup-eeprom','swapped-probe'):

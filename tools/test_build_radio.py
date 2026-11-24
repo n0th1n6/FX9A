@@ -32,6 +32,9 @@ class BuildCLI(unittest.TestCase):
         self.patch_which.start(); self.addCleanup(self.patch_which.stop)
         self.patch_run = patch.object(build_radio, 'run', side_effect=self.fake_run)
         self.mock_run = self.patch_run.start(); self.addCleanup(self.patch_run.stop)
+        self.patch_flash = patch.object(build_radio, 'flash_main',
+            side_effect=lambda args: self.events.append([sys.executable, str(self.root/'tools/flash_radio.py'), *args]) or 0)
+        self.patch_flash.start(); self.addCleanup(self.patch_flash.stop)
 
     def dependencies(self):
         if (self.root/'cmsis_ll').exists():
@@ -48,7 +51,7 @@ class BuildCLI(unittest.TestCase):
         (self.root/'cmsis_ll/CMakeLists.txt').touch()
         self.dependencies()
 
-    def fake_run(self, command, env):
+    def fake_run(self, command, env, root=None):
         self.events.append(command)
         if command[0] == 'bash' or command[:3] == ['git','submodule','update']:
             self.dependencies()
@@ -85,6 +88,37 @@ class BuildCLI(unittest.TestCase):
         self.assertIn('-DFX9A_VFO_ACCEL=OFF',self.events[0])
         self.assertIn('fx9a',self.events[1]); self.assertIn('-P',self.events[-1])
         self.assertFalse(any('flash_radio.py' in arg for command in self.events for arg in command))
+
+    def test_skip_eeprom_forwarded_only_when_requested(self):
+        self.assertEqual(self.cli('--flash'), 0)
+        self.assertNotIn('--skip-eeprom-backup', self.events[-1])
+        self.assertEqual(self.cli('--flash', '--skip-eeprom-backup'), 0)
+        self.assertIn('--skip-eeprom-backup', self.events[-1])
+
+    def test_branch_build_uses_selected_working_files_and_loaded_flash_helper(self):
+        with patch.object(build_radio, 'select_branch', return_value=(self.root, 'abc123', True)) as select:
+            self.assertEqual(self.cli('--branch', 'cmsis-ll-port', '--flash'), 0)
+        select.assert_called_once_with(self.root, 'cmsis-ll-port', False)
+        self.assertIn(str(self.root/'cmsis_ll'), self.events[0])
+        manifest = json.loads((self.build/'build-manifest.json').read_text())
+        self.assertEqual(manifest['source'], str(self.root))
+        self.assertEqual(manifest['branch'], 'cmsis-ll-port')
+        self.assertEqual(manifest['commit'], 'abc123')
+
+    def test_failed_switch_never_builds_or_flashes(self):
+        with patch.object(build_radio, 'select_branch', side_effect=ValueError('conflicting edits')):
+            self.assertEqual(self.cli('--branch', 'master', '--flash'), 1)
+        self.assertEqual(self.events, [])
+
+    def test_flash_branch_entry_forwards_build_and_flash_options(self):
+        import flash_radio
+        with patch.object(build_radio, 'main', return_value=7) as build:
+            result = flash_radio.main(['--branch', 'master', '--skip-eeprom-backup',
+                                       '--yes', '--jobs', '2', '--dry-run'])
+        self.assertEqual(result, 7)
+        forwarded = build.call_args.args[0]
+        for value in ('--branch', 'master', '--flash', '--skip-eeprom-backup', '--yes', '--jobs', '2', '--dry-run'):
+            self.assertIn(value, forwarded)
 
     def test_dry_run_is_read_only_even_with_flash_and_init(self):
         self.assertEqual(self.cli('--dry-run','--flash','--init-deps'),0)
@@ -123,9 +157,11 @@ class BuildCLI(unittest.TestCase):
         self.mock_run.assert_not_called()
 
     def test_flash_options_require_flash(self):
-        with self.assertRaises(SystemExit) as raised:
-            self.cli('--yes')
-        self.assertEqual(raised.exception.code,2); self.mock_run.assert_not_called()
+        for option in ('--yes', '--skip-eeprom-backup'):
+            with self.subTest(option=option), self.assertRaises(SystemExit) as raised:
+                self.cli(option)
+            self.assertEqual(raised.exception.code,2)
+        self.mock_run.assert_not_called()
 
 
 if __name__ == '__main__':

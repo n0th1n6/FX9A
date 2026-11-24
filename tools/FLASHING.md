@@ -1,11 +1,53 @@
 # Building and flashing the FX-9A from the CLI
 
+## Push a committed branch
+
+```sh
+./tools/pushrepo.py --branch cmsis-ll-port
+./tools/pushrepo.py --branch master
+./tools/pushrepo.py --branch master --dry-run
+```
+
+The utility requires a clean worktree, switches this same checkout using normal
+Git rules, pushes the selected commit to the same branch on `origin`, and checks
+that the remote SHA matches. It never stages files, creates commits, force-pushes,
+or merges. Commit reviewed changes first. Dry runs do not switch or push.
+
 ## Build and optionally flash
 
 Install Python 3.8+, CMake, Ninja, Git and ARM GNU tools on PATH. The build
 helper selects the native CMSIS/LL application when `cmsis_ll/CMakeLists.txt`
 is present; on master it builds Mbed CE. It never builds the small boot-test
 image. Use the branch containing the firmware you want to install.
+
+Select a branch automatically from this same worktree:
+
+```sh
+./tools/build_radio.py --branch cmsis-ll-port
+./tools/build_radio.py --branch master --flash
+./tools/flash_radio.py --branch cmsis-ll-port --skip-eeprom-backup
+```
+
+Both tools use normal `git switch` in the checkout where the tools are located.
+They build the actual working files there, including uncommitted edits; they do
+not create a separate worktree, stash changes, reset files or force a switch.
+Conflicting edits or a branch checked out in another worktree stop the command
+before building/flashing. Successful switches leave this checkout on the selected
+branch. Commit or reconcile conflicting edits before changing branches.
+
+Local branch tips take priority, followed by cached `origin` branches. If neither
+exists, the tool fetches that branch from `origin` and creates a tracking branch.
+It does not automatically pull existing branches. `--branch` also initializes
+missing build dependencies. `--dry-run` prints the planned switch/build/flash
+without changing branches or files, downloading sources, or contacting hardware;
+an uncached branch prints the required fetch and stops the preview.
+
+In `flash_radio.py`, `--branch` replaces the positional image argument and runs
+build plus image verification before the normal flash flow. It accepts the same
+build options (`--build-dir`, `--toolchain-bin`, `--jobs`, `--board-revision`,
+`--vfo-accel`, `--init-deps`). The loaded CLI implementation is retained across
+the switch, including when the selected branch has older tool scripts. Later
+invocations use the scripts present in that selected branch.
 
 ```sh
 ./tools/build_radio.py --init-deps   # Fetch missing source dependencies, then build.
@@ -32,8 +74,8 @@ A failed configure, build or verification never starts flashing an old binary.
 An incompatible build cache is preserved and refused; choose a different build
 directory to change source trees, generators or compilers.
 
-With `--flash`, `--serial`, `--openocd`, `--backup-dir` and `--yes` are forwarded
-to `flash_radio.py`. Its backup and verification protections stay mandatory.
+With `--flash`, `--serial`, `--openocd`, `--backup-dir`, `--yes` and
+`--skip-eeprom-backup` are forwarded to `flash_radio.py`.
 The build CLI never contacts hardware unless `--flash` is supplied.
 
 ## Flash a previously built image
@@ -55,7 +97,7 @@ Build the desired firmware first. From the repository root:
 ```
 
 For Mbed, pass the full `fx9a.bin` produced in your chosen Mbed build directory.
-Either branch uses the same script; it always requires an explicit raw `.bin`.
+Either branch uses the same script; without `--branch`, supply an explicit raw `.bin`.
 ELF/HEX files, the small CMSIS boot-test image, incorrect vectors and oversized
 images are rejected. Vector checks establish image layout, not RF behavior.
 
@@ -66,19 +108,27 @@ Optional arguments:
 ./tools/flash_radio.py /path/to/fx9a.bin --openocd /usr/local/bin/openocd
 ./tools/flash_radio.py /path/to/fx9a.bin --backup-dir /path/to/new-backup-directory
 ./tools/flash_radio.py /path/to/fx9a.bin --yes
+./tools/flash_radio.py /path/to/fx9a.bin --skip-eeprom-backup
 ```
 
-`--yes` skips the prompt; backup and verification checks remain mandatory.
-An existing backup directory is never reused or overwritten. Without this option,
+`--skip-eeprom-backup` disables all EEPROM reads: both the pre-flash captures
+and the post-flash preservation comparison. Flash and option-byte backups,
+target identity checks and image verification remain required. The plan and
+manifest explicitly record the skipped EEPROM checks; EEPROM preservation is
+not verified in this mode. The default still backs up and verifies EEPROM.
+For build-and-flash, use `./tools/build_radio.py --flash --skip-eeprom-backup`.
+
+`--yes` skips the prompt; selected backup and verification checks remain required.
+An existing backup directory is never reused or overwritten. Without `--backup-dir`,
 backups go under the checkout's ignored `backups/flash-<UTC timestamp>/` directory.
 
 The script freezes a copy of the selected image, halts the CPU, checks the target,
-and obtains two matching full flash, option-byte and 2048-byte EEPROM captures.
+and obtains two matching full flash, option-byte and, by default, 2048-byte EEPROM captures.
 It saves raw `.bin` backups, EEPROM hex text, device UID, SHA256 hashes and OpenOCD
 logs. Before programming it rechecks UID, option bytes and the complete old flash,
 then erases only the pages covered by the image and writes at `0x08000000`.
 It checks the full readback, final-page erased padding, untouched flash tail,
-option bytes and EEPROM before issuing `reset run`.
+option bytes and, unless skipped, EEPROM before issuing `reset run`.
 
 The EEPROM reader temporarily asserts write protection and restores the GPIO
 outputs. Neither EEPROM contents nor option bytes are programmed. EEPROM reads
@@ -98,4 +148,6 @@ Run the offline tests (requires `tclsh`, no ST-Link/USB access):
 ```sh
 python3 tools/test_build_radio.py
 python3 tools/test_flash_radio.py
+python3 tools/test_branch_checkout.py
+python3 tools/test_pushrepo.py
 ```
